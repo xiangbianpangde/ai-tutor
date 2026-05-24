@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.python-version
+
+# 测试 / 覆盖率
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# 数据 / 产物（运行时生成）
+data/*.db
+data/*.db-journal
+data/corpora/
+data/knowledge_graphs/
+data/output/
+data/models/
+data/git_repos/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 秘钥
+.env
+*.key
+
+# uv
+uv.lock

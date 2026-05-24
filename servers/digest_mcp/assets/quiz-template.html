@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>{{TITLE}}</title>
+<style>
+  body{font-family:-apple-system,Segoe UI,sans-serif;max-width:780px;margin:30px auto;padding:0 20px;color:#222}
+  h1{border-bottom:2px solid #4a90e2;padding-bottom:6px}
+  .question{border:1px solid #ddd;border-radius:8px;padding:14px 18px;margin:16px 0;background:#fafafa}
+  .q-type{font-size:12px;color:#666;text-transform:uppercase;letter-spacing:.05em}
+  .prompt{font-size:16px;margin:6px 0 10px;line-height:1.5}
+  .options label{display:block;padding:6px 10px;cursor:pointer;border-radius:4px}
+  .options label:hover{background:#eef5ff}
+  .feedback{display:none;margin-top:8px;padding:8px 12px;border-radius:4px;font-size:14px}
+  .feedback.show{display:block}
+  .feedback.correct{background:#e3f7df;color:#1f7a1f}
+  .feedback.wrong{background:#fdecea;color:#a52828}
+  input[type=text]{width:240px;padding:6px 8px;border:1px solid #ccc;border-radius:4px}
+  button{padding:6px 16px;background:#4a90e2;color:#fff;border:0;border-radius:4px;cursor:pointer;font-size:14px}
+  button:hover{background:#3678c1}
+  .stats{margin-top:30px;padding:14px;background:#f0f4f8;border-radius:6px;font-size:14px}
+</style>
+</head>
+<body>
+<h1>{{TITLE}}</h1>
+<p style="color:#777">来自 KG <code>{{KG_ID}}</code> · 共 {{COUNT}} 题</p>
+
+<div id="quiz">{{QUESTIONS_HTML}}</div>
+
+<button onclick="submitAll()">提交</button>
+<div id="stats" class="stats" style="display:none"></div>
+
+<script>
+const ANSWERS = {{ANSWERS_JSON}};
+
+function submitAll(){
+  let correct = 0;
+  const total = ANSWERS.length;
+  ANSWERS.forEach((qa, i) => {
+    const el = document.getElementById('q' + i);
+    const fb = el.querySelector('.feedback');
+    let userAns = '';
+    if(qa.type === 'fill_blank'){
+      userAns = (el.querySelector('input[type=text]').value || '').trim();
+    } else {
+      const sel = el.querySelector('input[name=q' + i + ']:checked');
+      userAns = sel ? sel.value : '';
+    }
+    const ok = userAns === qa.answer;
+    if(ok) correct++;
+    fb.classList.remove('correct','wrong');
+    fb.classList.add('show', ok ? 'correct' : 'wrong');
+    fb.textContent = ok
+      ? '✓ 正确'
+      : '✗ 正确答案：' + qa.answer;
+  });
+  const stats = document.getElementById('stats');
+  stats.style.display = 'block';
+  stats.innerHTML = '<strong>得分：</strong>' + correct + ' / ' + total
+    + ' (' + Math.round(100*correct/total) + '%)';
+}
+</script>
+</body>
+</html>

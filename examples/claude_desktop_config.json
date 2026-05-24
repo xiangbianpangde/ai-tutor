@@ -1,0 +1,73 @@
+{
+  "_comment": "Claude Desktop MCP 配置 — 把本 JSON 内容合并到 %APPDATA%/Claude/claude_desktop_config.json 后重启 Claude Desktop。注意：实际配置文件不能含 _comment 字段，需要删掉。",
+
+  "mcpServers": {
+    "ai-tutor-knowledge": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "C:/Users/yhn/Desktop/ai-tutor",
+        "python",
+        "-m",
+        "servers.knowledge_mcp.server"
+      ],
+      "env": {
+        "DATABASE_URL": "sqlite:///C:/Users/yhn/Desktop/ai-tutor/data/tutor.db",
+        "AI_TUTOR_DATA_ROOT": "C:/Users/yhn/Desktop/ai-tutor/data",
+        "DEEPSEEK_API_KEY": "${DEEPSEEK_API_KEY}",
+        "LOG_LEVEL": "INFO"
+      }
+    },
+
+    "ai-tutor-tutoring": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "C:/Users/yhn/Desktop/ai-tutor",
+        "python",
+        "-m",
+        "servers.tutoring_mcp.server"
+      ],
+      "env": {
+        "DATABASE_URL": "sqlite:///C:/Users/yhn/Desktop/ai-tutor/data/tutor.db",
+        "AI_TUTOR_DATA_ROOT": "C:/Users/yhn/Desktop/ai-tutor/data",
+        "DEEPSEEK_API_KEY": "${DEEPSEEK_API_KEY}",
+        "LOG_LEVEL": "INFO"
+      }
+    },
+
+    "ai-tutor-digest": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "C:/Users/yhn/Desktop/ai-tutor",
+        "python",
+        "-m",
+        "servers.digest_mcp.server"
+      ],
+      "env": {
+        "DATABASE_URL": "sqlite:///C:/Users/yhn/Desktop/ai-tutor/data/tutor.db",
+        "AI_TUTOR_DATA_ROOT": "C:/Users/yhn/Desktop/ai-tutor/data",
+        "LOG_LEVEL": "INFO"
+      }
+    },
+
+    "ai-tutor-sync": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "C:/Users/yhn/Desktop/ai-tutor",
+        "python",
+        "-m",
+        "servers.sync_mcp.server"
+      ],
+      "env": {
+        "LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}

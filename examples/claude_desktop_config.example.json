@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "ai-tutor-knowledge": {
+      "command": "uv",
+      "args": ["run", "--directory", "C:/Users/yhn/Desktop/ai-tutor", "python", "-m", "servers.knowledge_mcp.server"],
+      "env": {
+        "DATABASE_URL": "sqlite:///C:/Users/yhn/Desktop/ai-tutor/data/tutor.db",
+        "AI_TUTOR_DATA_ROOT": "C:/Users/yhn/Desktop/ai-tutor/data",
+        "DEEPSEEK_API_KEY": "sk-填你的key"
+      }
+    },
+    "ai-tutor-tutoring": {
+      "command": "uv",
+      "args": ["run", "--directory", "C:/Users/yhn/Desktop/ai-tutor", "python", "-m", "servers.tutoring_mcp.server"],
+      "env": {
+        "DATABASE_URL": "sqlite:///C:/Users/yhn/Desktop/ai-tutor/data/tutor.db",
+        "AI_TUTOR_DATA_ROOT": "C:/Users/yhn/Desktop/ai-tutor/data",
+        "DEEPSEEK_API_KEY": "sk-填你的key"
+      }
+    },
+    "ai-tutor-digest": {
+      "command": "uv",
+      "args": ["run", "--directory", "C:/Users/yhn/Desktop/ai-tutor", "python", "-m", "servers.digest_mcp.server"],
+      "env": {
+        "DATABASE_URL": "sqlite:///C:/Users/yhn/Desktop/ai-tutor/data/tutor.db",
+        "AI_TUTOR_DATA_ROOT": "C:/Users/yhn/Desktop/ai-tutor/data"
+      }
+    },
+    "ai-tutor-sync": {
+      "command": "uv",
+      "args": ["run", "--directory", "C:/Users/yhn/Desktop/ai-tutor", "python", "-m", "servers.sync_mcp.server"]
+    }
+  }
+}
