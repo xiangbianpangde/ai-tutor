@@ -43,6 +43,7 @@ from shared.schemas import (
 from shared.storage import RelationalStore
 
 from .bkt_store import BKTStore
+from .content_generator import ContentGenerator
 from .error_diagnoser import ErrorDiagnoser
 from .flow_regulator import get_regulator
 from .flow_signals import compute_flow_signals
@@ -82,6 +83,7 @@ class TeachingEngine:
         self.scorer = LLMScorer(llm=self.llm)
         self.diagnoser = ErrorDiagnoser(llm=self.llm)
         self.intent = IntentClassifier(llm=self.llm)
+        self.content_gen = ContentGenerator(llm=self.llm)
 
     # ------------------------------------------------------------------ #
     # helpers
@@ -330,6 +332,10 @@ class TeachingEngine:
         concept = self._load_concept(ctx.current_concept_id)
         strat = self._make_strategy(ctx, concept)
         action = strat.get_action()
+
+        # P0 #1: 用 LLM 把模板动作改写成真实讲解内容（无真实 LLM 时原样返回）
+        scaffold = int((ctx.strategy_internal or {}).get("scaffold_level", 1))
+        action = self.content_gen.enrich(action=action, concept=concept, scaffold_level=scaffold)
 
         self._persist_strategy(ctx, strat)
         ctx.focus.primary_concept = concept.id

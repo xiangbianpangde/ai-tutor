@@ -314,6 +314,49 @@ def test_engine_all_mastered_completes(engine_env) -> None:
     assert action.type == "reflection"
 
 
+def test_engine_enriches_action_content_with_generation_llm(engine_env) -> None:
+    """provider.supports_generation=True → next_action 的讲解内容被 LLM 改写。"""
+    from servers.tutoring_mcp.engine import TeachingEngine
+    from servers.tutoring_mcp.session import SessionStore
+
+    db, subject_id, first_concept, _ = engine_env
+    sessions = SessionStore(db)
+    llm = MockLLMProvider(
+        canned_responses=["这是 LLM 生成的生动讲解，配了一个具体例子。"],
+        supports_generation=True,
+    )
+    engine = TeachingEngine(db=db, sessions=sessions, llm=llm)
+
+    ctx = sessions.create(user_id="yhn", subject_id=subject_id)
+    ctx.current_concept_id = first_concept
+    ctx.status = "active"
+    sessions.save(ctx)
+
+    action = engine.next_action(ctx.session_id)
+    assert action.content == "这是 LLM 生成的生动讲解，配了一个具体例子。"
+    assert action.metadata.get("generated") is True
+    assert len(llm.calls) == 1
+
+
+def test_engine_default_llm_keeps_template_content(engine_env) -> None:
+    """无生成能力（默认 Stub）→ next_action 内容保持策略模板，不调 LLM 生成。"""
+    from servers.tutoring_mcp.engine import TeachingEngine
+    from servers.tutoring_mcp.session import SessionStore
+
+    db, subject_id, first_concept, _ = engine_env
+    sessions = SessionStore(db)
+    engine = TeachingEngine(db=db, sessions=sessions)  # StubLLM
+
+    ctx = sessions.create(user_id="yhn", subject_id=subject_id)
+    ctx.current_concept_id = first_concept
+    ctx.status = "active"
+    sessions.save(ctx)
+
+    action = engine.next_action(ctx.session_id)
+    assert action.metadata.get("generated") is not True
+    assert action.content  # 模板内容仍在
+
+
 def test_engine_default_llm_falls_back_to_heuristic_scoring(engine_env) -> None:
     """没传 llm 时仍能工作（用 stub→启发式）。"""
     from servers.tutoring_mcp.engine import TeachingEngine

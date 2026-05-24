@@ -23,6 +23,7 @@ logger = get_logger("shared.providers.deepseek")
 class DeepSeekProvider:
     category: ClassVar[str] = "llm"
     name: ClassVar[str] = "deepseek"
+    supports_generation: ClassVar[bool] = True
 
     def __init__(
         self,

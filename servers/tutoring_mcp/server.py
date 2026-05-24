@@ -71,8 +71,20 @@ def _db() -> RelationalStore:
     return RelationalStore.from_env()
 
 
+def _llm():
+    """有 DEEPSEEK_API_KEY 则用 DeepSeek（启用判分/诊断/内容生成），否则 Stub（模板兜底）。"""
+    from shared.llm_client import StubLLMProvider
+
+    try:
+        from shared.providers.deepseek import DeepSeekProvider
+
+        return DeepSeekProvider.from_env() or StubLLMProvider()
+    except Exception:  # noqa: BLE001 — provider 构建失败不应阻断 server
+        return StubLLMProvider()
+
+
 def _engine(db: RelationalStore) -> TeachingEngine:
-    return TeachingEngine(db=db, sessions=SessionStore(db))
+    return TeachingEngine(db=db, sessions=SessionStore(db), llm=_llm())
 
 
 # --------------------------------------------------------------------------- #

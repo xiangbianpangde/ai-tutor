@@ -40,6 +40,9 @@ class LLMProvider(Protocol):
 
     category: ClassVar[str]
     name: ClassVar[str]
+    # 是否适合做"开放式内容生成"（讲解/例子/练习）。Stub/Mock 默认 False，
+    # 真实 provider（DeepSeek）为 True。ContentGenerator 据此决定是否调用 LLM。
+    supports_generation: bool
 
     def chat(
         self,
@@ -68,6 +71,7 @@ class StubLLMProvider:
 
     category: ClassVar[str] = "llm"
     name: ClassVar[str] = "stub"
+    supports_generation: ClassVar[bool] = False
 
     def chat(
         self,
@@ -101,6 +105,9 @@ class MockLLMProvider:
 
     canned_responses: list[str] = field(default_factory=list)
     calls: list[dict[str, Any]] = field(default_factory=list)
+    # 默认 False（让既有测试里 engine 的 MockLLM 不被内容生成消费 canned）；
+    # 内容生成测试显式置 True 以模拟真实 provider。
+    supports_generation: bool = False
     _cursor: int = field(default=0, init=False)
 
     category: ClassVar[str] = "llm"

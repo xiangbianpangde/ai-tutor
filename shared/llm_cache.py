@@ -49,6 +49,11 @@ class CachedLLMProvider:
         self._hits = 0
         self._misses = 0
 
+    @property
+    def supports_generation(self) -> bool:
+        """缓存层的生成能力 = 被包装 provider 的能力。"""
+        return bool(getattr(self.inner, "supports_generation", False))
+
     def _model_name(self) -> str:
         return getattr(self.inner, "model", "") or getattr(self.inner, "name", "unknown")
 

@@ -29,6 +29,7 @@
 | **Slice CS** | 冷启动摸底 (P0 #2) | `cold_start.py`：选 10 道跨难度题（band 3/4/3）+ 判分（复用 LLMScorer）+ correctness×自评→BKT 先验 + 画像初值（abstract_tolerance/transfer/self_assessment）+ recommended_level。`BKTStore.seed_prior`（不覆盖真实观测）。engine `next_action` 跳过 mastery≥0.8 的概念（仅在概念未开教时；进行中不打断）。新增 2 tool `cold_start_probe`/`submit_cold_start` + 写 LearnerProfile 初值；`start_learning_session` 教学路径标出 skipped/to_learn。真实笔记验证：17→13 概念，8.5h→6.5h | ✅ |
 | **Slice P1#4** | 6 策略引擎集成 | engine 动态选策略（接入 strategy_selector，输入 mastery/cognitive_load/profile/mastered_ratio/flow）+ flow_regulator 调 pace 传入策略 params。Strategy 基类加 `TERMINAL_STATES`/`is_complete()`/`export_state`/`restore_state`；7 策略声明终止态。`SessionContext.strategy_internal` 持久化策略内部计数器，使 jiangjie/feynman/socratic/pbl 跨重建无损。next_action 用 `is_complete()` 通用判完成。修一个 falsy-zero bug（FlowLevel.SILENT==0 被 `or` 吞）。真实笔记验证：thorough 学习者自动走降阶法，_atom_index 跨 respond 递增 | ✅ |
 | **Slice MS** | 多 Session 调度 (P0 #3) | `learning_plan.py`：`build_plan` 把拓扑序按顶层章节切 Phase（含时长估计）+ `compute_progress`（每 Phase 完成度/当前 Phase/下一个该学的概念）+ `LearningPlanStore`（新表 `learning_plans`，按 user+subject 持久化）。新增 2 tool `get_learning_progress`（不开会话看进度）/`resume_learning`（复用未结束会话或新建并定位到首个未掌握）。`start_learning_session` 改用 Phase 化计划，teaching_plan 反映各 Phase 完成度。真实笔记验证：跨天续学"已掌握 10/17，当前 Phase 2，今天从【导数】继续" | ✅ |
+| **Slice CG** | 教学内容 LLM 生成 (P0 #1) | `content_generator.py`：引擎 next_action 拿到策略动作后，按 action.type 用 LLM 把模板填空改写成真实讲解（直觉+例子/练习/提示），失败/不可用回退模板。加 provider 能力位 `supports_generation`（Stub/Mock=False、DeepSeek=True），使 Mock/Stub 测试完全不受影响。server `_llm()` 在有 `DEEPSEEK_API_KEY` 时接入 DeepSeek（同时启用判分/诊断/生成）。真实笔记验证：Stub→模板、真实 LLM→生动讲解。**至此 3 个 P0 全部完成** | ✅ |
 
 ---
 
@@ -70,6 +71,7 @@
 | `server.py` | FastMCP 入口（12 tool：start/resume/next/respond + cold_start_probe/submit_cold_start + get_learning_progress + 5 已实现） | ✅ |
 | `cold_start.py` | 冷启动摸底核心逻辑（选题/出题/判分聚合/先验映射/画像初值） | ✅ |
 | `learning_plan.py` | 多 Session 调度：build_plan（章节切 Phase）+ compute_progress + LearningPlanStore | ✅ |
+| `content_generator.py` | 教学内容 LLM 生成（按 action.type 改写讲解/例子/练习；模板兜底；gated on supports_generation） | ✅ |
 | `session.py` | L2 SessionContext CRUD | ✅ |
 | `bkt.py` | BKT 贝叶斯更新 | ✅ |
 | `bkt_store.py` | BKT 状态持久化（bkt_params 表）+ seed_prior（冷启动先验，不覆盖真实观测） | ✅ |
@@ -240,7 +242,9 @@
 | tutoring-mcp Engine 策略选择+pace | 5 | `servers/tutoring_mcp/tests/test_engine_strategy_selection.py` |
 | tutoring-mcp LearningPlan core | 9 | `servers/tutoring_mcp/tests/test_learning_plan.py` |
 | tutoring-mcp 进度/续学 tool | 6 | `servers/tutoring_mcp/tests/test_learning_plan_server.py` |
-| **合计** | **599（598 passed + 1 skipped）** | |
+| tutoring-mcp ContentGenerator | 16 | `servers/tutoring_mcp/tests/test_content_generator.py` |
+| tutoring-mcp Engine 内容生成集成 | 2 | `servers/tutoring_mcp/tests/test_engine_t1.py` |
+| **合计** | **618（617 passed + 1 skipped）** | |
 
 跑 `uv run pytest` 应该全部 green（BDD 已加入 `testpaths`，与 canonical 一起跑）。
 
