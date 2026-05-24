@@ -77,6 +77,21 @@ def test_build_plan_empty():
     assert plan.total_concepts == 0
 
 
+def test_build_plan_merges_non_contiguous_chapters():
+    """拓扑序可能让同一章的概念不相邻（跨章前置）；每章仍应只对应一个 Phase。"""
+    interleaved = [
+        _c("sub:1:ch1", "第一章", 20),
+        _c("sub:2:ch2", "第二章", 20),
+        _c("sub:1.1:a", "1.1", 30),   # 第 1 章的概念又出现在第 2 章之后
+        _c("sub:2.1:b", "2.1", 30),
+    ]
+    plan = lp.build_plan(user_id="u", subject_id="s", kg_id="kg", ordered_concepts=interleaved)
+    assert len(plan.phases) == 2, "同一章不应被切成多个 Phase"
+    p1 = next(p for p in plan.phases if p.title == "第一章")
+    assert p1.concept_ids == ["sub:1:ch1", "sub:1.1:a"]
+    assert p1.estimated_hours == pytest.approx(50 / 60.0, abs=0.01)
+
+
 # --------------------------------------------------------------------------- #
 # compute_progress
 # --------------------------------------------------------------------------- #

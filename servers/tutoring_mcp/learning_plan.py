@@ -57,23 +57,23 @@ def build_plan(
 ) -> LearningPlan:
     """把拓扑序概念按顶层章节切成 Phase。
 
-    保持 ordered_concepts 的顺序；同一顶层章节的连续概念归入同一 Phase。
-    Phase 标题取该章的"章节根概念"（id 形如 `subject:N:slug`）名，否则用首概念名。
+    按顶层章节归组（每章一个 Phase），章节顺序按首次出现。拓扑序不保证同章概念相邻
+    （跨章前置会让章节交错），所以用 dict 归组而非"连续段"，避免同一章被拆成多个 Phase。
+    计划仅用于进度展示——真正的教学顺序由 engine 的拓扑序走，不受此分组影响。
+    Phase 标题取该章的"章节根概念"（id 形如 `subject:N:slug`）名，否则用组内首概念名。
     """
-    phases: list[PhasePlan] = []
     total_min = 0
-    phase_no = 0
-    cur_chapter: int | None = None
-    cur_group: list[Concept] = []
+    # 顶层章节号 → 该章概念（保持拓扑序内的相对顺序）；dict 保持首次出现顺序
+    groups: dict[int, list[Concept]] = {}
+    for c in ordered_concepts:
+        total_min += c.difficulty.typical_learning_time_min
+        groups.setdefault(_top_chapter(c.id), []).append(c)
 
-    def _flush(group: list[Concept]) -> None:
-        nonlocal phase_no
-        if not group:
-            return
-        phase_no += 1
-        # 标题：优先章节根（chapter_key 长度 == 1），否则首概念
+    phases: list[PhasePlan] = []
+    for phase_no, (_ch, group) in enumerate(groups.items(), start=1):
         root = next((c for c in group if len(_chapter_key(c.id)) == 1), None)
-        title = (root or group[0]).names[0] if (root or group[0]).names else f"第 {phase_no} 阶段"
+        head = root or group[0]
+        title = head.names[0] if head.names else f"第 {phase_no} 阶段"
         minutes = sum(c.difficulty.typical_learning_time_min for c in group)
         phases.append(
             PhasePlan(
@@ -83,18 +83,6 @@ def build_plan(
                 estimated_hours=round(minutes / 60.0, 2),
             )
         )
-
-    for c in ordered_concepts:
-        ch = _top_chapter(c.id)
-        total_min += c.difficulty.typical_learning_time_min
-        if cur_chapter is None or ch == cur_chapter:
-            cur_group.append(c)
-            cur_chapter = ch
-        else:
-            _flush(cur_group)
-            cur_group = [c]
-            cur_chapter = ch
-    _flush(cur_group)
 
     return LearningPlan(
         user_id=user_id,
