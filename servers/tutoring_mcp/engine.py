@@ -43,6 +43,7 @@ from shared.schemas import (
 from shared.storage import RelationalStore
 
 from .bkt_store import BKTStore
+from .cognitive_load import estimate_load
 from .content_generator import ContentGenerator
 from .error_diagnoser import ErrorDiagnoser
 from .feedback_generator import FeedbackGenerator
@@ -134,6 +135,19 @@ class TeachingEngine:
             return FlowLevel(int(last))
         except (ValueError, TypeError):
             return None
+
+    def _update_cognitive_load(self, ctx, concept: Concept, *, struggle_count: int) -> None:
+        """重算并写回 ctx.meta.current_cognitive_load（供 selector / flow_regulator 用）。"""
+        profile = self._load_profile(ctx.user_id)
+        load = estimate_load(
+            intrinsic=concept.difficulty.cognitive_load_estimate,
+            recent_accuracy=self._recent_accuracy(ctx),
+            struggle_count=struggle_count,
+            working_memory_span=profile.cognitive.working_memory_span,
+            prereq_count=concept.difficulty.prereq_count,
+            prev_load=ctx.meta.current_cognitive_load,
+        )
+        ctx.meta.current_cognitive_load = load
 
     def _recent_accuracy(self, ctx, window: int = 3) -> float | None:
         turns = [h for h in ctx.recent_history if "correctness" in h][-window:]
@@ -332,6 +346,9 @@ class TeachingEngine:
                 hint="current_concept_id 未设置；start_learning_session 应先排好教学路径",
             )
         concept = self._load_concept(ctx.current_concept_id)
+        # 进入新概念时先把该概念的内在难度纳入负荷，让随后的策略选择/调参看到最新值
+        if not ctx.current_strategy_state:
+            self._update_cognitive_load(ctx, concept, struggle_count=0)
         strat = self._make_strategy(ctx, concept)
         action = strat.get_action()
 
@@ -503,6 +520,9 @@ class TeachingEngine:
                 prev_level = FlowLevel(int(last_prev))
         new_level = next_flow_level(current_level=prev_level, signals=signals)
         ctx.recent_history[-1]["flow_level"] = int(new_level)
+
+        # P1 #6: 在线更新认知负荷（此时 recent_history 已含本轮，正确率最新）
+        self._update_cognitive_load(ctx, concept, struggle_count=strat.attempt_count)
 
         # 增益回路检测：先看是否有断裂
         # skipped_count 在 handle_interrupt 的 pace_complaint→change_topic 分支累加

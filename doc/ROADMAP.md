@@ -31,6 +31,7 @@
 | **Slice MS** | 多 Session 调度 (P0 #3) | `learning_plan.py`：`build_plan` 把拓扑序按顶层章节切 Phase（含时长估计）+ `compute_progress`（每 Phase 完成度/当前 Phase/下一个该学的概念）+ `LearningPlanStore`（新表 `learning_plans`，按 user+subject 持久化）。新增 2 tool `get_learning_progress`（不开会话看进度）/`resume_learning`（复用未结束会话或新建并定位到首个未掌握）。`start_learning_session` 改用 Phase 化计划，teaching_plan 反映各 Phase 完成度。真实笔记验证：跨天续学"已掌握 10/17，当前 Phase 2，今天从【导数】继续" | ✅ |
 | **Slice CG** | 教学内容 LLM 生成 (P0 #1) | `content_generator.py`：引擎 next_action 拿到策略动作后，按 action.type 用 LLM 把模板填空改写成真实讲解（直觉+例子/练习/提示），失败/不可用回退模板。加 provider 能力位 `supports_generation`（Stub/Mock=False、DeepSeek=True），使 Mock/Stub 测试完全不受影响。server `_llm()` 在有 `DEEPSEEK_API_KEY` 时接入 DeepSeek（同时启用判分/诊断/生成）。真实笔记验证：Stub→模板、真实 LLM→生动讲解。**至此 3 个 P0 全部完成** | ✅ |
 | **Slice FG** | 教学反馈分级 (P1 #7) | `feedback_generator.py`：反馈三级管道 L1（correctness 模板）+ L2（remediation）+ L3（LLM 润色）。engine.respond 把 L1+L2 模板作为 fallback 传入 L3，润色结果再过非评判防火墙。同样 gated on `supports_generation`，Stub/Mock 返回模板 → 既有 respond 测试不变。 | ✅ |
+| **Slice CL** | 认知负荷在线估计 (P1 #6) | `cognitive_load.py`：确定性加权公式（内在难度 0.35 + 表现 0.35 + 连续受挫 0.2 + 工作记忆压力 0.1）+ EMA 平滑。engine 在 respond 后（数据最全）+ 进入新概念时更新 `ctx.meta.current_cognitive_load`，喂给 strategy_selector（>0.6→jiangjie / >0.75→analogy/reduction）和 flow_regulator（>0.7 降难度+加脚手架）。此前恒 0.0 → 这两条分支永不触发，现已激活。 | ✅ |
 
 ---
 
@@ -74,6 +75,7 @@
 | `learning_plan.py` | 多 Session 调度：build_plan（章节切 Phase）+ compute_progress + LearningPlanStore | ✅ |
 | `content_generator.py` | 教学内容 LLM 生成（按 action.type 改写讲解/例子/练习；模板兜底；gated on supports_generation） | ✅ |
 | `feedback_generator.py` | 教学反馈 L3 LLM 润色（L1模板+L2 remediation 作 fallback；gated on supports_generation） | ✅ |
+| `cognitive_load.py` | 认知负荷在线估计（加权公式 + EMA）；引擎更新 ctx.meta.current_cognitive_load 喂给 selector/regulator | ✅ |
 | `session.py` | L2 SessionContext CRUD | ✅ |
 | `bkt.py` | BKT 贝叶斯更新 | ✅ |
 | `bkt_store.py` | BKT 状态持久化（bkt_params 表）+ seed_prior（冷启动先验，不覆盖真实观测） | ✅ |
@@ -248,7 +250,9 @@
 | tutoring-mcp Engine 内容生成集成 | 2 | `servers/tutoring_mcp/tests/test_engine_t1.py` |
 | tutoring-mcp FeedbackGenerator | 9 | `servers/tutoring_mcp/tests/test_feedback_generator.py` |
 | tutoring-mcp Engine 反馈润色集成 | 1 | `servers/tutoring_mcp/tests/test_engine_t1.py` |
-| **合计** | **628（627 passed + 1 skipped）** | |
+| tutoring-mcp CognitiveLoad | 9 | `servers/tutoring_mcp/tests/test_cognitive_load.py` |
+| tutoring-mcp Engine 负荷集成 | 1 | `servers/tutoring_mcp/tests/test_engine_strategy_selection.py` |
+| **合计** | **638（637 passed + 1 skipped）** | |
 
 跑 `uv run pytest` 应该全部 green（BDD 已加入 `testpaths`，与 canonical 一起跑）。
 

@@ -154,6 +154,43 @@ def test_silent_flow_pace_is_gentle(engine_env):
     assert pace["scaffold_level"] == 3
 
 
+def test_cognitive_load_updates_and_reflects_struggle(engine_env):
+    """答错的认知负荷 > 答对；且不再恒为 0。"""
+    import json
+    from servers.tutoring_mcp.engine import TeachingEngine
+    from servers.tutoring_mcp.session import SessionStore
+
+    db, subject_id, first_concept, kg_id = engine_env
+    sessions = SessionStore(db)
+
+    def run(correctness):
+        llm = MockLLMProvider(canned_responses=[
+            json.dumps({"correctness": correctness, "raw_score": 0.9 if correctness == "correct" else 0.1, "evidence": "e"}, ensure_ascii=False)
+            for _ in range(20)
+        ])
+        engine = TeachingEngine(db=db, sessions=sessions, llm=llm)
+        ctx = sessions.create(user_id="yhn", subject_id=subject_id)
+        ctx.current_concept_id = first_concept
+        ctx.teaching_plan_id = kg_id
+        ctx.current_strategy = "reduction"
+        ctx.current_strategy_state = "CHECK"
+        ctx.status = "active"
+        sessions.save(ctx)
+        sid = ctx.session_id
+        for _ in range(3):
+            c = sessions.load(sid)
+            c.current_strategy = "reduction"
+            c.current_strategy_state = "CHECK"  # 保持在可答题状态
+            sessions.save(c)
+            engine.respond(sid, answer="某回答")
+        return sessions.load(sid).meta.current_cognitive_load
+
+    load_wrong = run("incorrect")
+    load_right = run("correct")
+    assert load_wrong > 0.0, "答错后认知负荷应 > 0（不再恒 0）"
+    assert load_wrong > load_right, "持续答错的负荷应高于持续答对"
+
+
 def test_no_flow_at_session_start_returns_none(engine_env):
     """会话刚开始（历史不足）→ flow_level=None，不会误把默认 SILENT 当信号。"""
     from servers.tutoring_mcp.engine import TeachingEngine

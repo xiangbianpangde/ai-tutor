@@ -2,7 +2,7 @@
 
 48 小时学完一科的私人 AI 辅导系统。基于 `../使用AI进行学习的技巧/ai-tutor-system-design/` 的 v3.0 七层认知架构。
 
-> **状态速览**：4 个 MCP server · 31 个 tool（全部实现，无硬 stub）· 628 测试全绿（627 passed + 1 skipped，含 58 个接入真实实现的 BDD Scenario）· 零必需重依赖（重量级库全部「装了就升级、缺了优雅降级」）。
+> **状态速览**：4 个 MCP server · 31 个 tool（全部实现，无硬 stub）· 638 测试全绿（637 passed + 1 skipped，含 58 个接入真实实现的 BDD Scenario）· 零必需重依赖（重量级库全部「装了就升级、缺了优雅降级」）。
 
 这份 README 主要写给**几个月后回来的自己**：先看懂架构和数据流，再知道每个能力在哪、怎么跑、当初为什么这么设计。详细历史在 [ROADMAP.md](./ROADMAP.md)。
 
