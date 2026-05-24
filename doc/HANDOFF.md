@@ -59,6 +59,9 @@ C:\Users\yhn\.claude\projects\C--Users-yhn-Desktop---AI-------\memory\
 > MS(多Session)/P1#4(6策略引擎)。两轮质量门复审（5 角度）共修 4+ 处稳健性问题。
 > 项目已 `git init` + 推送到 private GitHub（origin/main）。**SYSTEM-AUDIT 的 P0+P1 全清。**
 > engine 现已动态选策略 + 调 flow_regulator + 在线认知负荷（推翻了下面 05-23 旧注的"未集成"）。
+> 收尾：用同济《高数下册》139 概念做真实 48h 规模验证（全链路跑通，真实 DeepSeek 富化 40s，
+> 总学时 46.9h；详见 `48H-VALIDATION.md`），并据验证发现修了 P2 #11（enricher 从内容估计
+> 难度信号 → 难度/时长/cold-start band 内容驱动）。剩 P2 #9(DKT)/P3 #10(12 关系) 两个长期项。
 
 > 2026-05-23（续）：实现 Slice J 降阶法策略 `JiangjieStrategy`（6 状态机 + 知识骨架
 > 产出，16 测试）；strategy_selector 加规则 8（降阶法，置于 overload 规则之后，+4 测试，
