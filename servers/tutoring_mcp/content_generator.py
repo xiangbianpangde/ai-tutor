@@ -80,7 +80,7 @@ class ContentGenerator:
         """返回内容被 LLM 改写后的新 action；不可用/失败时原样返回。"""
         if not getattr(self.llm, "supports_generation", False):
             return action
-        if action.type not in _ENRICHABLE or concept is None:
+        if action.type not in _ENRICHABLE or concept is None or not concept.names:
             return action
 
         prompt = self._build_prompt(action, concept, scaffold_level)

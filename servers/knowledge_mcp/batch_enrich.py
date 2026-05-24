@@ -94,6 +94,8 @@ def batch_enrich(
             if exc.code == "PLUGIN_NOT_AVAILABLE":
                 return c.id, c, None, exc
             return c.id, c, f"{exc.code} {exc.message}", None
+        except Exception as exc:  # noqa: BLE001 — 单概念非预期异常降级为 warning，不中止整批
+            return c.id, c, f"enrich_failed: {type(exc).__name__}: {exc}", None
 
     if todo:
         workers = max(1, min(max_workers, len(todo)))

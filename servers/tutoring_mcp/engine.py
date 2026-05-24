@@ -351,12 +351,13 @@ class TeachingEngine:
             self._update_cognitive_load(ctx, concept, struggle_count=0)
         strat = self._make_strategy(ctx, concept)
         action = strat.get_action()
+        # 先持久化策略（导出含本策略的 scaffold_level 等），enrich 才能读到最新值而非上一概念的快照
+        self._persist_strategy(ctx, strat)
 
         # P0 #1: 用 LLM 把模板动作改写成真实讲解内容（无真实 LLM 时原样返回）
         scaffold = int((ctx.strategy_internal or {}).get("scaffold_level", 1))
         action = self.content_gen.enrich(action=action, concept=concept, scaffold_level=scaffold)
 
-        self._persist_strategy(ctx, strat)
         ctx.focus.primary_concept = concept.id
         ctx.focus.last_action_type = action.type
         self.sessions.save(ctx)

@@ -366,7 +366,13 @@ _BUILDERS: dict[str, type] = {
 }
 
 
-def get_builder(depth: DepthMode, *, llm: LLMProvider | None = None) -> KGBuilder:
+def get_builder(
+    depth: DepthMode,
+    *,
+    llm: LLMProvider | None = None,
+    max_workers: int = 4,
+    checkpoint_path: Path | None = None,
+) -> KGBuilder:
     cls = _BUILDERS.get(depth)
     if cls is None:
         raise TutorError(
@@ -374,5 +380,6 @@ def get_builder(depth: DepthMode, *, llm: LLMProvider | None = None) -> KGBuilde
             hint=f"未知 depth={depth!r}（支持: {', '.join(_BUILDERS)}）",
         )
     if depth in ("concept", "full"):
-        return cls(llm=llm)
+        # 透传并行度 + 断点续跑路径，使 checkpoint 在工厂路径（server 用）也可达
+        return cls(llm=llm, max_workers=max_workers, checkpoint_path=checkpoint_path)
     return cls()

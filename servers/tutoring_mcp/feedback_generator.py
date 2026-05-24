@@ -66,7 +66,7 @@ class FeedbackGenerator:
         fallback: str,
     ) -> str:
         """返回 LLM 润色后的反馈；不可用/失败/空 → 返回 fallback（L1+L2 模板）。"""
-        if not getattr(self.llm, "supports_generation", False) or concept is None:
+        if not getattr(self.llm, "supports_generation", False) or concept is None or not concept.names:
             return fallback
 
         prompt = self._build_prompt(

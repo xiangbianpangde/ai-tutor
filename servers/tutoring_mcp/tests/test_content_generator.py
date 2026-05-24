@@ -123,6 +123,15 @@ def test_llm_exception_falls_back_to_template():
     assert out.content == "模板兜底"
 
 
+def test_empty_names_does_not_crash():
+    """names 为空（schema 允许）+ 真实 LLM → 原样返回，不抛 IndexError（code-review）。"""
+    c = _concept()
+    c = c.model_copy(update={"names": []})
+    gen = ContentGenerator(_real_llm("x"))
+    out = gen.enrich(action=_action("explain", "模板"), concept=c)
+    assert out.content == "模板"  # 兜底，不崩
+
+
 def test_scaffold_level_influences_prompt():
     llm = _real_llm("x")
     gen = ContentGenerator(llm)

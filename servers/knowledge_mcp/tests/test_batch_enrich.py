@@ -125,6 +125,41 @@ def test_checkpoint_records_and_resumes(tmp_path: Path):
     assert len(llm2.calls) == 5
 
 
+class _BoomEnricher:
+    """对第 idx 个 concept 抛非 TutorError，其余正常。"""
+
+    def __init__(self, boom_id: str):
+        self.boom_id = boom_id
+
+    def enrich(self, *, concept, body_text):
+        if concept.id == self.boom_id:
+            raise ValueError("LLM 返回了无法构造的字段")
+        return concept.model_copy(update={"confidence": 0.8}), None
+
+
+def test_non_tutorerror_degrades_to_warning_not_abort():
+    """单个 concept 抛非 TutorError → 降级为 warning，整批不崩（code-review Fix C）。"""
+    concepts = _concepts(5)
+    enriched, warnings = batch_enrich(
+        enricher=_BoomEnricher(boom_id=concepts[2].id),
+        concepts=concepts, sections=_sections(concepts), max_workers=3,
+    )
+    assert len(enriched) == 5  # 没有因一个坏概念中止
+    assert any(concepts[2].id in w and "enrich_failed" in w for w in warnings)
+    # 坏的那个保留原（confidence 0.4），其余富化到 0.8
+    boom = next(c for c in enriched if c.id == concepts[2].id)
+    assert boom.confidence == pytest.approx(0.4)
+    assert sum(1 for c in enriched if c.confidence == pytest.approx(0.8)) == 4
+
+
+def test_get_builder_forwards_checkpoint_and_workers():
+    """get_builder 透传 max_workers/checkpoint_path（Fix D）。"""
+    from servers.knowledge_mcp.kg_builder import get_builder
+    b = get_builder("concept", llm=MockLLMProvider(canned_responses=[]), max_workers=8, checkpoint_path=Path("x.jsonl"))
+    assert b.max_workers == 8
+    assert b.checkpoint_path == Path("x.jsonl")
+
+
 def test_checkpoint_load_missing_file_is_empty(tmp_path: Path):
     cp = EnrichCheckpoint(tmp_path / "nope.jsonl")
     cp.load()
