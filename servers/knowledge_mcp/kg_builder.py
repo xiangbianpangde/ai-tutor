@@ -96,13 +96,17 @@ class TocKGBuilder:
 
 def _enrich_concepts(
     *, llm: LLMProvider | None, subject_slug: str, markdown_path: Path,
+    max_workers: int = 4, checkpoint_path: Path | None = None,
 ):
-    """toc 骨架 → 切节 → 逐 concept enrich。concept 和 full 共用的前半段。
+    """toc 骨架 → 切节 → 批量并行 enrich。concept 和 full 共用的前半段。
 
     返回 (enriched_concepts, edges, per_concept_warnings)。
     llm 不可用 → PLUGIN_NOT_AVAILABLE；markdown 缺失 → CORPUS_NOT_FOUND；
     无标题 → KG_QUALITY_GATE_FAILED。单 concept enrich 失败容错（保留 toc 默认）。
+    P1 #5：有界并行（max_workers）+ 可选断点续跑（checkpoint_path），支撑数百概念规模。
     """
+    from .batch_enrich import EnrichCheckpoint, batch_enrich
+
     if llm is None:
         raise TutorError(
             "PLUGIN_NOT_AVAILABLE",
@@ -119,21 +123,17 @@ def _enrich_concepts(
         )
 
     sections = _split_sections(markdown_path, concepts)
-    enricher = ConceptEnricher(llm=llm)
-    enriched: list = []
-    warnings: list[str] = []
-    for c in concepts:
-        body = sections.get(c.id, "")
-        try:
-            ec, w = enricher.enrich(concept=c, body_text=body)
-        except TutorError as exc:
-            if exc.code == "PLUGIN_NOT_AVAILABLE":
-                raise  # 整体 provider 不可用：让上层决定降级
-            warnings.append(f"{c.id}: {exc.code} {exc.message}")
-            ec = c
-        enriched.append(ec)
-        if w:
-            warnings.append(f"{c.id}: {w}")
+    checkpoint = None
+    if checkpoint_path is not None:
+        checkpoint = EnrichCheckpoint(checkpoint_path)
+        checkpoint.load()
+    enriched, warnings = batch_enrich(
+        enricher=ConceptEnricher(llm=llm),
+        concepts=concepts,
+        sections=sections,
+        max_workers=max_workers,
+        checkpoint=checkpoint,
+    )
     return enriched, edges, warnings
 
 
@@ -156,6 +156,8 @@ class ConceptKGBuilder:
 
     llm: LLMProvider | None = None
     depth: DepthMode = "concept"
+    max_workers: int = 4
+    checkpoint_path: Path | None = None
 
     def build(
         self,
@@ -165,9 +167,10 @@ class ConceptKGBuilder:
         markdown_path: Path,
         db: RelationalStore,
     ) -> BuildKGResult:
-        # 1-3) toc + 切节 + 逐 concept enrich（共用 pipeline）
+        # 1-3) toc + 切节 + 批量并行 enrich（共用 pipeline）
         enriched, edges, per_concept_warnings = _enrich_concepts(
             llm=self.llm, subject_slug=subject_slug, markdown_path=markdown_path,
+            max_workers=self.max_workers, checkpoint_path=self.checkpoint_path,
         )
 
         # 4) quality + mermaid
@@ -232,6 +235,8 @@ class FullKGBuilder:
 
     llm: LLMProvider | None = None
     depth: DepthMode = "full"
+    max_workers: int = 4
+    checkpoint_path: Path | None = None
 
     def build(
         self,
@@ -244,9 +249,10 @@ class FullKGBuilder:
         from .kg_full import build_embeddings, compute_calibrated_difficulty
         from .time_estimator import estimate_time_min
 
-        # 1-3) 复用 concept enrich pipeline
+        # 1-3) 复用 concept enrich pipeline（批量并行 + 可选断点续跑）
         enriched, edges, per_concept_warnings = _enrich_concepts(
             llm=self.llm, subject_slug=subject_slug, markdown_path=markdown_path,
+            max_workers=self.max_workers, checkpoint_path=self.checkpoint_path,
         )
 
         # 4) 时长校准（先）+ 难度校准 + embedding，写回每个 concept

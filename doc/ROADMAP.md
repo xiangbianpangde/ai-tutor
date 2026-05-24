@@ -33,6 +33,7 @@
 | **Slice FG** | 教学反馈分级 (P1 #7) | `feedback_generator.py`：反馈三级管道 L1（correctness 模板）+ L2（remediation）+ L3（LLM 润色）。engine.respond 把 L1+L2 模板作为 fallback 传入 L3，润色结果再过非评判防火墙。同样 gated on `supports_generation`，Stub/Mock 返回模板 → 既有 respond 测试不变。 | ✅ |
 | **Slice CL** | 认知负荷在线估计 (P1 #6) | `cognitive_load.py`：确定性加权公式（内在难度 0.35 + 表现 0.35 + 连续受挫 0.2 + 工作记忆压力 0.1）+ EMA 平滑。engine 在 respond 后（数据最全）+ 进入新概念时更新 `ctx.meta.current_cognitive_load`，喂给 strategy_selector（>0.6→jiangjie / >0.75→analogy/reduction）和 flow_regulator（>0.7 降难度+加脚手架）。此前恒 0.0 → 这两条分支永不触发，现已激活。 | ✅ |
 | **Slice TC** | 时间校准 (P1 #8) | `time_estimator.py`：`estimate_time_min` 用非时间特征（认知负荷/公式密度/抽象度/前置数/深度）的加权公式给学习时长，映射到 5-45min，替代恒定 30。FullKGBuilder 先估时长再算难度（难度的 time_norm 用上校准值，告别循环）。`calibrate_time` 提供"公式估计 × 真实观测"置信度加权钩子（待时间追踪落地）。 | ✅ |
+| **Slice BK** | 批量 KG 管道 (P1 #5) | `batch_enrich.py`：有界并行 enrich（ThreadPoolExecutor，max_workers 限流）+ `EnrichCheckpoint`（JSONL 增量落盘，崩溃后续跑跳过已完成）。`_enrich_concepts` 改用它（默认 4 worker），Concept/FullKGBuilder 加 `max_workers`/`checkpoint_path` 字段透传。MockLLMProvider 加锁保证并发安全。容错/PLUGIN 上抛/顺序组装与原串行版一致。支撑数百概念规模。 | ✅ |
 
 ---
 
@@ -48,6 +49,7 @@
 | `kg_builder.py` | KGBuilder Protocol + Toc/Concept/Full（_enrich_concepts 共用 pipeline） | ✅（三种 depth 全实现） |
 | `kg_full.py` | 确定性难度校准加权公式 + numpy feature-hashing embedding + 余弦 | ✅ |
 | `time_estimator.py` | 学习时长校准（非时间特征加权 → 5-45min，替代恒30）+ calibrate_time 观测加权钩子 | ✅ |
+| `batch_enrich.py` | 批量并行 enrich（有界 ThreadPool）+ EnrichCheckpoint（JSONL 续跑）；_enrich_concepts 默认 4 worker | ✅ |
 
 ### Tools（按 `specs/server-api-spec.md`）
 
@@ -256,7 +258,8 @@
 | tutoring-mcp Engine 负荷集成 | 1 | `servers/tutoring_mcp/tests/test_engine_strategy_selection.py` |
 | knowledge-mcp TimeEstimator | 11 | `servers/knowledge_mcp/tests/test_time_estimator.py` |
 | knowledge-mcp Full build 时长校准 | 1 | `servers/knowledge_mcp/tests/test_full_builder.py` |
-| **合计** | **650（649 passed + 1 skipped）** | |
+| knowledge-mcp BatchEnrich（并行+checkpoint） | 6 | `servers/knowledge_mcp/tests/test_batch_enrich.py` |
+| **合计** | **656（655 passed + 1 skipped）** | |
 
 跑 `uv run pytest` 应该全部 green（BDD 已加入 `testpaths`，与 canonical 一起跑）。
 

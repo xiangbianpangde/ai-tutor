@@ -17,6 +17,7 @@
 """
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Protocol, runtime_checkable
 
@@ -109,6 +110,7 @@ class MockLLMProvider:
     # 内容生成测试显式置 True 以模拟真实 provider。
     supports_generation: bool = False
     _cursor: int = field(default=0, init=False)
+    _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
 
     category: ClassVar[str] = "llm"
     name: ClassVar[str] = "mock"
@@ -121,19 +123,21 @@ class MockLLMProvider:
         max_tokens: int = 1024,
         **kwargs: Any,
     ) -> ChatResponse:
-        self.calls.append({
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            **kwargs,
-        })
-        if self._cursor >= len(self.canned_responses):
-            raise TutorError(
-                "PLUGIN_NOT_AVAILABLE",
-                hint=f"MockLLMProvider 已用尽 {len(self.canned_responses)} 个 canned response",
-            )
-        text = self.canned_responses[self._cursor]
-        self._cursor += 1
+        # 线程安全：批量并行 enrich 会并发调用，cursor/calls 必须串行化
+        with self._lock:
+            self.calls.append({
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                **kwargs,
+            })
+            if self._cursor >= len(self.canned_responses):
+                raise TutorError(
+                    "PLUGIN_NOT_AVAILABLE",
+                    hint=f"MockLLMProvider 已用尽 {len(self.canned_responses)} 个 canned response",
+                )
+            text = self.canned_responses[self._cursor]
+            self._cursor += 1
         return ChatResponse(
             content=text,
             model="mock",
