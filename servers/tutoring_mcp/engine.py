@@ -378,6 +378,23 @@ class TeachingEngine:
         self._persist_strategy(ctx, strat)
         self.sessions.save(ctx)
 
+    def advance(self, session_id: str) -> TeachingAction:
+        """讲解/展示步骤之后"继续"：推进纯展示态（INTRO/EXPLAIN/GOAL…）到下一步，
+        返回新动作。若当前态在等学生作答（advance_event 为 None），原样返回当前动作
+        （调用方应改用 respond）。问答步骤用 respond，讲解步骤用本方法。"""
+        ctx = self.sessions.load(session_id)
+        if not ctx.current_concept_id:
+            raise TutorError("DEPENDENCY_MISSING", hint="current_concept_id 未设置")
+        concept = self._load_concept(ctx.current_concept_id)
+        strat = self._make_strategy(ctx, concept)
+        ev = strat.advance_event()
+        if ev is None:
+            return strat.get_action()  # 等作答态：不推进，提示走 respond
+        strat.transition(event=ev, payload={})
+        self._persist_strategy(ctx, strat)
+        self.sessions.save(ctx)
+        return self.next_action(session_id)
+
     # ------------------------------------------------------------------ #
     # respond
     # ------------------------------------------------------------------ #

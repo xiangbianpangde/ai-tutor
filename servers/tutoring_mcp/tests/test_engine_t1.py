@@ -383,6 +383,53 @@ def test_engine_default_llm_keeps_template_content(engine_env) -> None:
     assert action.content  # 模板内容仍在
 
 
+def test_advance_drives_reduction_presentation_states(engine_env) -> None:
+    """advance 推进 reduction 的纯展示态 INTRO→EXPLAIN→CHECK（之前无 MCP 入口、会卡在 INTRO）。"""
+    from servers.tutoring_mcp.engine import TeachingEngine
+    from servers.tutoring_mcp.session import SessionStore
+
+    db, subject_id, first_concept, kg_id = engine_env
+    sessions = SessionStore(db)
+    engine = TeachingEngine(db=db, sessions=sessions)
+
+    ctx = sessions.create(user_id="yhn", subject_id=subject_id)
+    ctx.current_concept_id = first_concept
+    ctx.teaching_plan_id = kg_id
+    ctx.status = "active"
+    sessions.save(ctx)
+
+    a0 = engine.next_action(ctx.session_id)
+    assert a0.type == "explain"
+    assert sessions.load(ctx.session_id).current_strategy_state == "INTRO"
+
+    a1 = engine.advance(ctx.session_id)
+    assert sessions.load(ctx.session_id).current_strategy_state == "EXPLAIN"
+    a2 = engine.advance(ctx.session_id)
+    c = sessions.load(ctx.session_id)
+    assert c.current_strategy_state == "CHECK"
+    assert a2.type == "ask_question"  # 终于到了提问步骤
+
+
+def test_advance_noop_on_answer_state(engine_env) -> None:
+    """等作答态（CHECK）调 advance 不推进，原样返回当前动作（应改用 respond）。"""
+    from servers.tutoring_mcp.engine import TeachingEngine
+    from servers.tutoring_mcp.session import SessionStore
+
+    db, subject_id, first_concept, kg_id = engine_env
+    sessions = SessionStore(db)
+    engine = TeachingEngine(db=db, sessions=sessions)
+    ctx = sessions.create(user_id="yhn", subject_id=subject_id)
+    ctx.current_concept_id = first_concept
+    ctx.teaching_plan_id = kg_id
+    ctx.current_strategy = "reduction"
+    ctx.current_strategy_state = "CHECK"
+    ctx.status = "active"
+    sessions.save(ctx)
+
+    engine.advance(ctx.session_id)
+    assert sessions.load(ctx.session_id).current_strategy_state == "CHECK"  # 未推进
+
+
 def test_engine_default_llm_falls_back_to_heuristic_scoring(engine_env) -> None:
     """没传 llm 时仍能工作（用 stub→启发式）。"""
     from servers.tutoring_mcp.engine import TeachingEngine

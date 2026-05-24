@@ -191,14 +191,29 @@ async def build_knowledge_graph(
             raise TutorError("CORPUS_NOT_FOUND", hint=corpus_id)
         manifest = corpus.manifest_json
         subject_slug = corpus.subject_id
+        corpus_user = corpus.user_id
 
     md_path = Path(manifest["file_paths"]["markdown"])
-    return get_builder(depth, llm=_llm()).build(
+    result = get_builder(depth, llm=_llm()).build(
         corpus_id=corpus_id,
         subject_slug=subject_slug,
         markdown_path=md_path,
         db=db,
     )
+
+    # 关闭采集→教学的闭环：建/更新 Subject 行并把 kg_id 指向刚建的 KG，
+    # 这样 tutoring 工具（start_learning_session 等）可直接用 subject_id=subject_slug，
+    # 无需手工写回 subject.kg_id。subject_id 即科目名的 slug。
+    from shared.models import Subject
+    with db.session() as s:
+        subj = s.get(Subject, subject_slug)
+        if subj is None:
+            subj = Subject(id=subject_slug, user_id=corpus_user, display_name=subject_slug)
+            s.add(subj)
+        subj.kg_id = result.kg_id
+        s.commit()
+
+    return result
 
 
 # --------------------------------------------------------------------------- #

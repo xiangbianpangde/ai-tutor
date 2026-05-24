@@ -29,8 +29,8 @@ C:\Users\yhn\.claude\projects\C--Users-yhn-Desktop---AI-------\memory\
 | 维度 | 数值 |
 |---|---|
 | MCP server | **4 个**：knowledge / tutoring / digest / sync |
-| tool | **31 个**，全部实现，无硬 stub（tutoring 新增 cold_start / get_learning_progress / resume_learning） |
-| 测试 | **668 passed + 1 skipped**（`uv run pytest`，~36s；含 58 个接入真实实现的 BDD Scenario） |
+| tool | **32 个**，全部实现，无硬 stub（tutoring 13：cold_start / resume / progress / **advance** 等） |
+| 测试 | **671 passed + 1 skipped**（`uv run pytest`，~42s；含 58 个接入真实实现的 BDD Scenario） |
 | 切片 | **29 个**全绿。**3 P0 + 全部 5 P1 + P2 #11 + 状态面板(Slice DASH) 已完成**；仅剩 P2 #9(DKT) / P3 #10(12 关系)。已用同济高数下册 139 概念做真实 48h 规模验证（见 `48H-VALIDATION.md`）。 |
 | 代码量 | ~17k 行生产代码 |
 | 真 bug 修复 | 12 个（CR1×7 + CR2×2 + build_plan 章节归组 + FlowLevel falsy-zero + 2 轮质量门收尾） |
@@ -243,6 +243,7 @@ tests/                        集成测试 + fixtures（mini_subject.md）
 | 文档 | 用途 |
 |---|---|
 | [README.md](./README.md) | 全景入口 + 架构 + 快速开始 |
+| [USAGE.md](./USAGE.md) | ★ 使用指南：从一份资料到学完一科（acquire→build→摸底→教学→复习→面板） |
 | [ROADMAP.md](./ROADMAP.md) | 27 切片历史 + 每文件状态 + 测试分布 + 剩余项 |
 | [SYSTEM-AUDIT.md](../SYSTEM-AUDIT.md) | ★ 当前代码的缺陷分析（必读，决定优先修什么） |
 | [48H-SIMULATION.md](../48H-SIMULATION.md) | ★ 优化后系统的运行推演（必读，理解正确的系统行为） |

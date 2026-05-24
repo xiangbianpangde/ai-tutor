@@ -242,6 +242,11 @@ class JiangjieStrategy(Strategy):
     # transition
     # ------------------------------------------------------------------ #
 
+    def advance_event(self) -> str | None:
+        # GOAL 是纯讲解（说明学完能做什么），由 goal_understood 推进；
+        # REDUCE/COMPLEMENT/RECONSTRUCT/REVIEW 都等学生作答（走 respond）
+        return "goal_understood" if self.state == "GOAL" else None
+
     def transition(self, *, event: str, payload: dict[str, Any]) -> None:
         payload = payload or {}
 

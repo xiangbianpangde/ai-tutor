@@ -2,7 +2,7 @@
 
 48 小时学完一科的私人 AI 辅导系统。基于 `../使用AI进行学习的技巧/ai-tutor-system-design/` 的 v3.0 七层认知架构。
 
-> **状态速览**：4 个 MCP server · 31 个 tool（全部实现，无硬 stub）· 662 测试全绿（661 passed + 1 skipped，含 58 个接入真实实现的 BDD Scenario）· 零必需重依赖（重量级库全部「装了就升级、缺了优雅降级」）。
+> **状态速览**：4 个 MCP server · 32 个 tool（全部实现，无硬 stub）· 672 测试全绿（671 passed + 1 skipped，含 58 个接入真实实现的 BDD Scenario）· 零必需重依赖（重量级库全部「装了就升级、缺了优雅降级」）。
 
 这份 README 主要写给**几个月后回来的自己**：先看懂架构和数据流，再知道每个能力在哪、怎么跑、当初为什么这么设计。详细历史在 [ROADMAP.md](./ROADMAP.md)。
 
@@ -13,7 +13,7 @@
 把一科的资料（PDF / Markdown / Obsidian 笔记）喂进去，系统会：
 
 1. **建知识图谱**（L4）：抽章节骨架 → LLM 富化每个概念（定义/例子/误解）→ 难度校准 + 向量化
-2. **教你学**（L2/L5/L6）：BKT 掌握度追踪 + reduction 教学策略 + PGFGA 心流/增益回路 + 打断/检查点
+2. **教你学**（L2/L5/L6）：冷启动摸底 + 6 策略自适应（按掌握度/认知负荷/心流自动选）+ LLM 实时生成讲解/反馈 + 分阶段跨天计划 + PGFGA 心流/增益回路 + 打断/检查点。**怎么用见 [USAGE.md](./doc/USAGE.md)**
 3. **生成复习产物**（digest）：思维导图 / 笔记 / 测验 / 闪卡 / 三角色对话 / 幻灯片 / 朗读讲稿
 4. **同步回工作流**（sync）：写回 Obsidian、git 版本化学习产物、监听 vault 变更
 
@@ -42,7 +42,7 @@ L1 基础设施      ── shared/                 (schemas / errors / models /
 
 ---
 
-## 3. 四个 MCP server × 31 tool
+## 3. 四个 MCP server × 32 tool
 
 ### knowledge-mcp（L4 知识工程）— 9 tool
 | tool | 作用 |
@@ -57,7 +57,7 @@ L1 基础设施      ── shared/                 (schemas / errors / models /
 | `resolve_conflicts` | 检测 5 种结构冲突（环/反向前置/重复/悬空边/孤岛） |
 | `health` | 自检 |
 
-### tutoring-mcp（L2/L3/L5/L6 教学）— 12 tool
+### tutoring-mcp（L2/L3/L5/L6 教学）— 13 tool
 | tool | 作用 |
 |---|---|
 | `cold_start_probe` | 冷启动摸底出题（跨难度 10 道，探测先验掌握） |
@@ -125,7 +125,7 @@ copy .env.example .env
 # 3. 初始化数据库
 uv run python scripts/init_db.py
 
-# 4. 全量测试（应 661 passed + 1 skipped；含 BDD 套件）
+# 4. 全量测试（应 671 passed + 1 skipped；含 BDD 套件）
 uv run pytest
 
 # 5. 确认 4 个 server 能起

@@ -61,6 +61,14 @@ class Strategy(ABC):
     # ------------------------------------------------------------------ #
     # 引擎集成：完成检测 + 状态序列化
     # ------------------------------------------------------------------ #
+    def advance_event(self) -> str | None:
+        """当前状态若是"纯讲解/展示"态（不等学生作答），返回推动它前进的事件名；
+        否则返回 None（表示该状态在等学生 respond，由 'answered' 推进）。
+
+        引擎的 advance() tool 据此让 host 在讲解步骤后继续，而问答步骤走 respond。
+        默认 None：多数精简策略的展示态本就靠 'answered' 推进（respond 即可）。"""
+        return None
+
     def is_complete(self) -> bool:
         """本概念是否教学完成（引擎据此推进到下一概念）。"""
         return self.state in self.TERMINAL_STATES

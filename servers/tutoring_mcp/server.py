@@ -538,6 +538,19 @@ async def next_action(session_id: str) -> TeachingAction:
 
 
 @mcp.tool()
+async def advance(session_id: str) -> TeachingAction:
+    """讲解/展示步骤之后"继续下一步"。
+
+    用法约定：next_action / start_learning_session 给出一个动作后——
+    - 动作是讲解/示例/揭示答案/反思（explain/show_example/reveal_answer/reflection）→ 调 advance 继续；
+    - 动作是提问/练习/请解释/提示（ask_question/give_exercise/request_explanation/provide_hint）→ 调 respond 作答。
+    advance 会推进策略的纯展示态（如 reduction 的 INTRO→EXPLAIN→CHECK、jiangjie 的 GOAL→REDUCE）。
+    """
+    db = _db()
+    return _engine(db).advance(session_id)
+
+
+@mcp.tool()
 async def respond(session_id: str, answer: str) -> ResponseResult:
     """提交学生的回答；返回判分 + 反馈 + mastery 变化。"""
     db = _db()

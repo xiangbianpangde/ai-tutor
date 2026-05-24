@@ -33,6 +33,7 @@
 | **Slice FG** | 教学反馈分级 (P1 #7) | `feedback_generator.py`：反馈三级管道 L1（correctness 模板）+ L2（remediation）+ L3（LLM 润色）。engine.respond 把 L1+L2 模板作为 fallback 传入 L3，润色结果再过非评判防火墙。同样 gated on `supports_generation`，Stub/Mock 返回模板 → 既有 respond 测试不变。 | ✅ |
 | **Slice CL** | 认知负荷在线估计 (P1 #6) | `cognitive_load.py`：确定性加权公式（内在难度 0.35 + 表现 0.35 + 连续受挫 0.2 + 工作记忆压力 0.1）+ EMA 平滑。engine 在 respond 后（数据最全）+ 进入新概念时更新 `ctx.meta.current_cognitive_load`，喂给 strategy_selector（>0.6→jiangjie / >0.75→analogy/reduction）和 flow_regulator（>0.7 降难度+加脚手架）。此前恒 0.0 → 这两条分支永不触发，现已激活。 | ✅ |
 | **Slice TC** | 时间校准 (P1 #8) | `time_estimator.py`：`estimate_time_min` 用非时间特征（认知负荷/公式密度/抽象度/前置数/深度）的加权公式给学习时长，映射到 5-45min，替代恒定 30。FullKGBuilder 先估时长再算难度（难度的 time_norm 用上校准值，告别循环）。`calibrate_time` 提供"公式估计 × 真实观测"置信度加权钩子（待时间追踪落地）。 | ✅ |
+| **Slice UX** | 可用性闭环 + 使用指南 | 修两处阻断 happy-path 的真实缺口：①`build_knowledge_graph` 自动建/链 `Subject`(set kg_id)，采集→教学无需手工 ORM；②新增 `advance` tool（+ Strategy.advance_event），推进 reduction INTRO/EXPLAIN、jiangjie GOAL 等纯讲解态——此前教学循环会卡在第一段讲解。新增 `doc/USAGE.md` 端到端使用指南。tutoring 13 tool。 | ✅ |
 | **Slice DASH** | 状态面板（spec: status-panel.md） | `servers/dashboard/`：与 4 个 MCP server 共享同一 SQLite 的**只读** Web 仪表盘。`state.py`(拼状态，复用 learning_plan.compute_progress) + `server.py`(Starlette+uvicorn，零新依赖) + `templates/index.html`(单文件 4 区：指标卡/策略步骤条/掌握度分布+最近交互/48h Phase 进度，3s 轮询)。`uv run python -m servers.dashboard.server` → :8501。139 概念真实 KG live 验证通过。不改生产代码、独立启停。 | ✅ |
 | **Slice DS** | 难度信号内容化 (P2 #11) | `concept_enricher.py`：enricher 用 LLM 从内容估计 abstract_level / formula_density / cognitive_load_estimate（clamp，向后兼容；去掉 prompt 对 abstract_level 的锚定）。修掉"难度/时长/band 只随标题层级变化"（48h 验证发现）。实测 full 深度：abstract 0.1-0.7、时长 10-28min、cold-start 三带齐全。 | ✅ |
 | **Slice BK** | 批量 KG 管道 (P1 #5) | `batch_enrich.py`：有界并行 enrich（ThreadPoolExecutor，max_workers 限流）+ `EnrichCheckpoint`（JSONL 增量落盘，崩溃后续跑跳过已完成）。`_enrich_concepts` 改用它（默认 4 worker），Concept/FullKGBuilder 加 `max_workers`/`checkpoint_path` 字段透传。MockLLMProvider 加锁保证并发安全。容错/PLUGIN 上抛/顺序组装与原串行版一致。支撑数百概念规模。 | ✅ |
@@ -264,7 +265,8 @@
 | knowledge-mcp 难度信号内容化 | 3 | `servers/knowledge_mcp/tests/test_concept_enricher.py` |
 | code-review 收尾回归（CG/FG/CL/TC/BK） | 3 | content_generator / batch_enrich |
 | dashboard 状态面板（state + server） | 7 | `servers/dashboard/tests/` |
-| **合计** | **669（668 passed + 1 skipped）** | |
+| 可用性闭环（build 链 subject + advance） | 3 | test_server_smoke / test_engine_t1 |
+| **合计** | **672（671 passed + 1 skipped）** | |
 
 跑 `uv run pytest` 应该全部 green（BDD 已加入 `testpaths`，与 canonical 一起跑）。
 

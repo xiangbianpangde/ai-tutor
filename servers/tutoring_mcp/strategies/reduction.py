@@ -99,6 +99,14 @@ class ReductionStrategy(Strategy):
             estimated_duration_min=0,
         )
 
+    def advance_event(self) -> str | None:
+        # 讲解/展示/练习态由非答题事件推进；CHECK 等学生作答（走 respond）
+        return {
+            "INTRO": "intro_done",
+            "EXPLAIN": "explain_done",
+            "PRACTICE": "practice_done",
+        }.get(self.state)
+
     def transition(self, *, event: str, payload: dict[str, Any]) -> None:
         # 显式映射；未识别事件 → no-op（保持当前状态，调用方可看日志）
         if self.state == "INTRO" and event == "intro_done":

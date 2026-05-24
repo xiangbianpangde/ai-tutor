@@ -71,6 +71,29 @@ async def test_acquire_then_build_then_query(db_env: RelationalStore) -> None:
 
 
 @pytest.mark.asyncio
+async def test_build_links_subject_and_kg_id(db_env: RelationalStore) -> None:
+    """build_knowledge_graph 后自动建/更新 Subject 并把 kg_id 指过去（闭合采集→教学）。"""
+    from shared.models import Subject
+
+    acquire_fn = _unwrap(srv.acquire_subject)
+    build_fn = _unwrap(srv.build_knowledge_graph)
+    a = await acquire_fn(
+        subject="测试高数", sources=[{"type": "file", "uri": str(FIXTURE)}],
+        user_id="default", version="v1",
+    )
+    b = await build_fn(corpus_id=a.corpus_id, depth="toc")
+
+    with db_env.session() as s:
+        # subject_id == 科目名 slug；kg_id 已指向刚建的 KG
+        subj = s.get(Subject, "ce-shi-gao-shu") or next(
+            (x for x in s.query(Subject).all() if x.kg_id == b.kg_id), None
+        )
+        assert subj is not None, "build 后应存在指向该 KG 的 Subject"
+        assert subj.kg_id == b.kg_id
+        assert subj.user_id == "default"
+
+
+@pytest.mark.asyncio
 async def test_query_path_and_subgraph(db_env: RelationalStore) -> None:
     """path / subgraph 两种 query_type 经 server 分派可用。"""
     acquire_fn = _unwrap(srv.acquire_subject)
