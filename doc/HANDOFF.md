@@ -30,11 +30,17 @@ C:\Users\yhn\.claude\projects\C--Users-yhn-Desktop---AI-------\memory\
 |---|---|
 | MCP server | **4 个**：knowledge / tutoring / digest / sync |
 | tool | **31 个**，全部实现，无硬 stub（tutoring 新增 cold_start / get_learning_progress / resume_learning） |
-| 测试 | **655 passed + 1 skipped**（`uv run pytest`，~38s；含 58 个接入真实实现的 BDD Scenario） |
-| 切片 | **27 个**全绿（最近 +CG/FG/CL/TC/BK；**3 P0 + P1 #4/#5/#6/#7/#8 已完成；P1 全清**） |
-| 代码量 | ~16k 行生产代码 |
-| 真 bug 修复 | 11 个（含 Slice P1#4 的 FlowLevel falsy-zero bug） |
+| 测试 | **658 passed + 1 skipped**（`uv run pytest`，~39s；含 58 个接入真实实现的 BDD Scenario） |
+| 切片 | **27 个**全绿。**SYSTEM-AUDIT 的 3 个 P0 + 全部 5 个 P1（#4/#5/#6/#7/#8）已全部 resolved**；仅剩长期项 P2 #9(DKT) / P3 #10(12 关系)。 |
+| 代码量 | ~17k 行生产代码 |
+| 真 bug 修复 | 12 个（CR1×7 + CR2×2 + build_plan 章节归组 + FlowLevel falsy-zero + 2 轮质量门收尾） |
 | 设计文档 | 7 份概念设计 + 16 份规格 + 2 份审计（`SYSTEM-AUDIT.md` + `48H-SIMULATION.md`） |
+
+**整条教学闭环已打通**：采集 → KG（批量并行+断点续跑）→ 冷启动摸底（种 BKT 先验+画像）
+→ Phase 化跨 Session 计划 → 6 策略动态选择（按 mastery/认知负荷/心流/画像）→ 心流调参
+→ 教学内容 LLM 生成 → 三级反馈（L1/L2/L3 LLM 润色）→ 认知负荷在线估计 → 续学。
+所有 LLM 增强（内容/反馈/判分/诊断）经 `supports_generation` 能力位 gate：配了
+`DEEPSEEK_API_KEY` 才真调 LLM，否则模板/启发式兜底——测试与离线开发零成本。
 
 **唯一软 stub**：`resolve_conflicts` 的 `contradictory_definition`（需 LLM 语义判定，已能检 5 种结构冲突并优雅跳过语义判定）。功能层面无阻塞性缺口。
 
@@ -48,10 +54,15 @@ C:\Users\yhn\.claude\projects\C--Users-yhn-Desktop---AI-------\memory\
 - `ai-tutor-system-design/specs/jiangjie-strategy.md` — 降阶法策略实现规格
 - `doc/降阶学习法.md` — 降阶法理论源文档
 
+> 2026-05-24：完成本轮全部 P0+P1。新增切片 CG(教学内容LLM生成)/FG(反馈分级)/
+> CL(认知负荷在线估计)/TC(时间校准)/BK(批量KG管道)，外加 J(降阶法)/CS(冷启动)/
+> MS(多Session)/P1#4(6策略引擎)。两轮质量门复审（5 角度）共修 4+ 处稳健性问题。
+> 项目已 `git init` + 推送到 private GitHub（origin/main）。**SYSTEM-AUDIT 的 P0+P1 全清。**
+> engine 现已动态选策略 + 调 flow_regulator + 在线认知负荷（推翻了下面 05-23 旧注的"未集成"）。
+
 > 2026-05-23（续）：实现 Slice J 降阶法策略 `JiangjieStrategy`（6 状态机 + 知识骨架
 > 产出，16 测试）；strategy_selector 加规则 8（降阶法，置于 overload 规则之后，+4 测试，
-> +可选 flow_level 入参）。**注意**：engine 仍未动态选策略也未调 flow_regulator——
-> 那属 P1 #4「6 策略引擎」，是下一块更大的集成（见 §11.2 / §13）。
+> +可选 flow_level 入参）。（注：当时 engine 尚未集成；已于 P1 #4 完成，见上方 05-24 注。）
 
 > 2026-05-23：BDD 套件接入真实实现并入 `testpaths`；digest 独立 tool
 > `build_quiz_html` / `compile_slides` 已实现（薄封装复用 generator）；digest `grade`
@@ -224,7 +235,7 @@ tests/                        集成测试 + fixtures（mini_subject.md）
 | 文档 | 用途 |
 |---|---|
 | [README.md](./README.md) | 全景入口 + 架构 + 快速开始 |
-| [ROADMAP.md](./ROADMAP.md) | 18 切片历史 + 每文件状态 + 测试分布 + 剩余项 |
+| [ROADMAP.md](./ROADMAP.md) | 27 切片历史 + 每文件状态 + 测试分布 + 剩余项 |
 | [SYSTEM-AUDIT.md](../SYSTEM-AUDIT.md) | ★ 当前代码的缺陷分析（必读，决定优先修什么） |
 | [48H-SIMULATION.md](../48H-SIMULATION.md) | ★ 优化后系统的运行推演（必读，理解正确的系统行为） |
 | [INTEGRATION.md](./INTEGRATION.md) | 接 Claude Desktop（5 分钟） |
@@ -235,9 +246,13 @@ tests/                        集成测试 + fixtures（mini_subject.md）
 
 ---
 
-## 10. 项目尚未进 git
+## 10. git（已在版本控制 + 远端备份）
 
-交接时项目**还不在版本控制里**。接手后第一个建议动作：`git init` + 首次提交（用户认可后再做；提交信息别用 `--no-verify`）。`.env`、`data/`、`*.db` 应进 `.gitignore`。
+项目已 `git init`（默认分支 `main`）并推送到 **private** 仓库
+`github.com/xiangbianpangde/ai-tutor`（`origin`，HTTPS，`gh` 已认证）。`uv.lock` 已入库
+锁依赖；`.env` / `data/` / `*.db` / `data/git_repos/` 在 `.gitignore` 内已确认未入库。
+日常：改完 → `git add -A && commit`（信息别用 `--no-verify`）→ `git push`（已设跟踪）。
+Windows 注意：提交用 `git -c core.autocrlf=false commit` 避免 LF→CRLF 污染 diff。
 
 ---
 

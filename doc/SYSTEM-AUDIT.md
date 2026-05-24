@@ -1,8 +1,31 @@
 # ai-tutor 系统运行模拟与缺陷分析报告
 
-> 日期：2026-05-23  
+> 日期：2026-05-23（缺陷分析）  
+> 更新：2026-05-24（解决状态）  
 > 目标：验证系统是否能实现"48 小时学完一个科目"的设计承诺  
 > 方法：代码审查 + 设计对照 + 运行模拟
+
+---
+
+## 0. 解决状态（2026-05-24 更新）
+
+> **本报告识别的 3 个 P0 + 5 个 P1 缺口已全部 RESOLVED。** 下文 §1-§3 的缺陷描述
+> 保留为历史分析记录；当前实现状态以本节为准。测试 519 → 658 全绿，已 git + 远端备份。
+
+| 优先级 | 缺口 | 状态 | 修复切片 / 实现 |
+|--------|------|------|----------------|
+| P0 #1 | 教学内容空洞（模板填空） | ✅ RESOLVED | Slice CG — `content_generator.py`：next_action 按 action.type LLM 生成讲解/例子/练习，gated on `supports_generation`，模板兜底 |
+| P0 #2 | 无冷启动摸底 | ✅ RESOLVED | Slice CS — `cold_start.py` + `cold_start_probe`/`submit_cold_start`：10 题跨难度摸底 → BKT 先验 + 画像初值；引擎跳过 mastery≥0.8 |
+| P0 #3 | 无跨 Session 调度 | ✅ RESOLVED | Slice MS — `learning_plan.py` + `get_learning_progress`/`resume_learning`：持久化 Phase 化计划，跨天续学 |
+| P1 #4 | 6 策略仅 1 种可用 | ✅ RESOLVED | Slice P1#4 — engine 接入 strategy_selector + flow_regulator；Strategy 加 export/restore_state 跨重建无损 |
+| P1 #5 | KG 无法扩展 | ✅ RESOLVED | Slice BK — `batch_enrich.py`：有界并行 + JSONL checkpoint 续跑；get_builder 透传 |
+| P1 #6 | 认知负荷空转（恒 0.0） | ✅ RESOLVED | Slice CL — `cognitive_load.py`：加权公式 + EMA；引擎在线更新，激活 selector/regulator 负荷分支 |
+| P1 #7 | 教学反馈粗粒度 | ✅ RESOLVED | Slice FG — `feedback_generator.py`：L1 模板 + L2 remediation + L3 LLM 润色 → 非评判防火墙 |
+| P1 #8 | 时间估计全默认 30min | ✅ RESOLVED | Slice TC — `time_estimator.py`：非时间特征加权 → 5-45min；FullKGBuilder 接入；calibrate_time 观测钩子 |
+
+**仅剩长期项**（P2/P3，非阻塞，且成本高/需真实数据，故暂缓）：
+- P2 #9：DKT 跨概念知识追踪（需 PyTorch 重依赖 + 真实答题数据训练，违背零必需重依赖原则）
+- P3 #10：12 种语义关系挖掘（当前用 part_of + prerequisite_strong）
 
 ---
 
@@ -10,19 +33,22 @@
 
 代码实现了**完整的 4 server × 27 tool 接口**、**519 测试全绿**、PGFGA 心流/防火墙/增益回路到位，在**架构完整性**上做得很好。但在"系统能力能否撑起 48 小时"这个问题上，存在 **3 个 P0 致命缺口**和 **5 个 P1 严重缺口**。
 
-**P0（不修无法运行）：**
-- 教学内容只有模板填空，没有 LLM 实时生成
-- 无冷启动摸底，所有概念从 mastery=0.05 开始
-- 无跨 session 学习计划，无法"分 6 次学完"
+> 以下为 2026-05-23 原始缺陷清单；**均已于 2026-05-24 解决**（见 §0）。保留作历史记录。
 
-**P1（严重影响体验）：**
-- 6 种教学策略仅 reduction 可用
-- KG 构建无法扩展到真实教材（800 概念）
-- 时间估计全用默认值 30min
-- 认知负荷在线估计不存在
-- 教学反馈只有 3 个模板
+**P0（不修无法运行）：** ~~全部已解决~~
+- ~~教学内容只有模板填空，没有 LLM 实时生成~~ → Slice CG
+- ~~无冷启动摸底，所有概念从 mastery=0.05 开始~~ → Slice CS
+- ~~无跨 session 学习计划，无法"分 6 次学完"~~ → Slice MS
 
-代码能跑通 demo（20 概念 / 5 分钟会话），但放大到真实教材（800 概念 / 48 小时）会暴露所有缺口。
+**P1（严重影响体验）：** ~~全部已解决~~
+- ~~6 种教学策略仅 reduction 可用~~ → Slice P1#4
+- ~~KG 构建无法扩展到真实教材（800 概念）~~ → Slice BK
+- ~~时间估计全用默认值 30min~~ → Slice TC
+- ~~认知负荷在线估计不存在~~ → Slice CL
+- ~~教学反馈只有 3 个模板~~ → Slice FG
+
+原始结论（已过时）：代码能跑通 demo（20 概念 / 5 分钟会话），但放大到真实教材会暴露缺口。
+**当前**：8 个缺口全部修复，整条教学闭环打通，测试 658 全绿。
 
 ---
 
