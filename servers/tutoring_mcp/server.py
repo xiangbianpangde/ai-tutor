@@ -26,6 +26,7 @@ from shared.models import (
     BKTParamRow,
     KnowledgeGraphRow,
     LearnerProfileRow,
+    SessionRow,
     Subject,
 )
 from shared.models import ConceptRow as ConceptRowORM
@@ -39,6 +40,8 @@ from shared.schemas import (
     InsightReport,
     InterruptResult,
     LearnerProfile,
+    LearningPlan,
+    LearningProgress,
     ResponseResult,
     SessionStartResult,
     TeachingAction,
@@ -46,6 +49,7 @@ from shared.schemas import (
 from shared.storage import RelationalStore
 
 from . import cold_start
+from . import learning_plan as lp
 from .bkt_store import BKTStore
 from .engine import TeachingEngine
 from .insight import build_insight
@@ -196,6 +200,108 @@ def _seed_learner_profile(db: RelationalStore, user_id: str, result: ColdStartRe
 
 
 # --------------------------------------------------------------------------- #
+# 多 Session 学习计划 helpers
+# --------------------------------------------------------------------------- #
+
+
+def _ordered_concepts(db: RelationalStore, kg_id: str) -> list[Concept]:
+    rows = _topological_order(db, kg_id)
+    return [Concept.model_validate(r.full_json) for r in rows]
+
+
+def _concept_names(db: RelationalStore, kg_id: str) -> dict[str, str]:
+    with db.session() as s:
+        rows = s.query(ConceptRowORM).filter_by(kg_id=kg_id).all()
+        out: dict[str, str] = {}
+        for r in rows:
+            names = (r.full_json or {}).get("names") or []
+            out[r.id] = names[0] if names else r.id
+        return out
+
+
+def _get_or_build_plan(
+    db: RelationalStore, user_id: str, subject_id: str, kg_id: str
+) -> LearningPlan:
+    store = lp.LearningPlanStore(db)
+    plan = store.load(user_id, subject_id)
+    if plan is None or plan.kg_id != kg_id:
+        plan = lp.build_plan(
+            user_id=user_id, subject_id=subject_id, kg_id=kg_id,
+            ordered_concepts=_ordered_concepts(db, kg_id),
+        )
+        store.save(plan)
+    return plan
+
+
+def _progress_for(
+    db: RelationalStore, user_id: str, subject_id: str, kg_id: str
+) -> LearningProgress:
+    plan = _get_or_build_plan(db, user_id, subject_id, kg_id)
+    bkt = BKTStore(db)
+    return lp.compute_progress(
+        plan=plan,
+        mastery_of=lambda cid: bkt.load(user_id, cid).p_mastery,
+        name_of=_concept_names(db, kg_id),
+    )
+
+
+def _plan_to_dict(plan: LearningPlan, progress: LearningProgress) -> dict[str, Any]:
+    """把计划 + 进度合成 SessionStartResult.teaching_plan 的 dict。"""
+    prog_by_phase = {p.phase: p for p in progress.phases}
+    phases = []
+    for ph in plan.phases:
+        pr = prog_by_phase.get(ph.phase)
+        phases.append({
+            "phase": ph.phase,
+            "title": ph.title,
+            "concepts": ph.concept_ids,
+            "estimated_hours": ph.estimated_hours,
+            "status": pr.status if pr else "pending",
+            "concepts_mastered": pr.concepts_mastered if pr else 0,
+            "concepts_total": ph.concept_ids and len(ph.concept_ids) or 0,
+        })
+    return {
+        "phases": phases,
+        "total_concepts": plan.total_concepts,
+        "estimated_hours": plan.estimated_hours,
+        "concepts_mastered": progress.concepts_mastered,
+        "overall_mastery_ratio": progress.overall_mastery_ratio,
+        "current_phase": progress.current_phase,
+    }
+
+
+def _progress_sentence(progress: LearningProgress) -> str:
+    if progress.concepts_total == 0:
+        return "知识图谱里还没有概念。"
+    if progress.completed:
+        return f"本科目 {progress.concepts_total} 个概念已全部掌握 🎉 可以做综合复习了。"
+    head = f"已掌握 {progress.concepts_mastered}/{progress.concepts_total} 个概念。"
+    if progress.current_phase is not None:
+        head += f"当前在 Phase {progress.current_phase}：{progress.current_phase_title}。"
+    if progress.next_concept_name:
+        head += f"今天从【{progress.next_concept_name}】继续。"
+    return head
+
+
+def _latest_open_session(
+    db: RelationalStore, user_id: str, subject_id: str
+) -> str | None:
+    """最近一个未结束（active/interrupted）的会话 id，用于真正的"续学"。"""
+    with db.session() as s:
+        row = (
+            s.query(SessionRow)
+            .filter(
+                SessionRow.user_id == user_id,
+                SessionRow.subject_id == subject_id,
+                SessionRow.status.in_(["active", "interrupted"]),
+            )
+            .order_by(SessionRow.started_at.desc())
+            .first()
+        )
+        return row.id if row else None
+
+
+# --------------------------------------------------------------------------- #
 # Tools — 已实现
 # --------------------------------------------------------------------------- #
 
@@ -283,18 +389,14 @@ async def start_learning_session(
     goal: Literal["48h_sprint", "semester_study", "exam_review", "quick_overview"] = "48h_sprint",
     available_hours: int | None = None,
 ) -> SessionStartResult:
-    """开启一次学习会话。
+    """开启一次**新**学习会话。
 
-    流程: 校验 subject.kg_id → 拓扑序排教学路径 → 创建 session →
-          指向第一个 concept → engine.next_action 给首个动作。
+    流程: 校验 subject.kg_id → 取/建持久化 LearningPlan（按章节切 Phase）→
+          新建 session → engine.next_action（跳过已掌握）给首个动作。
 
-    冷启动：若先做过 cold_start_probe + submit_cold_start，已掌握的概念会被
-    next_action 自动跳过（teaching_plan 里 skipped/to_learn 反映省下的部分）；
-    没做过摸底则 pre_session_insight 提示先摸底。
-
-    后续切片补:
-    - L6 策略选择（当前固定 reduction）
-    - L3 复习节点插入
+    跨 Session：计划与进度持久化；已掌握概念（冷启动先验或往期学习）被 next_action
+    自动跳过。teaching_plan 反映各 Phase 完成度；pre_session_insight 给进度摘要。
+    想"续上次会话"用 resume_learning；只想看进度用 get_learning_progress。
     """
     db = _db()
     db.init_schema()
@@ -304,62 +406,115 @@ async def start_learning_session(
     if not ordered:
         raise TutorError("KG_NOT_BUILT", hint=f"KG {kg_id} 没有 concept")
 
+    plan = _get_or_build_plan(db, user_id, subject_id, kg_id)
+    progress = _progress_for(db, user_id, subject_id, kg_id)
+
     sessions = SessionStore(db)
     ctx = sessions.create(user_id=user_id, subject_id=subject_id)
     ctx.current_concept_id = ordered[0].id
     ctx.position_in_plan = 0
     ctx.status = "active"
-    ctx.teaching_plan_id = kg_id  # spine 切片直接复用 kg_id 作为 plan id
+    ctx.teaching_plan_id = kg_id
     sessions.save(ctx)
 
-    # 已掌握（冷启动种的先验或往期学习）→ 教学路径里标出可跳过的部分
-    bkt = BKTStore(db)
-    skip = TeachingEngine.MASTERY_SKIP_THRESHOLD
-    mastered = [n.id for n in ordered if bkt.load(user_id, n.id).p_mastery >= skip]
-    mastered_set = set(mastered)
-    to_learn = [n for n in ordered if n.id not in mastered_set]
-    learn_min = sum(n.typical_learning_time_min for n in to_learn)
-    total_min = sum(n.typical_learning_time_min for n in ordered)
-
-    teaching_plan: dict[str, Any] = {
-        "phases": [
-            {
-                "phase": 1,
-                "concepts": [n.id for n in to_learn],
-                "estimated_hours": round(learn_min / 60.0, 1),
-            }
-        ],
-        "total_concepts": len(ordered),
-        "to_learn_concepts": len(to_learn),
-        "skipped_mastered": mastered,
-        "estimated_hours": round(learn_min / 60.0, 1),
-        "estimated_hours_without_skip": round(total_min / 60.0, 1),
-    }
-
     assessed = _has_assessment(db, user_id, [n.id for n in ordered])
-    pre_insight: str | None = None
     if not assessed:
-        pre_insight = "尚未做冷启动摸底——先调 cold_start_probe 能跳过已掌握内容，省下重复学习时间。"
-    elif mastered:
-        pre_insight = f"摸底发现你已掌握 {len(mastered)} 个概念，已从教学路径跳过。"
+        pre_insight: str | None = (
+            "尚未做冷启动摸底——先调 cold_start_probe 能跳过已掌握内容，省下重复学习时间。"
+        )
+    else:
+        pre_insight = _progress_sentence(progress)
 
     engine = _engine(db)
     first_action = engine.next_action(ctx.session_id)
 
     logger.info(
         "session.start",
-        session_id=ctx.session_id,
-        subject_id=subject_id,
-        total_concepts=len(ordered),
-        to_learn=len(to_learn),
-        skipped=len(mastered),
+        session_id=ctx.session_id, subject_id=subject_id,
+        total_concepts=plan.total_concepts,
+        mastered=progress.concepts_mastered, phases=len(plan.phases),
     )
 
     return SessionStartResult(
         session_id=ctx.session_id,
-        teaching_plan=teaching_plan,
+        teaching_plan=_plan_to_dict(plan, progress),
         current_action=first_action,
         pre_session_insight=pre_insight,
+    )
+
+
+@mcp.tool()
+async def get_learning_progress(user_id: str, subject_id: str) -> LearningProgress:
+    """查看跨 Session 学习进度（不开会话）：我学到哪了 / 明天从哪继续。
+
+    返回：总体掌握比例、各 Phase 完成度、当前 Phase、下一个该学的概念。
+    """
+    db = _db()
+    db.init_schema()
+    kg_id = _resolve_kg_id(db, subject_id)
+    return _progress_for(db, user_id, subject_id, kg_id)
+
+
+@mcp.tool()
+async def resume_learning(
+    user_id: str,
+    subject_id: str,
+    goal: Literal["48h_sprint", "semester_study", "exam_review", "quick_overview"] = "48h_sprint",
+) -> SessionStartResult:
+    """续学：接着上次的进度继续。
+
+    - 若有未结束（active/interrupted）的会话 → 直接复用它（保留历史/策略状态）。
+    - 否则新建会话，定位到第一个未掌握的概念（已掌握的被引擎跳过）。
+    pre_session_insight 给出"已掌握 N/M、当前 Phase、今天从【X】继续"。
+    """
+    db = _db()
+    db.init_schema()
+    kg_id = _resolve_kg_id(db, subject_id)
+
+    ordered = _topological_order(db, kg_id)
+    if not ordered:
+        raise TutorError("KG_NOT_BUILT", hint=f"KG {kg_id} 没有 concept")
+
+    plan = _get_or_build_plan(db, user_id, subject_id, kg_id)
+    progress = _progress_for(db, user_id, subject_id, kg_id)
+
+    sessions = SessionStore(db)
+    existing = _latest_open_session(db, user_id, subject_id)
+    resumed = existing is not None
+    if existing is not None:
+        ctx = sessions.load(existing)
+        ctx.status = "active"
+        if not ctx.teaching_plan_id:
+            ctx.teaching_plan_id = kg_id
+        sessions.save(ctx)
+        sid = existing
+    else:
+        ctx = sessions.create(user_id=user_id, subject_id=subject_id)
+        ctx.current_concept_id = ordered[0].id
+        ctx.position_in_plan = 0
+        ctx.status = "active"
+        ctx.teaching_plan_id = kg_id
+        sessions.save(ctx)
+        sid = ctx.session_id
+
+    engine = _engine(db)
+    action = engine.next_action(sid)
+
+    insight = _progress_sentence(progress)
+    if resumed:
+        insight = "接着上次的会话继续。" + insight
+
+    logger.info(
+        "session.resume",
+        session_id=sid, subject_id=subject_id, resumed=resumed,
+        mastered=progress.concepts_mastered, total=progress.concepts_total,
+    )
+
+    return SessionStartResult(
+        session_id=sid,
+        teaching_plan=_plan_to_dict(plan, progress),
+        current_action=action,
+        pre_session_insight=insight,
     )
 
 

@@ -256,3 +256,21 @@ class SessionRow(Base):
         Index("idx_sessions_user", "user_id"),
         Index("idx_sessions_status", "status"),
     )
+
+
+# --------------------------------------------------------------------------- #
+# 多 Session 学习计划（P0 #3：跨天调度）
+# --------------------------------------------------------------------------- #
+
+
+class LearningPlanRow(Base):
+    """跨 Session 的持久化学习计划，按 (user, subject) 唯一。"""
+
+    __tablename__ = "learning_plans"
+
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    subject_id: Mapped[str] = mapped_column(ForeignKey("subjects.id"), primary_key=True)
+    kg_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    plan_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_updated: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

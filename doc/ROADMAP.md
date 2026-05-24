@@ -28,6 +28,7 @@
 | **Slice J** | 降阶法策略 (JiangjieStrategy) | `strategies/jiangjie.py`：独立的降阶学习法状态机 GOAL→REDUCE→COMPLEMENT→RECONSTRUCT→REVIEW→NEXT（+FLAG_DIFFICULT）；消费 FlowRegulator 的 PaceConfig（难度/脚手架/原子数/错误数）；产出知识骨架（前提→逻辑→结论→易错点）。strategy_selector 加规则 8（preferred_pace=="thorough" / 心流 SILENT / 中高负荷 → jiangjie，置于 overload 规则之后）+ 可选 flow_level 入参。真实概念跑通完整生命周期。**engine 动态选策略 + 调 flow_regulator 仍属 P1 #4，未做** | ✅ |
 | **Slice CS** | 冷启动摸底 (P0 #2) | `cold_start.py`：选 10 道跨难度题（band 3/4/3）+ 判分（复用 LLMScorer）+ correctness×自评→BKT 先验 + 画像初值（abstract_tolerance/transfer/self_assessment）+ recommended_level。`BKTStore.seed_prior`（不覆盖真实观测）。engine `next_action` 跳过 mastery≥0.8 的概念（仅在概念未开教时；进行中不打断）。新增 2 tool `cold_start_probe`/`submit_cold_start` + 写 LearnerProfile 初值；`start_learning_session` 教学路径标出 skipped/to_learn。真实笔记验证：17→13 概念，8.5h→6.5h | ✅ |
 | **Slice P1#4** | 6 策略引擎集成 | engine 动态选策略（接入 strategy_selector，输入 mastery/cognitive_load/profile/mastered_ratio/flow）+ flow_regulator 调 pace 传入策略 params。Strategy 基类加 `TERMINAL_STATES`/`is_complete()`/`export_state`/`restore_state`；7 策略声明终止态。`SessionContext.strategy_internal` 持久化策略内部计数器，使 jiangjie/feynman/socratic/pbl 跨重建无损。next_action 用 `is_complete()` 通用判完成。修一个 falsy-zero bug（FlowLevel.SILENT==0 被 `or` 吞）。真实笔记验证：thorough 学习者自动走降阶法，_atom_index 跨 respond 递增 | ✅ |
+| **Slice MS** | 多 Session 调度 (P0 #3) | `learning_plan.py`：`build_plan` 把拓扑序按顶层章节切 Phase（含时长估计）+ `compute_progress`（每 Phase 完成度/当前 Phase/下一个该学的概念）+ `LearningPlanStore`（新表 `learning_plans`，按 user+subject 持久化）。新增 2 tool `get_learning_progress`（不开会话看进度）/`resume_learning`（复用未结束会话或新建并定位到首个未掌握）。`start_learning_session` 改用 Phase 化计划，teaching_plan 反映各 Phase 完成度。真实笔记验证：跨天续学"已掌握 10/17，当前 Phase 2，今天从【导数】继续" | ✅ |
 
 ---
 
@@ -66,8 +67,9 @@
 
 | 文件 | 内容 | 状态 |
 |---|---|---|
-| `server.py` | FastMCP 入口（10 tool：start/next/respond + cold_start_probe/submit_cold_start + 5 已实现） | ✅ |
+| `server.py` | FastMCP 入口（12 tool：start/resume/next/respond + cold_start_probe/submit_cold_start + get_learning_progress + 5 已实现） | ✅ |
 | `cold_start.py` | 冷启动摸底核心逻辑（选题/出题/判分聚合/先验映射/画像初值） | ✅ |
+| `learning_plan.py` | 多 Session 调度：build_plan（章节切 Phase）+ compute_progress + LearningPlanStore | ✅ |
 | `session.py` | L2 SessionContext CRUD | ✅ |
 | `bkt.py` | BKT 贝叶斯更新 | ✅ |
 | `bkt_store.py` | BKT 状态持久化（bkt_params 表）+ seed_prior（冷启动先验，不覆盖真实观测） | ✅ |
@@ -155,6 +157,7 @@
 | `users / subjects / corpora / knowledge_graphs / concepts / relations` | ✅ | 已落库且有数据 |
 | `bkt_params / knowledge_snapshots / learner_profiles` | ✅ ORM | 等 Spine v2 写入 |
 | `sessions` | ✅ ORM | 等 Spine v2 写入 |
+| `learning_plans` | ✅ | 多 Session 调度（Slice MS）：按 user+subject 持久化 Phase 化计划 |
 | `review_history / forgetting_curves` | ✅ ORM | 等 Slice T2 写入 |
 | Alembic 自动 migration | 🟡 | 配置完成；`alembic revision --autogenerate -m initial` 还未首次执行；当前用 `scripts/init_db.py` |
 
@@ -235,7 +238,9 @@
 | tutoring-mcp Engine skip-mastered | +4 | `servers/tutoring_mcp/tests/test_engine_t1.py` |
 | tutoring-mcp 策略序列化+完成检测 | 17 | `servers/tutoring_mcp/tests/test_strategy_serialization.py` |
 | tutoring-mcp Engine 策略选择+pace | 5 | `servers/tutoring_mcp/tests/test_engine_strategy_selection.py` |
-| **合计** | **584（583 passed + 1 skipped）** | |
+| tutoring-mcp LearningPlan core | 9 | `servers/tutoring_mcp/tests/test_learning_plan.py` |
+| tutoring-mcp 进度/续学 tool | 6 | `servers/tutoring_mcp/tests/test_learning_plan_server.py` |
+| **合计** | **599（598 passed + 1 skipped）** | |
 
 跑 `uv run pytest` 应该全部 green（BDD 已加入 `testpaths`，与 canonical 一起跑）。
 

@@ -145,9 +145,12 @@ async def test_start_session_skips_mastered_after_cold_start(env) -> None:
 
     started = await start_fn(user_id="yhn", subject_id=subject_id, goal="48h_sprint")
     plan = started.teaching_plan
-    assert plan["skipped_mastered"]  # 教学路径标出了跳过的概念
-    assert plan["to_learn_concepts"] < plan["total_concepts"]
-    assert set(plan["skipped_mastered"]) == set(result.seeded_mastered)
+    # 摸底种下的已掌握概念，反映在 Phase 化教学计划的 concepts_mastered 上
+    assert plan["concepts_mastered"] == len(result.seeded_mastered)
+    assert 0 < plan["concepts_mastered"] < plan["total_concepts"]
+    assert plan["overall_mastery_ratio"] > 0
+    # 至少有一个 Phase 出现已掌握进度
+    assert any(ph["concepts_mastered"] > 0 for ph in plan["phases"])
 
 
 @pytest.mark.asyncio

@@ -662,6 +662,57 @@ class ColdStartResult(BaseModel):
     seeded_mastered: list[str] = Field(default_factory=list)
 
 
+# --- 多 Session 学习计划（P0 #3：跨天调度）--- #
+
+PhaseStatus = Literal["done", "in_progress", "pending"]
+
+
+class PhasePlan(BaseModel):
+    """一个学习阶段（默认按顶层章节切分）。"""
+
+    phase: int = Field(ge=1)
+    title: str
+    concept_ids: list[str] = Field(default_factory=list)
+    estimated_hours: float = Field(ge=0.0)
+
+
+class LearningPlan(BaseModel):
+    """跨 Session 的持久化学习计划：把 KG 拓扑序切成若干 Phase。"""
+
+    user_id: str
+    subject_id: str
+    kg_id: str
+    phases: list[PhasePlan] = Field(default_factory=list)
+    total_concepts: int = Field(ge=0)
+    estimated_hours: float = Field(ge=0.0)
+    created_at: datetime | None = None
+
+
+class PhaseProgress(BaseModel):
+    phase: int = Field(ge=1)
+    title: str
+    concepts_total: int = Field(ge=0)
+    concepts_mastered: int = Field(ge=0)
+    mastered_ratio: float = Field(ge=0.0, le=1.0)
+    status: PhaseStatus
+
+
+class LearningProgress(BaseModel):
+    """跨 Session 进度报告：回答"我学到哪了 / 明天从哪继续"。"""
+
+    user_id: str
+    subject_id: str
+    overall_mastery_ratio: float = Field(ge=0.0, le=1.0)
+    concepts_total: int = Field(ge=0)
+    concepts_mastered: int = Field(ge=0)
+    current_phase: int | None = None
+    current_phase_title: str | None = None
+    next_concept_id: str | None = None
+    next_concept_name: str | None = None
+    phases: list[PhaseProgress] = Field(default_factory=list)
+    completed: bool = False
+
+
 class InsightReport(BaseModel):
     overall_mastery: float = Field(ge=0.0, le=1.0)
     concepts_mastered: int = Field(ge=0)

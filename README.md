@@ -2,7 +2,7 @@
 
 48 小时学完一科的私人 AI 辅导系统。基于 `../使用AI进行学习的技巧/ai-tutor-system-design/` 的 v3.0 七层认知架构。
 
-> **状态速览**：4 个 MCP server · 29 个 tool（全部实现，无硬 stub）· 584 测试全绿（583 passed + 1 skipped，含 58 个接入真实实现的 BDD Scenario）· 零必需重依赖（重量级库全部「装了就升级、缺了优雅降级」）。
+> **状态速览**：4 个 MCP server · 31 个 tool（全部实现，无硬 stub）· 599 测试全绿（598 passed + 1 skipped，含 58 个接入真实实现的 BDD Scenario）· 零必需重依赖（重量级库全部「装了就升级、缺了优雅降级」）。
 
 这份 README 主要写给**几个月后回来的自己**：先看懂架构和数据流，再知道每个能力在哪、怎么跑、当初为什么这么设计。详细历史在 [ROADMAP.md](./ROADMAP.md)。
 
@@ -39,7 +39,7 @@ L1 基础设施      ── shared/                 (schemas / errors / models /
 
 ---
 
-## 3. 四个 MCP server × 29 tool
+## 3. 四个 MCP server × 31 tool
 
 ### knowledge-mcp（L4 知识工程）— 9 tool
 | tool | 作用 |
@@ -54,12 +54,14 @@ L1 基础设施      ── shared/                 (schemas / errors / models /
 | `resolve_conflicts` | 检测 5 种结构冲突（环/反向前置/重复/悬空边/孤岛） |
 | `health` | 自检 |
 
-### tutoring-mcp（L2/L3/L5/L6 教学）— 10 tool
+### tutoring-mcp（L2/L3/L5/L6 教学）— 12 tool
 | tool | 作用 |
 |---|---|
 | `cold_start_probe` | 冷启动摸底出题（跨难度 10 道，探测先验掌握） |
 | `submit_cold_start` | 摸底判分 → 种 BKT 先验 + 画像初值（已掌握概念后续跳过） |
-| `start_learning_session` | 开会话，定教学计划（跳过已掌握概念） |
+| `start_learning_session` | 开新会话，按章节定 Phase 化教学计划（跳过已掌握概念） |
+| `resume_learning` | 续学：复用未结束会话或从首个未掌握概念继续 |
+| `get_learning_progress` | 查跨 Session 进度（各 Phase 完成度 + 下一个该学的概念） |
 | `respond` | 学生作答 → 评分 + 诊断 + 反馈（过非评判防火墙）+ 策略推进 + 心流/增益回路 |
 | `next_action` | 按拓扑序 + BKT 掌握度推荐下一个动作 |
 | `interrupt` | 处理打断：意图分类 → 分支响应 + 保存 checkpoint |
@@ -231,7 +233,7 @@ ai-tutor/
 │   │     server + kg_builder / kg_full / kg_query / kg_diff / kg_rollback
 │   │     kg_update / kg_review / kg_enrich_adapter / concept_enricher
 │   │     acquisition_adapter / resolve_conflicts + tests/(15)
-│   ├── tutoring_mcp/           L2/L3/L5/L6 教学（10 tool）
+│   ├── tutoring_mcp/           L2/L3/L5/L6 教学（12 tool）
 │   │     server + engine / session / bkt / bkt_store
 │   │     flow_signals / flow_tracker / gain_loop_monitor        (PGFGA 心流)
 │   │     memory_store / forgetting_curve / review_scheduler     (L3 长期记忆)

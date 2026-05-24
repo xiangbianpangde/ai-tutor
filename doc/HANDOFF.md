@@ -29,9 +29,9 @@ C:\Users\yhn\.claude\projects\C--Users-yhn-Desktop---AI-------\memory\
 | 维度 | 数值 |
 |---|---|
 | MCP server | **4 个**：knowledge / tutoring / digest / sync |
-| tool | **29 个**，全部实现，无硬 stub（tutoring 新增 cold_start_probe / submit_cold_start） |
-| 测试 | **583 passed + 1 skipped**（`uv run pytest`，~36s；含 58 个接入真实实现的 BDD Scenario） |
-| 切片 | **21 个**全绿（新增 Slice J 降阶法策略 + Slice CS 冷启动摸底 + Slice P1#4 6策略引擎；见 ROADMAP 表） |
+| tool | **31 个**，全部实现，无硬 stub（tutoring 新增 cold_start / get_learning_progress / resume_learning） |
+| 测试 | **598 passed + 1 skipped**（`uv run pytest`，~38s；含 58 个接入真实实现的 BDD Scenario） |
+| 切片 | **22 个**全绿（+ Slice J 降阶法 + Slice CS 冷启动 + Slice P1#4 6策略引擎 + Slice MS 多Session调度；见 ROADMAP 表） |
 | 代码量 | ~16k 行生产代码 |
 | 真 bug 修复 | 11 个（含 Slice P1#4 的 FlowLevel falsy-zero bug） |
 | 设计文档 | 7 份概念设计 + 16 份规格 + 2 份审计（`SYSTEM-AUDIT.md` + `48H-SIMULATION.md`） |
@@ -66,7 +66,7 @@ C:\Users\yhn\.claude\projects\C--Users-yhn-Desktop---AI-------\memory\
 ```powershell
 cd C:\Users\yhn\Desktop\ai-tutor
 uv sync --extra dev                        # 装依赖
-uv run pytest                              # 583 passed + 1 skipped = 健康
+uv run pytest                              # 598 passed + 1 skipped = 健康
 uv run python scripts/verify_servers.py    # 4 个 [OK] = server 能起
 ```
 
@@ -100,6 +100,7 @@ servers/knowledge_mcp/        L4 知识工程（9 tool）
 servers/tutoring_mcp/         L2/L3/L5/L6 教学（10 tool）
   engine.py                   ★ TeachingEngine：动态选策略(strategy_selector)+调pace(flow_regulator)+respond/next_action/interrupt/checkpoint+心流；next_action 跳过已掌握(mastery≥0.8)
   cold_start.py               ★ 冷启动摸底：选题(band 3/4/3)+判分+BKT先验+画像初值（Slice CS）
+  learning_plan.py            ★ 多Session调度：章节切Phase + compute_progress + LearningPlanStore（Slice MS）
   session.py                  SessionStore（L2 短期记忆）
   strategies/                 教学策略状态机集合
     reduction.py              通用降阶教学流程（INTRO→EXPLAIN→CHECK→...）
@@ -245,7 +246,7 @@ tests/                        集成测试 + fixtures（mini_subject.md）
 |---|------|---------|------|
 | 1 | **教学内容空洞** | `strategies/reduction.py` 等 | 所有 get_action() 返回模板填空 `f"{name} 的定义：{t.definition}"`，没有 LLM 实时生成的教学内容。举不出例子、做不出类比。 |
 | 2 | ~~无冷启动摸底~~ ✅ **已修（Slice CS）** | `cold_start.py` + 2 tool | 10 题跨难度摸底 → BKT 先验种子 + 画像初值；engine 跳过 mastery≥0.8 的概念。真实笔记验证省 ~24% 时间。 |
-| 3 | **无跨 Session 调度** | `tutoring_mcp/session.py` | Session 结束后没有"下次从哪继续"。设计文档的 5 Phase × 47 教学片断不存在。 |
+| 3 | ~~无跨 Session 调度~~ ✅ **已修（Slice MS）** | `learning_plan.py` + 2 tool | 持久化 Phase 化 LearningPlan + `get_learning_progress`/`resume_learning`；跨天答"已掌握 N/M、当前 Phase、今天从【X】继续"。 |
 
 ### 11.2 P1（严重影响体验）
 
@@ -388,9 +389,9 @@ strat.start(target=concept, mastery_map={}, params=params)
 
 ```
 Week 1-2（先修复 3 个 P0）：
-  P0 #1: 教学内容生成（LLM 替代模板填空）—— 最关键，48h 体验的根基
+  P0 #1: 教学内容生成（LLM 替代模板填空）—— 最关键，48h 体验的根基；唯一未完成的 P0
   P0 #2: 冷启动摸底（10 题 + 自适应跳过）—— ✅ 已完成（Slice CS），省 ~24% 时间
-  P0 #3: 多 Session 调度（LearningPlan + Phase）—— 跨天学习的基础
+  P0 #3: 多 Session 调度（LearningPlan + Phase）—— ✅ 已完成（Slice MS）
 
 Week 3-4（P1 严重缺陷）：
   P1 #4: 6 策略引擎（集成 strategy_selector + flow_regulator 到 engine）—— ✅ 已完成（Slice P1#4）
