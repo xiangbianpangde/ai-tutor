@@ -238,6 +238,7 @@ tests/                        集成测试 + fixtures（mini_subject.md）
 | [ROADMAP.md](./ROADMAP.md) | 27 切片历史 + 每文件状态 + 测试分布 + 剩余项 |
 | [SYSTEM-AUDIT.md](../SYSTEM-AUDIT.md) | ★ 当前代码的缺陷分析（必读，决定优先修什么） |
 | [48H-SIMULATION.md](../48H-SIMULATION.md) | ★ 优化后系统的运行推演（必读，理解正确的系统行为） |
+| [48H-VALIDATION.md](./48H-VALIDATION.md) | ★ 真实教材（同济高数下册 139 概念）端到端验证报告（2026-05-24） |
 | [INTEGRATION.md](./INTEGRATION.md) | 接 Claude Desktop（5 分钟） |
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | 生产/多机/HTTP/备份/故障排查 |
 | [PGFGA-TUNING.md](../PGFGA-TUNING.md) | 心流/增益回路调参 |
