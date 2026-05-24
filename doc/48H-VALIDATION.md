@@ -54,13 +54,38 @@
 采集(.md) → toc → concept KG（真实富化）→ Phase 计划 → 冷启动 → 开课 → 教学循环
 （内容/判分/反馈/BKT/认知负荷）→ 进度，**全链路在 139 概念真实教材上跑通**。
 
+## full 深度复测（2026-05-24，实测数据）
+
+同一 139 概念用 **full 深度** 重建（真实 DeepSeek，8 worker，39s，embedding 139/139）：
+
+| 指标 | concept 深度 | full 深度（实测） |
+|---|---|---|
+| 学习时长/概念 | 恒 30min | 15 / 18 / 21min（均值 20.1，对应 章/节/概念三级） |
+| **总学时** | 69.5h | **46.5h**（贴近 48h 目标 ✓） |
+| calibrated_difficulty | 无 | 0.278–0.412（均值 0.392） |
+| cold-start band 分布 | all current | **仍 all current** ✗ |
+
 ## 发现 / 限制
 
-1. **时间估计**：concept 深度的概念时长仍是默认 30min（计划估 69.5h）。时间校准
-   （Slice TC）只在 **full 深度** 生效——full 深度会把 139 概念校准到 5–45min（均值约 20min
-   → 总计约 46h，贴近 48h）。规模验证用了 concept 深度（省去 embedding），故显示 69.5h。
-2. **冷启动 band 全 current**：concept 深度的 abstract_level 默认 ~0.5 → 摸底 10 题全落
-   current 带。full 深度的难度校准会铺开 abstract_level，使 band 分布 3/4/3 生效。
+1. **时间估计（已实测确认）**：concept 深度恒 30min（计划 69.5h）；**full 深度时间校准生效，
+   总学时降到 46.5h，贴近 48h**。这是 Slice TC 的核心价值，已验证。
+
+2. **难度/时长/band 的"内容粒度"有限——真实缺口**（修正本报告早先的错误推测）：
+   full 深度的 band 分布**仍全是 current**，难度/时长只有 3 个离散档（随 章/节/概念 的标题层级）。
+   根因：`abstract_level` 是**标题深度的固定函数**（chapter 0.30 / section 0.45 / concept 0.60，
+   都落在 current 带[0.3,0.6]）；且 `ConceptEnricher` 只填 definition/bloom_level/examples，
+   **从不设置难度信号**（cognitive_load_estimate / formula_density / prereq_count / abstract_level）。
+   于是 `estimate_time_min` 和 `compute_calibrated_difficulty` 的输入除标题层级外都是 toc 默认值
+   → 难度/时长/band 只反映结构位置、不反映内容难度。
+   **正确的修法**（待实现）：让 enricher 用 LLM 从内容估计这几个难度信号（abstract_level/
+   formula_density/cognitive_load），或在 kg_full 里据 bloom_level + 公式/前置特征派生更宽的
+   abstract_level。届时 band 3/4/3、时长 5–45min 的真实分布才会显现。
+
+3. **教学循环的状态推进**：简化驱动脚本只调 next_action+respond，未发 intro_done/
+   explain_done 事件，reduction 停在 INTRO（这是既有 host 编排契约，非 bug）。
+
+4. **PDF→结构**：扫描件无文本层 + 无 OCR 时无法自动抽结构。后续装 mineru/OCR 可打通
+   acquire 的 pdf 路径；当前 .md 源路径已验证可用。
 3. **教学循环的状态推进**：简化驱动脚本只调 next_action+respond，未发 intro_done/
    explain_done 事件，reduction 停在 INTRO（这是既有 host 编排契约，非 bug）。真实 host
    （Claude Desktop）按编排发这些事件即可推进。

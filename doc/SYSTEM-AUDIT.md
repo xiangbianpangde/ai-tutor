@@ -26,6 +26,10 @@
 **仅剩长期项**（P2/P3，非阻塞，且成本高/需真实数据，故暂缓）：
 - P2 #9：DKT 跨概念知识追踪（需 PyTorch 重依赖 + 真实答题数据训练，违背零必需重依赖原则）
 - P3 #10：12 种语义关系挖掘（当前用 part_of + prerequisite_strong）
+- P2 #11（48h 验证新发现，见 `48H-VALIDATION.md`）：**ConceptEnricher 不填难度信号**
+  （cognitive_load/formula_density/prereq/abstract_level），导致难度/时长/cold-start band
+  只随标题层级变化（3 个离散档）、不反映内容难度。修法：让 enricher 用 LLM 从内容估计
+  这几个信号。非阻塞（总学时 46.5h 已贴近 48h），但修了才有真实的难度/band 分布。
 
 ---
 
