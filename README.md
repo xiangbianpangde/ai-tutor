@@ -19,6 +19,9 @@
 
 四个能力各是一个 MCP server，接进 Claude Desktop / Cursor 等 MCP host 即可用自然语言驱动。
 
+此外有一个**只读状态面板**（`servers/dashboard/`，非 MCP）：与 server 共享同一 SQLite，
+浏览器实时看当前概念/心流/策略/掌握度分布/48h Phase 进度。`uv run python -m servers.dashboard.server` → http://localhost:8501。
+
 ---
 
 ## 2. 七层认知架构 → 目录映射

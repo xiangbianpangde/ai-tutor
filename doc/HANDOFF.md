@@ -30,8 +30,8 @@ C:\Users\yhn\.claude\projects\C--Users-yhn-Desktop---AI-------\memory\
 |---|---|
 | MCP server | **4 个**：knowledge / tutoring / digest / sync |
 | tool | **31 个**，全部实现，无硬 stub（tutoring 新增 cold_start / get_learning_progress / resume_learning） |
-| 测试 | **661 passed + 1 skipped**（`uv run pytest`，~36s；含 58 个接入真实实现的 BDD Scenario） |
-| 切片 | **28 个**全绿。**3 P0 + 全部 5 P1 + P2 #11(难度信号内容化) 已 resolved**；仅剩 P2 #9(DKT) / P3 #10(12 关系)。已用同济高数下册 139 概念做真实 48h 规模验证（见 `48H-VALIDATION.md`）。 |
+| 测试 | **668 passed + 1 skipped**（`uv run pytest`，~36s；含 58 个接入真实实现的 BDD Scenario） |
+| 切片 | **29 个**全绿。**3 P0 + 全部 5 P1 + P2 #11 + 状态面板(Slice DASH) 已完成**；仅剩 P2 #9(DKT) / P3 #10(12 关系)。已用同济高数下册 139 概念做真实 48h 规模验证（见 `48H-VALIDATION.md`）。 |
 | 代码量 | ~17k 行生产代码 |
 | 真 bug 修复 | 12 个（CR1×7 + CR2×2 + build_plan 章节归组 + FlowLevel falsy-zero + 2 轮质量门收尾） |
 | 设计文档 | 7 份概念设计 + 16 份规格 + 2 份审计（`SYSTEM-AUDIT.md` + `48H-SIMULATION.md`） |
@@ -80,7 +80,7 @@ C:\Users\yhn\.claude\projects\C--Users-yhn-Desktop---AI-------\memory\
 ```powershell
 cd C:\Users\yhn\Desktop\ai-tutor
 uv sync --extra dev                        # 装依赖
-uv run pytest                              # 655 passed + 1 skipped = 健康
+uv run pytest                              # 668 passed + 1 skipped = 健康
 uv run python scripts/verify_servers.py    # 4 个 [OK] = server 能起
 ```
 
@@ -146,6 +146,11 @@ servers/sync_mcp/             Obsidian + git（6 tool）
   obsidian.py                 push/pull
   git_sync.py                 git CLI subprocess（bytes+utf-8 防 GBK）
   obsidian_watch.py           mtime 轮询（_now_ref 统一时区）
+
+servers/dashboard/            ★ 状态面板（Slice DASH）：只读 Web 仪表盘，共享同一 SQLite
+  state.py                    get_dashboard_state（拼当前概念/心流/策略/掌握度/Phase 进度）
+  server.py                   Starlette+uvicorn（零新依赖）；python -m servers.dashboard.server → :8501
+  templates/index.html        单文件 4 区面板 + 3s 轮询；不改生产代码、独立启停
 
 scripts/                      13 个 demo + init_db + verify_servers
 tests/                        集成测试 + fixtures（mini_subject.md）
