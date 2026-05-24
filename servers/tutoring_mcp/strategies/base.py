@@ -81,7 +81,12 @@ class Strategy(ABC):
         return out
 
     def restore_state(self, data: dict[str, Any]) -> None:
-        """从 export_state 的输出还原内部状态（只设存在的键）。"""
+        """从 export_state 的输出还原内部状态（只设存在的键）。
+
+        约定：必须在 start() 之后调用——set 类字段（如 jiangjie.weak_atoms）靠
+        当前属性已是 set 才能从 list 还原回 set。引擎在 _make_strategy 里恒为
+        start() → restore_state 顺序，调用方勿打破。
+        """
         if not data:
             return
         if "state" in data:

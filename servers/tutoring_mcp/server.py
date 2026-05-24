@@ -258,7 +258,7 @@ def _plan_to_dict(plan: LearningPlan, progress: LearningProgress) -> dict[str, A
             "estimated_hours": ph.estimated_hours,
             "status": pr.status if pr else "pending",
             "concepts_mastered": pr.concepts_mastered if pr else 0,
-            "concepts_total": ph.concept_ids and len(ph.concept_ids) or 0,
+            "concepts_total": len(ph.concept_ids),
         })
     return {
         "phases": phases,
