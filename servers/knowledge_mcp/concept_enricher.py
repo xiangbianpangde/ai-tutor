@@ -52,7 +52,6 @@ def _build_prompt(concept: Concept, body_text: str) -> str:
     return f"""请把下面这个概念整理为 JSON。只输出 JSON，不要解释。
 
 概念名: {name}
-当前抽象层级: {concept.classification.abstract_level}
 当前学科域: {concept.classification.domain}
 
 正文（学生笔记原文）:
@@ -69,8 +68,16 @@ def _build_prompt(concept: Concept, body_text: str) -> str:
   ],
   "common_misconceptions": ["误解1", "误解2"],
   "bloom_level": "remember|understand|apply|analyze|evaluate|create",
+  "abstract_level": 0.0~1.0,
+  "formula_density": 0.0~1.0,
+  "cognitive_load_estimate": 0.0~1.0,
   "confidence": 0.0~1.0
 }}
+
+难度信号评分指引（基于该概念本身的内容，而非它在书里的层级）:
+- abstract_level: 具体例子/直观计算偏低(0.1~0.3)，纯抽象定义/定理/证明偏高(0.7~0.9)
+- formula_density: 纯文字概念偏低，公式/符号推导密集偏高
+- cognitive_load_estimate: 初学者首次掌握该概念的内在难度（前置多、要同时 hold 的要素多→高）
 """
 
 
@@ -169,13 +176,26 @@ class ConceptEnricher:
             if misc:
                 updates["common_misconceptions"] = misc
 
+        # classification 更新（bloom_level + abstract_level 合并成一次 model_copy）
+        class_updates: dict[str, Any] = {}
         if "bloom_level" in data:
             bl = data["bloom_level"]
             if isinstance(bl, str) and bl in _BLOOM_VALID:
-                new_class = concept.classification.model_copy(update={"bloom_level": bl})
-                updates["classification"] = new_class
+                class_updates["bloom_level"] = bl
             else:
                 warnings.append(f"bloom_level={bl!r} 不在合法枚举内，已忽略")
+        if isinstance(data.get("abstract_level"), (int, float)):
+            class_updates["abstract_level"] = _clamp(float(data["abstract_level"]))
+        if class_updates:
+            updates["classification"] = concept.classification.model_copy(update=class_updates)
+
+        # difficulty 内容信号（P2 #11）：formula_density / cognitive_load_estimate
+        diff_updates: dict[str, Any] = {}
+        for key in ("formula_density", "cognitive_load_estimate"):
+            if isinstance(data.get(key), (int, float)):
+                diff_updates[key] = _clamp(float(data[key]))
+        if diff_updates:
+            updates["difficulty"] = concept.difficulty.model_copy(update=diff_updates)
 
         if "confidence" in data:
             conf = data["confidence"]

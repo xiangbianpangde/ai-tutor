@@ -72,6 +72,50 @@ def _llm_json_ok() -> str:
     }, ensure_ascii=False)
 
 
+def test_enricher_sets_difficulty_signals() -> None:
+    """P2 #11：LLM 返回 abstract_level/formula_density/cognitive_load_estimate → 落库（clamp）。"""
+    from servers.knowledge_mcp.concept_enricher import ConceptEnricher
+
+    resp = json.dumps({
+        "definition": "拉格朗日中值定理……",
+        "abstract_level": 0.85,
+        "formula_density": 0.7,
+        "cognitive_load_estimate": 0.6,
+        "confidence": 0.8,
+    }, ensure_ascii=False)
+    ec, w = ConceptEnricher(llm=MockLLMProvider(canned_responses=[resp])).enrich(
+        concept=_toc_concept(), body_text="正文"
+    )
+    assert ec.classification.abstract_level == pytest.approx(0.85)
+    assert ec.difficulty.formula_density == pytest.approx(0.7)
+    assert ec.difficulty.cognitive_load_estimate == pytest.approx(0.6)
+
+
+def test_enricher_clamps_out_of_range_signals() -> None:
+    from servers.knowledge_mcp.concept_enricher import ConceptEnricher
+
+    resp = json.dumps({"abstract_level": 1.5, "formula_density": -0.2, "cognitive_load_estimate": 2.0})
+    ec, _ = ConceptEnricher(llm=MockLLMProvider(canned_responses=[resp])).enrich(
+        concept=_toc_concept(), body_text="x"
+    )
+    assert ec.classification.abstract_level == 1.0
+    assert ec.difficulty.formula_density == 0.0
+    assert ec.difficulty.cognitive_load_estimate == 1.0
+
+
+def test_enricher_missing_signals_keeps_toc_defaults() -> None:
+    """不返回难度信号时保持 toc 默认（向后兼容，既有 canned 响应不受影响）。"""
+    from servers.knowledge_mcp.concept_enricher import ConceptEnricher
+
+    resp = json.dumps({"definition": "d", "bloom_level": "apply", "confidence": 0.8})
+    ec, _ = ConceptEnricher(llm=MockLLMProvider(canned_responses=[resp])).enrich(
+        concept=_toc_concept(), body_text="x"
+    )
+    assert ec.classification.abstract_level == pytest.approx(0.5)   # toc 默认
+    assert ec.difficulty.formula_density == pytest.approx(0.1)      # toc 默认
+    assert ec.classification.bloom_level == "apply"                 # bloom 仍更新
+
+
 def test_enricher_fills_definition_and_description() -> None:
     from servers.knowledge_mcp.concept_enricher import ConceptEnricher
 

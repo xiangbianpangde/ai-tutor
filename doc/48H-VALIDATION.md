@@ -70,16 +70,23 @@
 1. **时间估计（已实测确认）**：concept 深度恒 30min（计划 69.5h）；**full 深度时间校准生效，
    总学时降到 46.5h，贴近 48h**。这是 Slice TC 的核心价值，已验证。
 
-2. **难度/时长/band 的"内容粒度"有限——真实缺口**（修正本报告早先的错误推测）：
-   full 深度的 band 分布**仍全是 current**，难度/时长只有 3 个离散档（随 章/节/概念 的标题层级）。
-   根因：`abstract_level` 是**标题深度的固定函数**（chapter 0.30 / section 0.45 / concept 0.60，
-   都落在 current 带[0.3,0.6]）；且 `ConceptEnricher` 只填 definition/bloom_level/examples，
-   **从不设置难度信号**（cognitive_load_estimate / formula_density / prereq_count / abstract_level）。
-   于是 `estimate_time_min` 和 `compute_calibrated_difficulty` 的输入除标题层级外都是 toc 默认值
-   → 难度/时长/band 只反映结构位置、不反映内容难度。
-   **正确的修法**（待实现）：让 enricher 用 LLM 从内容估计这几个难度信号（abstract_level/
-   formula_density/cognitive_load），或在 kg_full 里据 bloom_level + 公式/前置特征派生更宽的
-   abstract_level。届时 band 3/4/3、时长 5–45min 的真实分布才会显现。
+2. **难度/时长/band 的"内容粒度"——已修复（P2 #11）**。早先（enricher 不填难度信号时）
+   难度/时长只有 3 个离散档、band 全 current。修法：让 `ConceptEnricher` 用 LLM 从内容估计
+   `abstract_level` / `formula_density` / `cognitive_load_estimate`，并去掉 prompt 里对
+   abstract_level 的锚定（原来把 toc 默认值喂给 LLM 导致它向 0.3-0.6 收敛）。
+
+   **修复后实测（同 139 概念，full 深度，真实 DeepSeek）：**
+   | 信号 | 修复前 | 修复后 |
+   |---|---|---|
+   | abstract_level | 0.30/0.45/0.60（标题层级 3 档） | 0.10–0.70（内容驱动，均值 0.43） |
+   | formula_density | 恒 0.10 | 0.00–0.70（均值 0.38） |
+   | cognitive_load | 恒 0.30 | 0.10–0.70（均值 0.46） |
+   | 时长 | 3 档（15/18/21） | 10–28min，17 个不同值，总 46.9h |
+   | calibrated_difficulty 分桶 | 5/134/0/0 | 25/92/22/0 |
+   | cold-start band | all current | **{current:126, basic:9, abstract:4}** ✓ 三带齐全 |
+
+   band 仍偏 current 是**忠实反映**——高数下册各节本就大多是中等难度；但三带均有概念，
+   cold_start 可正常组出 3/4/3 摸底题。
 
 3. **教学循环的状态推进**：简化驱动脚本只调 next_action+respond，未发 intro_done/
    explain_done 事件，reduction 停在 INTRO（这是既有 host 编排契约，非 bug）。

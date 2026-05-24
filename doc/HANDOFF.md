@@ -30,8 +30,8 @@ C:\Users\yhn\.claude\projects\C--Users-yhn-Desktop---AI-------\memory\
 |---|---|
 | MCP server | **4 个**：knowledge / tutoring / digest / sync |
 | tool | **31 个**，全部实现，无硬 stub（tutoring 新增 cold_start / get_learning_progress / resume_learning） |
-| 测试 | **658 passed + 1 skipped**（`uv run pytest`，~39s；含 58 个接入真实实现的 BDD Scenario） |
-| 切片 | **27 个**全绿。**SYSTEM-AUDIT 的 3 个 P0 + 全部 5 个 P1（#4/#5/#6/#7/#8）已全部 resolved**；仅剩长期项 P2 #9(DKT) / P3 #10(12 关系)。 |
+| 测试 | **661 passed + 1 skipped**（`uv run pytest`，~36s；含 58 个接入真实实现的 BDD Scenario） |
+| 切片 | **28 个**全绿。**3 P0 + 全部 5 P1 + P2 #11(难度信号内容化) 已 resolved**；仅剩 P2 #9(DKT) / P3 #10(12 关系)。已用同济高数下册 139 概念做真实 48h 规模验证（见 `48H-VALIDATION.md`）。 |
 | 代码量 | ~17k 行生产代码 |
 | 真 bug 修复 | 12 个（CR1×7 + CR2×2 + build_plan 章节归组 + FlowLevel falsy-zero + 2 轮质量门收尾） |
 | 设计文档 | 7 份概念设计 + 16 份规格 + 2 份审计（`SYSTEM-AUDIT.md` + `48H-SIMULATION.md`） |

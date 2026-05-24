@@ -2,7 +2,7 @@
 
 48 小时学完一科的私人 AI 辅导系统。基于 `../使用AI进行学习的技巧/ai-tutor-system-design/` 的 v3.0 七层认知架构。
 
-> **状态速览**：4 个 MCP server · 31 个 tool（全部实现，无硬 stub）· 656 测试全绿（655 passed + 1 skipped，含 58 个接入真实实现的 BDD Scenario）· 零必需重依赖（重量级库全部「装了就升级、缺了优雅降级」）。
+> **状态速览**：4 个 MCP server · 31 个 tool（全部实现，无硬 stub）· 662 测试全绿（661 passed + 1 skipped，含 58 个接入真实实现的 BDD Scenario）· 零必需重依赖（重量级库全部「装了就升级、缺了优雅降级」）。
 
 这份 README 主要写给**几个月后回来的自己**：先看懂架构和数据流，再知道每个能力在哪、怎么跑、当初为什么这么设计。详细历史在 [ROADMAP.md](./ROADMAP.md)。
 
@@ -122,7 +122,7 @@ copy .env.example .env
 # 3. 初始化数据库
 uv run python scripts/init_db.py
 
-# 4. 全量测试（应 518 passed + 1 skipped；含 BDD 套件）
+# 4. 全量测试（应 661 passed + 1 skipped；含 BDD 套件）
 uv run pytest
 
 # 5. 确认 4 个 server 能起
@@ -205,7 +205,7 @@ ai-tutor/
 ├── 文档
 │   ├── README.md               全景入口（本文件）
 │   ├── HANDOFF.md              接手必读：状态/约定/雷区/工作流
-│   ├── ROADMAP.md              18 切片历史 + 每文件状态 + 测试分布
+│   ├── ROADMAP.md              28 切片历史 + 每文件状态 + 测试分布
 │   ├── INTEGRATION.md          接 Claude Desktop（5 分钟）
 │   ├── DEPLOYMENT.md           生产/多机/HTTP/备份/故障排查
 │   └── PGFGA-TUNING.md         心流/增益回路调参
