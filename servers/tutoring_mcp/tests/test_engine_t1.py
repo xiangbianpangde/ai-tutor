@@ -338,6 +338,32 @@ def test_engine_enriches_action_content_with_generation_llm(engine_env) -> None:
     assert len(llm.calls) == 1
 
 
+def test_engine_polishes_feedback_with_generation_llm(engine_env) -> None:
+    """provider.supports_generation=True → respond 的反馈被 LLM 润色（L3）。"""
+    from servers.tutoring_mcp.engine import TeachingEngine
+    from servers.tutoring_mcp.session import SessionStore
+
+    db, subject_id, first_concept, _ = engine_env
+    sessions = SessionStore(db)
+    # 答对：scorer 用第 1 个 canned，无诊断，feedback_gen 用第 2 个 canned
+    llm = MockLLMProvider(
+        canned_responses=[
+            json.dumps({"correctness": "correct", "raw_score": 0.9, "evidence": "ok"}, ensure_ascii=False),
+            "你把定义和直觉对上了，这一步很关键，我们继续看下一个。",
+        ],
+        supports_generation=True,
+    )
+    engine = TeachingEngine(db=db, sessions=sessions, llm=llm)
+
+    ctx = sessions.create(user_id="yhn", subject_id=subject_id)
+    ctx.current_concept_id = first_concept
+    ctx.status = "active"
+    sessions.save(ctx)
+
+    result = engine.respond(ctx.session_id, answer="极限是无限接近的值")
+    assert result.feedback == "你把定义和直觉对上了，这一步很关键，我们继续看下一个。"
+
+
 def test_engine_default_llm_keeps_template_content(engine_env) -> None:
     """无生成能力（默认 Stub）→ next_action 内容保持策略模板，不调 LLM 生成。"""
     from servers.tutoring_mcp.engine import TeachingEngine

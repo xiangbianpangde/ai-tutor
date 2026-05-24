@@ -45,6 +45,7 @@ from shared.storage import RelationalStore
 from .bkt_store import BKTStore
 from .content_generator import ContentGenerator
 from .error_diagnoser import ErrorDiagnoser
+from .feedback_generator import FeedbackGenerator
 from .flow_regulator import get_regulator
 from .flow_signals import compute_flow_signals
 from .flow_tracker import next_flow_level
@@ -84,6 +85,7 @@ class TeachingEngine:
         self.diagnoser = ErrorDiagnoser(llm=self.llm)
         self.intent = IntentClassifier(llm=self.llm)
         self.content_gen = ContentGenerator(llm=self.llm)
+        self.feedback_gen = FeedbackGenerator(llm=self.llm)
 
     # ------------------------------------------------------------------ #
     # helpers
@@ -416,14 +418,23 @@ class TeachingEngine:
                 remediation=diagnosis.remediation_suggestion,
             )
 
-        # 4) 反馈 + 防火墙
-        raw = self._build_raw_feedback(
+        # 4) 反馈三级管道：L1 模板 + L2 remediation → L3 LLM 润色 → 非评判防火墙
+        remediation = diagnosis.remediation_suggestion if diagnosis else ""
+        raw = self._build_raw_feedback(  # L1 + L2
             correctness=correctness,
             concept=concept,
             score_evidence=score.evidence,
-            remediation=(diagnosis.remediation_suggestion if diagnosis else ""),
+            remediation=remediation,
         )
-        feedback = self._safe_feedback(raw, concept)
+        polished = self.feedback_gen.generate(  # L3（无真实 LLM 时返回 raw）
+            correctness=correctness,
+            concept=concept,
+            student_answer=answer,
+            evidence=score.evidence,
+            remediation=remediation,
+            fallback=raw,
+        )
+        feedback = self._safe_feedback(polished, concept)
 
         # 5) 推进 strategy（CHECK→PRACTICE/EXPLAIN/FLAG_DIFFICULT）
         strat = self._make_strategy(ctx, concept)

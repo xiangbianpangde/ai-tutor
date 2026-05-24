@@ -30,8 +30,8 @@ C:\Users\yhn\.claude\projects\C--Users-yhn-Desktop---AI-------\memory\
 |---|---|
 | MCP server | **4 个**：knowledge / tutoring / digest / sync |
 | tool | **31 个**，全部实现，无硬 stub（tutoring 新增 cold_start / get_learning_progress / resume_learning） |
-| 测试 | **617 passed + 1 skipped**（`uv run pytest`，~39s；含 58 个接入真实实现的 BDD Scenario） |
-| 切片 | **23 个**全绿（+ J 降阶法 + CS 冷启动 + P1#4 6策略引擎 + MS 多Session调度 + CG 教学内容LLM生成；**3 个 P0 全部完成**） |
+| 测试 | **627 passed + 1 skipped**（`uv run pytest`，~38s；含 58 个接入真实实现的 BDD Scenario） |
+| 切片 | **24 个**全绿（+ CG 教学内容LLM生成 + FG 反馈分级；**3 个 P0 + P1 #4/#7 已完成**） |
 | 代码量 | ~16k 行生产代码 |
 | 真 bug 修复 | 11 个（含 Slice P1#4 的 FlowLevel falsy-zero bug） |
 | 设计文档 | 7 份概念设计 + 16 份规格 + 2 份审计（`SYSTEM-AUDIT.md` + `48H-SIMULATION.md`） |
@@ -66,7 +66,7 @@ C:\Users\yhn\.claude\projects\C--Users-yhn-Desktop---AI-------\memory\
 ```powershell
 cd C:\Users\yhn\Desktop\ai-tutor
 uv sync --extra dev                        # 装依赖
-uv run pytest                              # 617 passed + 1 skipped = 健康
+uv run pytest                              # 627 passed + 1 skipped = 健康
 uv run python scripts/verify_servers.py    # 4 个 [OK] = server 能起
 ```
 
@@ -102,6 +102,7 @@ servers/tutoring_mcp/         L2/L3/L5/L6 教学（10 tool）
   cold_start.py               ★ 冷启动摸底：选题(band 3/4/3)+判分+BKT先验+画像初值（Slice CS）
   learning_plan.py            ★ 多Session调度：章节切Phase + compute_progress + LearningPlanStore（Slice MS）
   content_generator.py        ★ 教学内容LLM生成：按 action.type 改写模板为真实讲解；gated on supports_generation（Slice CG）
+  feedback_generator.py       ★ 反馈分级 L3：LLM 润色（L1+L2 模板作 fallback）；gated on supports_generation（Slice FG）
   session.py                  SessionStore（L2 短期记忆）
   strategies/                 教学策略状态机集合
     reduction.py              通用降阶教学流程（INTRO→EXPLAIN→CHECK→...）
@@ -257,7 +258,7 @@ tests/                        集成测试 + fixtures（mini_subject.md）
 | 5 | **KG 无法扩展** | `kg_builder.py` | 逐个 concept 调 LLM，800 概念 ~40min。无 checkpoint、无并行。已验证最大规模仅 20 概念。 |
 | 6 | **时间估计全默认值** | `kg_enrich_adapter.py` | 所有概念 typical_learning_time_min=30。200 概念 × 30min = 100h，远超 48h。 |
 | 7 | **认知负荷空转** | `engine.py` | ctx.meta.current_cognitive_load 永远是 0.0。策略选择器的 cognitive_load > 0.75 判断永远不触发。 |
-| 8 | **教学反馈粗粒度** | `engine.py` | 只有 3 个模板（correct/partial/incorrect），没有 LLM 润色。 |
+| 8 | ~~教学反馈粗粒度~~ ✅ **已修（Slice FG）** | `feedback_generator.py` | 三级管道 L1 模板 + L2 remediation + L3 LLM 润色（gated on supports_generation），结果过非评判防火墙。 |
 
 ### 11.3 P2-P3（长期）
 
@@ -398,7 +399,7 @@ Week 3-4（P1 严重缺陷）：
   P1 #4: 6 策略引擎（集成 strategy_selector + flow_regulator 到 engine）—— ✅ 已完成（Slice P1#4）
   P1 #5: 批量 KG 管道（批量 enrich + checkpoint + 并行）
   P1 #6: 认知负荷估计（在线更新 ctx.meta.current_cognitive_load）
-  P1 #7: 教学反馈分级（L1→L2→L3 三级管道 + LLM 润色）
+  P1 #7: 教学反馈分级（L1→L2→L3 三级管道 + LLM 润色）—— ✅ 已完成（Slice FG）
   P1 #8: 时间校准（加权公式 + 运行时更新）
 
 后续（P2-P3）：
