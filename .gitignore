@@ -32,6 +32,3 @@ Thumbs.db
 # 秘钥
 .env
 *.key
-
-# uv
-uv.lock
