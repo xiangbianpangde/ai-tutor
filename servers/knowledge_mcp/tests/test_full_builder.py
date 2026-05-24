@@ -69,6 +69,21 @@ def test_full_build_writes_calibrated_difficulty(corpus):
             assert 0.0 <= diff <= 1.0
 
 
+def test_full_build_calibrates_learning_time(corpus):
+    """full build 写回按特征校准的学习时长，不再恒 30（P1 #8）。"""
+    db, corpus_id, md = corpus
+    r = _build_full(db, corpus_id, md)
+    with db.session() as s:
+        rows = s.query(ConceptRow).filter_by(kg_id=r.kg_id).all()
+        times = [
+            (row.full_json or {}).get("difficulty", {}).get("typical_learning_time_min")
+            for row in rows
+        ]
+    assert times and all(t is not None for t in times)
+    assert all(1 <= t <= 120 for t in times)
+    assert not all(t == 30 for t in times), "时长应按概念特征变化，不应恒为 30"
+
+
 def test_full_build_writes_embedding(corpus):
     db, corpus_id, md = corpus
     r = _build_full(db, corpus_id, md)

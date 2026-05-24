@@ -242,16 +242,23 @@ class FullKGBuilder:
         db: RelationalStore,
     ) -> BuildKGResult:
         from .kg_full import build_embeddings, compute_calibrated_difficulty
+        from .time_estimator import estimate_time_min
 
         # 1-3) 复用 concept enrich pipeline
         enriched, edges, per_concept_warnings = _enrich_concepts(
             llm=self.llm, subject_slug=subject_slug, markdown_path=markdown_path,
         )
 
-        # 4) 难度校准 + embedding，写回每个 concept
+        # 4) 时长校准（先）+ 难度校准 + embedding，写回每个 concept
+        #    先估时长（用非时间特征），再算难度（其 time_norm 用上校准后的时长，告别恒 30）
         embeddings = build_embeddings(enriched)
         full_concepts = []
         for c in enriched:
+            est_time = estimate_time_min(c)
+            timed_difficulty = c.difficulty.model_copy(
+                update={"typical_learning_time_min": est_time}
+            )
+            c = c.model_copy(update={"difficulty": timed_difficulty})
             diff = compute_calibrated_difficulty(c)
             new_difficulty = c.difficulty.model_copy(update={"calibrated_difficulty": diff})
             full_concepts.append(

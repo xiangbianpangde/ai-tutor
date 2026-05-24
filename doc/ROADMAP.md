@@ -32,6 +32,7 @@
 | **Slice CG** | 教学内容 LLM 生成 (P0 #1) | `content_generator.py`：引擎 next_action 拿到策略动作后，按 action.type 用 LLM 把模板填空改写成真实讲解（直觉+例子/练习/提示），失败/不可用回退模板。加 provider 能力位 `supports_generation`（Stub/Mock=False、DeepSeek=True），使 Mock/Stub 测试完全不受影响。server `_llm()` 在有 `DEEPSEEK_API_KEY` 时接入 DeepSeek（同时启用判分/诊断/生成）。真实笔记验证：Stub→模板、真实 LLM→生动讲解。**至此 3 个 P0 全部完成** | ✅ |
 | **Slice FG** | 教学反馈分级 (P1 #7) | `feedback_generator.py`：反馈三级管道 L1（correctness 模板）+ L2（remediation）+ L3（LLM 润色）。engine.respond 把 L1+L2 模板作为 fallback 传入 L3，润色结果再过非评判防火墙。同样 gated on `supports_generation`，Stub/Mock 返回模板 → 既有 respond 测试不变。 | ✅ |
 | **Slice CL** | 认知负荷在线估计 (P1 #6) | `cognitive_load.py`：确定性加权公式（内在难度 0.35 + 表现 0.35 + 连续受挫 0.2 + 工作记忆压力 0.1）+ EMA 平滑。engine 在 respond 后（数据最全）+ 进入新概念时更新 `ctx.meta.current_cognitive_load`，喂给 strategy_selector（>0.6→jiangjie / >0.75→analogy/reduction）和 flow_regulator（>0.7 降难度+加脚手架）。此前恒 0.0 → 这两条分支永不触发，现已激活。 | ✅ |
+| **Slice TC** | 时间校准 (P1 #8) | `time_estimator.py`：`estimate_time_min` 用非时间特征（认知负荷/公式密度/抽象度/前置数/深度）的加权公式给学习时长，映射到 5-45min，替代恒定 30。FullKGBuilder 先估时长再算难度（难度的 time_norm 用上校准值，告别循环）。`calibrate_time` 提供"公式估计 × 真实观测"置信度加权钩子（待时间追踪落地）。 | ✅ |
 
 ---
 
@@ -46,6 +47,7 @@
 | `kg_enrich_adapter.py` | toc 模式纯规则抽章节 | ✅ |
 | `kg_builder.py` | KGBuilder Protocol + Toc/Concept/Full（_enrich_concepts 共用 pipeline） | ✅（三种 depth 全实现） |
 | `kg_full.py` | 确定性难度校准加权公式 + numpy feature-hashing embedding + 余弦 | ✅ |
+| `time_estimator.py` | 学习时长校准（非时间特征加权 → 5-45min，替代恒30）+ calibrate_time 观测加权钩子 | ✅ |
 
 ### Tools（按 `specs/server-api-spec.md`）
 
@@ -252,7 +254,9 @@
 | tutoring-mcp Engine 反馈润色集成 | 1 | `servers/tutoring_mcp/tests/test_engine_t1.py` |
 | tutoring-mcp CognitiveLoad | 9 | `servers/tutoring_mcp/tests/test_cognitive_load.py` |
 | tutoring-mcp Engine 负荷集成 | 1 | `servers/tutoring_mcp/tests/test_engine_strategy_selection.py` |
-| **合计** | **638（637 passed + 1 skipped）** | |
+| knowledge-mcp TimeEstimator | 11 | `servers/knowledge_mcp/tests/test_time_estimator.py` |
+| knowledge-mcp Full build 时长校准 | 1 | `servers/knowledge_mcp/tests/test_full_builder.py` |
+| **合计** | **650（649 passed + 1 skipped）** | |
 
 跑 `uv run pytest` 应该全部 green（BDD 已加入 `testpaths`，与 canonical 一起跑）。
 
@@ -281,7 +285,7 @@
 |---|---|---|
 | KG 人工确认（review_kg/update_kg） | 🟡 stub | Slice K2 |
 | 摸底测验（cold-start assessment） | ✅ Slice CS | `cold_start.py` + `cold_start_probe`/`submit_cold_start` tool + engine 跳过已掌握 |
-| 时间估计校准（XGBoost on Khan） | 🔴 | Slice K1 |
+| 时间估计校准（XGBoost on Khan） | ✅ Slice TC | `time_estimator.py` 改用可解释加权公式（非 XGBoost，无标注数据）；FullKGBuilder 已接入；calibrate_time 留观测加权钩子 |
 | 48h 验证实验 E2E | 🔴 | Slice S |
 
 ---

@@ -30,8 +30,8 @@ C:\Users\yhn\.claude\projects\C--Users-yhn-Desktop---AI-------\memory\
 |---|---|
 | MCP server | **4 个**：knowledge / tutoring / digest / sync |
 | tool | **31 个**，全部实现，无硬 stub（tutoring 新增 cold_start / get_learning_progress / resume_learning） |
-| 测试 | **637 passed + 1 skipped**（`uv run pytest`，~39s；含 58 个接入真实实现的 BDD Scenario） |
-| 切片 | **25 个**全绿（+ CG 内容生成 + FG 反馈分级 + CL 认知负荷；**3 个 P0 + P1 #4/#6/#7 已完成**） |
+| 测试 | **649 passed + 1 skipped**（`uv run pytest`，~37s；含 58 个接入真实实现的 BDD Scenario） |
+| 切片 | **26 个**全绿（+ CG 内容生成 + FG 反馈分级 + CL 认知负荷 + TC 时间校准；**3 P0 + P1 #4/#6/#7/#8 已完成**） |
 | 代码量 | ~16k 行生产代码 |
 | 真 bug 修复 | 11 个（含 Slice P1#4 的 FlowLevel falsy-zero bug） |
 | 设计文档 | 7 份概念设计 + 16 份规格 + 2 份审计（`SYSTEM-AUDIT.md` + `48H-SIMULATION.md`） |
@@ -66,7 +66,7 @@ C:\Users\yhn\.claude\projects\C--Users-yhn-Desktop---AI-------\memory\
 ```powershell
 cd C:\Users\yhn\Desktop\ai-tutor
 uv sync --extra dev                        # 装依赖
-uv run pytest                              # 637 passed + 1 skipped = 健康
+uv run pytest                              # 649 passed + 1 skipped = 健康
 uv run python scripts/verify_servers.py    # 4 个 [OK] = server 能起
 ```
 
@@ -91,6 +91,7 @@ servers/knowledge_mcp/        L4 知识工程（9 tool）
   server.py                   FastMCP 入口；_db()/_llm() 单例
   kg_builder.py               ★ Toc/Concept/Full 三 builder；_enrich_concepts 共用 pipeline
   kg_full.py                  难度校准（确定性公式）+ embedding（numpy hashing）
+  time_estimator.py           ★ 学习时长校准（非时间特征加权 → 5-45min）+ calibrate_time 观测钩子（Slice TC）
   kg_enrich_adapter.py        toc 纯规则抽章节 + _persist_kg + _compute_quality + _to_mermaid
   concept_enricher.py         单 concept LLM 富化
   kg_update.py / kg_diff.py / kg_rollback.py   版本树 CRUD
@@ -257,7 +258,7 @@ tests/                        集成测试 + fixtures（mini_subject.md）
 |---|------|---------|------|
 | 4 | ~~6 策略仅 1 种可用~~ ✅ **已修（Slice P1#4）** | `engine.py` | engine 现按 mastery/profile/flow 动态选策略 + flow_regulator 调 pace；Strategy 加 export/restore_state，带计数器的策略（jiangjie 等）跨重建无损。 |
 | 5 | **KG 无法扩展** | `kg_builder.py` | 逐个 concept 调 LLM，800 概念 ~40min。无 checkpoint、无并行。已验证最大规模仅 20 概念。 |
-| 6 | **时间估计全默认值** | `kg_enrich_adapter.py` | 所有概念 typical_learning_time_min=30。200 概念 × 30min = 100h，远超 48h。 |
+| 6 | ~~时间估计全默认值~~ ✅ **已修（Slice TC）** | `time_estimator.py` | 非时间特征加权公式 → 5-45min，FullKGBuilder 接入（full 深度）。toc/concept 浅模式仍默认 30。calibrate_time 留真实观测加权钩子。 |
 | 7 | ~~认知负荷空转~~ ✅ **已修（Slice CL）** | `cognitive_load.py` | 在线加权估计 + EMA，respond 后/进新概念时更新 ctx.meta.current_cognitive_load；selector/regulator 的负荷分支现已激活。 |
 | 8 | ~~教学反馈粗粒度~~ ✅ **已修（Slice FG）** | `feedback_generator.py` | 三级管道 L1 模板 + L2 remediation + L3 LLM 润色（gated on supports_generation），结果过非评判防火墙。 |
 
@@ -401,7 +402,7 @@ Week 3-4（P1 严重缺陷）：
   P1 #5: 批量 KG 管道（批量 enrich + checkpoint + 并行）
   P1 #6: 认知负荷估计（在线更新 ctx.meta.current_cognitive_load）—— ✅ 已完成（Slice CL）
   P1 #7: 教学反馈分级（L1→L2→L3 三级管道 + LLM 润色）—— ✅ 已完成（Slice FG）
-  P1 #8: 时间校准（加权公式 + 运行时更新）
+  P1 #8: 时间校准（加权公式 + 运行时更新）—— ✅ 已完成（Slice TC；运行时 calibrate_time 钩子待时间追踪）
 
 后续（P2-P3）：
   P2 #9: DKT 模型
