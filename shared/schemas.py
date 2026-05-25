@@ -518,6 +518,7 @@ TeachingActionType = Literal[
     "explain", "ask_question", "show_example", "give_exercise",
     "request_explanation", "provide_hint", "reveal_answer",
     "review", "checkpoint", "break_suggestion", "reflection",
+    "show_counter_example", "pace_feedback",
 ]
 
 

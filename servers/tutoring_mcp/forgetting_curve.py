@@ -11,8 +11,11 @@
     fit_lambda(points)                 → (λ, r_squared)
     recommend_review_days(λ, target)   → 几天后召回率衰减到 target
 
-群体均值兜底:
-    数据 < 3 个点 → 返回 DEFAULT_LAMBDA（=0.3，约对应每天忘 26%）
+群体均值兜底 + 过渡区加权混合:
+    数据 < 3 个点      → 返回 DEFAULT_LAMBDA（=0.3，约对应每天忘 26%）
+    数据 3-5 个点      → λ = w·λ_fitted + (1-w)·DEFAULT_LAMBDA，w = n/10
+                         （点少时不完全信任拟合，向群体均值收缩）
+    数据 ≥ 6 个点      → 纯拟合值（样本足够，完全个性化）
 
 后续切片可加:
 - power-law / log-law 模型选择
@@ -29,6 +32,7 @@ from scipy.optimize import curve_fit
 
 DEFAULT_LAMBDA: float = 0.3
 _MIN_FIT_POINTS: int = 3
+_FULL_TRUST_POINTS: int = 6   # ≥ 此点数用纯拟合；[3, 6) 与群体均值加权混合
 _LAMBDA_LOWER: float = 0.01   # 防 λ→0 时复习推荐无穷远
 _LAMBDA_UPPER: float = 3.0    # 防极端噪声拟合出爆炸值
 
@@ -79,6 +83,15 @@ def fit_lambda(
         r2 = 1.0 if ss_res < 1e-12 else 0.0
     else:
         r2 = max(0.0, 1.0 - ss_res / ss_tot)
+
+    # 过渡区加权混合：点数在 [3, 6) 时拟合尚不可靠，按 w=n/10 向群体均值收缩。
+    # n=3→0.3（七成信群体），n=5→0.5（半信半疑），n≥6 完全信拟合。
+    # r2 仍反映原始拟合质量（诊断信号），不随混合改变。
+    n = len(data_points)
+    if n < _FULL_TRUST_POINTS:
+        w = n / 10.0
+        lam = w * lam + (1.0 - w) * DEFAULT_LAMBDA
+        lam = max(_LAMBDA_LOWER, min(_LAMBDA_UPPER, lam))
 
     return lam, r2
 

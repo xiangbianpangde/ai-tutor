@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from servers.tutoring_mcp.cognitive_load import estimate_load
+from servers.tutoring_mcp.cognitive_load import compute_text_signals, estimate_load
 
 
 def _load(**kw):
@@ -78,3 +78,45 @@ def test_easy_confident_student_low_load():
             working_memory_span=7, prereq_count=0, prev_load=load,
         )
     assert load < 0.3
+
+
+# ----------------------- 文本信号 (1.6) ----------------------- #
+
+def test_text_pressure_none_is_backward_compatible():
+    """不传 text_pressure 与传 None/0 结果一致（向后兼容）。"""
+    base = dict(intrinsic=0.5, recent_accuracy=0.5, struggle_count=1,
+                working_memory_span=5, prereq_count=2)
+    assert estimate_load(**base) == estimate_load(**base, text_pressure=None)
+    assert estimate_load(**base) == estimate_load(**base, text_pressure=0.0)
+
+
+def test_text_pressure_raises_load():
+    base = dict(intrinsic=0.5, recent_accuracy=0.5, struggle_count=1,
+                working_memory_span=5, prereq_count=2)
+    assert estimate_load(**base, text_pressure=0.9) > estimate_load(**base, text_pressure=0.0)
+
+
+def test_empty_and_single_answer_zero_signals():
+    assert compute_text_signals(recent_answers=[]).text_pressure == 0.0
+    s = compute_text_signals(recent_answers=["一条答案"])
+    assert s.answer_length_variance == 0.0  # 单条无法算波动
+
+
+def test_uniform_answers_low_variance():
+    """长度一致、无求助 → 文本压力接近 0（保证既有均匀答案场景不被误抬负荷）。"""
+    s = compute_text_signals(recent_answers=["答案ABCD", "答案EFGH", "答案IJKL"])
+    assert s.answer_length_variance == pytest.approx(0.0, abs=0.05)
+    assert s.question_rephrasing_rate == 0.0
+    assert s.text_pressure == pytest.approx(0.0, abs=0.05)
+
+
+def test_erratic_lengths_raise_variance():
+    s = compute_text_signals(recent_answers=["对", "我觉得这个概念可能是说在某种条件下会成立但我不确定具体是怎样的", "嗯"])
+    assert s.answer_length_variance > 0.4
+    assert s.text_pressure > 0.2
+
+
+def test_rephrasing_requests_detected():
+    s = compute_text_signals(recent_answers=["能换个说法吗", "没听懂", "再讲一遍"])
+    assert s.question_rephrasing_rate == pytest.approx(1.0)
+    assert s.text_pressure > 0.4

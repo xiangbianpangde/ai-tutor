@@ -24,6 +24,7 @@ logger = get_logger("tutoring_mcp.content_generator")
 _ENRICHABLE = frozenset({
     "explain", "show_example", "give_exercise",
     "provide_hint", "ask_question", "reveal_answer",
+    "show_counter_example",
 })
 
 _SYSTEM = (
@@ -39,6 +40,7 @@ _TASK: dict[str, str] = {
     "provide_hint": "针对这个概念给一条不直接给答案的引导性提示。",
     "ask_question": "提出一个能检验学生是否真正理解该概念的问题（只问，不答）。",
     "reveal_answer": "清楚地讲清该概念的标准答案/定义，并点出最关键的一点。",
+    "show_counter_example": "给一个反例：一个乍看属于该概念、实则不满足的例子，点明边界在哪。",
 }
 
 

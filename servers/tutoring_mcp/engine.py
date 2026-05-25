@@ -43,7 +43,7 @@ from shared.schemas import (
 from shared.storage import RelationalStore
 
 from .bkt_store import BKTStore
-from .cognitive_load import estimate_load
+from .cognitive_load import compute_text_signals, estimate_load
 from .content_generator import ContentGenerator
 from .error_diagnoser import ErrorDiagnoser
 from .feedback_generator import FeedbackGenerator
@@ -58,11 +58,46 @@ from .non_judgment_firewall import NonJudgmentFirewall
 from .session import SessionStore
 from .strategies import Strategy, get_strategy
 from .strategies.reduction import ReductionStrategy
+from .pace_controller import PaceController
 from .strategy_selector import select_strategy
+from .teaching_actions import (
+    COUNTER_EXAMPLE_ERROR_TYPES,
+    make_pace_feedback,
+    make_show_counter_example,
+)
 
 _MAX_HISTORY = 20
 
 logger = get_logger("tutoring_mcp.engine")
+
+
+def select_system_action(
+    *,
+    brk: Any | None,
+    prev_load: float,
+    new_load: float,
+    error_analysis: ErrorAnalysis | None,
+    concept: Concept,
+) -> TeachingAction | None:
+    """respond 后由系统主动插入的动作（按优先级，先到先决）：
+
+    1. 回路断裂修复 break_suggestion —— 关系/安全感最高优先
+    2. pace_feedback —— 认知负荷「上升沿」跨过过载阈值时主动告知放慢
+    3. show_counter_example —— 概念混淆/过度泛化 且 概念带反例
+
+    都不满足 → None（保持原有"无后续动作"行为）。纯函数，便于单测全分支。
+    """
+    if brk is not None:
+        return repair(break_type=brk.type)
+    if PaceController.crossed_into_overload(prev_load, new_load):
+        return make_pace_feedback(direction="slow_down", reason="cognitive_overload_onset")
+    if (
+        error_analysis is not None
+        and error_analysis.type in COUNTER_EXAMPLE_ERROR_TYPES
+        and concept.counter_examples
+    ):
+        return make_show_counter_example(concept)
+    return None
 
 
 class TeachingEngine:
@@ -139,6 +174,11 @@ class TeachingEngine:
     def _update_cognitive_load(self, ctx, concept: Concept, *, struggle_count: int) -> None:
         """重算并写回 ctx.meta.current_cognitive_load（供 selector / flow_regulator 用）。"""
         profile = self._load_profile(ctx.user_id)
+        recent_answers = [
+            h["answer"] for h in ctx.recent_history[-5:]
+            if isinstance(h.get("answer"), str)
+        ]
+        text_signals = compute_text_signals(recent_answers=recent_answers)
         load = estimate_load(
             intrinsic=concept.difficulty.cognitive_load_estimate,
             recent_accuracy=self._recent_accuracy(ctx),
@@ -146,6 +186,7 @@ class TeachingEngine:
             working_memory_span=profile.cognitive.working_memory_span,
             prereq_count=concept.difficulty.prereq_count,
             prev_load=ctx.meta.current_cognitive_load,
+            text_pressure=text_signals.text_pressure,
         )
         ctx.meta.current_cognitive_load = load
 
@@ -540,18 +581,26 @@ class TeachingEngine:
         ctx.recent_history[-1]["flow_level"] = int(new_level)
 
         # P1 #6: 在线更新认知负荷（此时 recent_history 已含本轮，正确率最新）
+        prev_load = ctx.meta.current_cognitive_load
         self._update_cognitive_load(ctx, concept, struggle_count=strat.attempt_count)
 
         # 增益回路检测：先看是否有断裂
         # skipped_count 在 handle_interrupt 的 pace_complaint→change_topic 分支累加
         skipped = ctx.session_stats.skipped_count
         brk = detect_break(signals=signals, recent_skipped_count=skipped)
-        next_action: TeachingAction | None = None
-        if brk is not None:
-            next_action = repair(break_type=brk.type)
+        next_action = select_system_action(
+            brk=brk,
+            prev_load=prev_load,
+            new_load=ctx.meta.current_cognitive_load,
+            error_analysis=error_analysis,
+            concept=concept,
+        )
+        if next_action is not None:
             logger.info(
-                "gain_loop.break_detected",
-                break_type=brk.type, session_id=session_id,
+                "respond.system_action",
+                action_type=next_action.type,
+                break_type=(brk.type if brk else None),
+                session_id=session_id,
             )
 
         self.sessions.save(ctx)

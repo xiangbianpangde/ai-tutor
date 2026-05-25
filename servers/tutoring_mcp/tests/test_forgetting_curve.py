@@ -70,16 +70,52 @@ def test_fit_lambda_with_few_points_returns_default() -> None:
 
 
 def test_fit_lambda_recovers_true_lambda() -> None:
-    """生成 R(t)=exp(-0.4t) 的合成数据，fit 应回归到 ~0.4。"""
+    """生成 R(t)=exp(-0.4t) 的合成数据（6 点，满足完全信任阈值），fit 应回归到 ~0.4。"""
     from servers.tutoring_mcp.forgetting_curve import fit_lambda
 
     true_lam = 0.4
-    days = [0.5, 1.0, 2.0, 3.5, 7.0, 14.0]
+    days = [0.5, 1.0, 2.0, 3.5, 7.0, 14.0]  # 6 点 → 纯拟合，不混合
     accuracies = [math.exp(-true_lam * t) for t in days]
     lam, r2 = fit_lambda(data_points=list(zip(days, accuracies)))
     assert lam == pytest.approx(true_lam, abs=0.05)
     assert r2 is not None
     assert r2 > 0.95  # 几乎完美拟合
+
+
+@pytest.mark.parametrize("n_points,expected_w", [(3, 0.3), (4, 0.4), (5, 0.5)])
+def test_fit_lambda_blends_toward_default_in_transition_zone(
+    n_points: int, expected_w: float
+) -> None:
+    """3-5 点过渡区：返回值应等于 w·λ_fitted + (1-w)·DEFAULT，w=n/10。
+
+    用真 λ=1.0（远离 DEFAULT=0.3）的合成数据，使混合效果明显可测。
+    """
+    from servers.tutoring_mcp.forgetting_curve import DEFAULT_LAMBDA, fit_lambda
+
+    true_lam = 1.0
+    all_days = [0.5, 1.0, 2.0, 3.5, 7.0]
+    days = all_days[:n_points]
+    accuracies = [math.exp(-true_lam * t) for t in days]
+    lam, _ = fit_lambda(data_points=list(zip(days, accuracies)))
+
+    # 干净合成数据下 λ_fitted≈true_lam，故混合后应落在 default 与 true 之间，
+    # 且约等于 w·true + (1-w)·default。
+    blended_expected = expected_w * true_lam + (1.0 - expected_w) * DEFAULT_LAMBDA
+    assert lam == pytest.approx(blended_expected, abs=0.05)
+    # 混合值必严格介于群体均值与纯拟合值之间
+    assert DEFAULT_LAMBDA < lam < true_lam
+
+
+def test_fit_lambda_six_points_no_blend() -> None:
+    """边界：恰好 6 点 → 纯拟合，不向 DEFAULT 收缩。"""
+    from servers.tutoring_mcp.forgetting_curve import DEFAULT_LAMBDA, fit_lambda
+
+    true_lam = 1.0
+    days = [0.5, 1.0, 2.0, 3.5, 7.0, 14.0]
+    accuracies = [math.exp(-true_lam * t) for t in days]
+    lam, _ = fit_lambda(data_points=list(zip(days, accuracies)))
+    assert lam == pytest.approx(true_lam, abs=0.05)
+    assert lam > DEFAULT_LAMBDA + 0.3  # 明显未被拉向 0.3
 
 
 def test_fit_lambda_handles_noisy_data() -> None:

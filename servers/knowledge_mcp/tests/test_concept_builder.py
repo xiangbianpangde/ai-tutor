@@ -96,8 +96,8 @@ def test_concept_builder_enriches_each_concept(db_with_corpus) -> None:
         defs = [r.definition for r in rows]
         assert all("LLM-填充" in d for d in defs)
 
-    # LLM 总调用次数 = concept 数（17）
-    assert len(llm.calls) == 17
+    # LLM 调用次数 = 17 个 concept 富化 + 1 次关系抽取（RelationExtractor 单次调用）
+    assert len(llm.calls) == 18
 
 
 def test_concept_builder_falls_back_when_llm_unavailable(db_with_corpus) -> None:

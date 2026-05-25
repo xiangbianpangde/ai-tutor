@@ -22,7 +22,8 @@ from __future__ import annotations
 
 from shared.schemas import Concept, FlowLevel, LearnerProfile
 
-_OVERLOAD_THRESHOLD = 0.75
+from .pace_controller import OVERLOAD_THRESHOLD as _OVERLOAD_THRESHOLD
+
 _ABSTRACT_AMPLIFIER = 1.2
 _JIANGJIE_LOAD_THRESHOLD = 0.6
 

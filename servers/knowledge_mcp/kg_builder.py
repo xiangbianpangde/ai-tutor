@@ -134,6 +134,16 @@ def _enrich_concepts(
         max_workers=max_workers,
         checkpoint=checkpoint,
     )
+
+    # 关系抽取（12 种语义关系）：在结构边 part_of/prerequisite_strong 之上，
+    # 用一次 LLM 调用补全其余 10 种「概念对」关系。失败即降级（结构边保留）。
+    from .relation_extractor import RelationExtractor
+
+    rel_edges, rel_warnings = RelationExtractor(llm=llm).extract(
+        concepts=enriched, existing_edges=edges,
+    )
+    edges = edges + rel_edges
+    warnings = warnings + rel_warnings
     return enriched, edges, warnings
 
 

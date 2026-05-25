@@ -145,6 +145,54 @@ def test_diagnose_tolerates_invalid_json() -> None:
     assert d.error_type == "blank"
 
 
+def test_regex_fast_path_epsilon_delta_reversal_skips_llm() -> None:
+    """ε-δ 量词顺序反了 → 正则快速路径确诊 symbol_mistake，不调 LLM。"""
+    from servers.tutoring_mcp.error_diagnoser import ErrorDiagnoser
+
+    llm = MockLLMProvider(canned_responses=["不应调用"])
+    d = ErrorDiagnoser(llm=llm).diagnose(
+        concept=_concept(name="函数极限"),
+        student_answer="存在 ε>0，对任意 δ>0 使得 |f(x)-L|<ε",
+        correctness="incorrect",
+        score_evidence="",
+    )
+    assert d is not None
+    assert d.error_type == "symbol_mistake"
+    assert d.confidence == 0.8
+    assert len(llm.calls) == 0  # 快速路径短路了 LLM
+
+
+def test_regex_fast_path_sufficient_vs_iff() -> None:
+    from servers.tutoring_mcp.error_diagnoser import ErrorDiagnoser
+
+    llm = MockLLMProvider(canned_responses=["不应调用"])
+    d = ErrorDiagnoser(llm=llm).diagnose(
+        concept=_concept(name="充要条件"),
+        student_answer="如果可导则连续，反之不成立，所以可导是连续的充要条件",
+        correctness="incorrect",
+        score_evidence="",
+    )
+    assert d is not None
+    assert d.error_type == "symbol_mistake"
+    assert len(llm.calls) == 0
+
+
+def test_non_matching_answer_still_uses_llm() -> None:
+    """不命中正则的普通错答仍走 LLM（快速路径不影响既有主路径）。"""
+    from servers.tutoring_mcp.error_diagnoser import ErrorDiagnoser
+
+    llm = MockLLMProvider(canned_responses=[_diag_response("concept_confusion")])
+    d = ErrorDiagnoser(llm=llm).diagnose(
+        concept=_concept(),
+        student_answer="词袋就是 TF-IDF",
+        correctness="incorrect",
+        score_evidence="",
+    )
+    assert d is not None
+    assert d.error_type == "concept_confusion"
+    assert len(llm.calls) == 1  # 正则未命中 → 调了 LLM
+
+
 def test_diagnose_includes_concept_in_prompt() -> None:
     from servers.tutoring_mcp.error_diagnoser import ErrorDiagnoser
 

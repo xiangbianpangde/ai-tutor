@@ -7,6 +7,7 @@ depth=full:    TODO 同上 + 难度评分 + embedding
 from __future__ import annotations
 
 import re
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import Iterator
@@ -164,6 +165,24 @@ def _build_toc(
     return concepts, edges
 
 
+_COVERAGE_GATE = 0.85       # 章节覆盖率门槛
+_CATEGORY_SKEW_GATE = 0.9   # 单一类别占比超此值视为分布失衡
+_CATEGORY_SKEW_MIN_N = 5    # 概念太少时不做分布检查（小样本无意义）
+
+
+def _chapter_coverage(concepts: list[Concept]) -> float:
+    """有真实定义（非占位标题）的概念占比。
+
+    toc 骨架的 definition 直接等于标题（占位）；concept/full 富化后才有真实定义。
+    覆盖率即"多少章节被真正充实"。
+    """
+    covered = sum(
+        1 for c in concepts
+        if c.definition.strip() and c.definition.strip() != c.names[0].strip()
+    )
+    return covered / len(concepts)
+
+
 def _compute_quality(concepts: list[Concept], edges: list[Relation]) -> QualityReport:
     if not concepts:
         return QualityReport(
@@ -178,6 +197,7 @@ def _compute_quality(concepts: list[Concept], edges: list[Relation]) -> QualityR
     connected = {e.from_id for e in edges} | {e.to_id for e in edges}
     isolated = node_ids - connected
     avg_conf = sum(c.confidence for c in concepts) / len(concepts)
+    coverage = _chapter_coverage(concepts)
 
     warnings: list[str] = []
     if isolated:
@@ -185,9 +205,32 @@ def _compute_quality(concepts: list[Concept], edges: list[Relation]) -> QualityR
     if avg_conf < 0.5:
         warnings.append(f"平均置信度 {avg_conf:.2f} 偏低，建议 review_kg 人工确认")
 
+    # 结构化质量门（输出为告警，供人工 review_kg 审查，不强制 fail——
+    # toc 骨架天然低覆盖/无示例，硬 fail 会误杀合法的骨架图）。
+    # 1) 章节覆盖率 ≥ 85%
+    if coverage < _COVERAGE_GATE:
+        missing = len(concepts) - round(coverage * len(concepts))
+        warnings.append(
+            f"章节覆盖率 {coverage:.0%} < {_COVERAGE_GATE:.0%}"
+            f"（约 {missing} 个概念仍是占位定义，建议 build concept/full 或 review_kg 补全）"
+        )
+    # 2) 每概念 ≥ 1 示例
+    no_example = [c for c in concepts if not c.examples]
+    if no_example:
+        warnings.append(f"{len(no_example)}/{len(concepts)} 个概念缺少示例（建议每概念 ≥1 示例）")
+    # 3) 定义/方法/定理 类别分布合理性（避免全是一种类别）
+    cats = Counter(c.category for c in concepts)
+    dominant = cats.most_common(1)[0]
+    dominant_ratio = dominant[1] / len(concepts)
+    if len(concepts) >= _CATEGORY_SKEW_MIN_N and dominant_ratio > _CATEGORY_SKEW_GATE:
+        warnings.append(
+            f"概念类别分布失衡：{dominant_ratio:.0%} 都是「{dominant[0]}」，"
+            f"定义/方法/定理分布建议更均衡"
+        )
+
     return QualityReport(
         overall="pass_with_warnings" if warnings else "pass",
-        chapter_coverage=1.0,
+        chapter_coverage=round(coverage, 3),
         isolated_nodes=len(isolated),
         cycles=0,
         avg_confidence=avg_conf,
