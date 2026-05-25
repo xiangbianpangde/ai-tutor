@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import hashlib
 import re
-import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -79,26 +78,19 @@ def _resolve_file(source_uri: str) -> tuple[Path, str]:
     return path.resolve(), path.suffix.lstrip(".").lower()
 
 
-def _convert_pdf(pdf: Path, out_dir: Path, mineru_cmd: str | None) -> Path:
-    """调 mineru 把 PDF 转为 markdown，返回 .md 路径。
+def _convert_pdf(
+    pdf: Path, out_dir: Path, mineru_cmd: str | None, *, translate: bool = False
+) -> Path:
+    """PDF → markdown，委托隔离 CLI 管道（pdf2zh 翻译 → mineru 抽取）。
 
-    TODO: 抽到 PdfParser Plugin（PluginRegistry 注册 pdf2zh/MinerU/云端 fallback）
+    translate=True 时先用 pdf2zh 把外文 PDF 翻成中文再抽；默认 False（中文教材）。
+    两个工具均为隔离 CLI（见 pdf_parser），缺失时抛 DEPENDENCY_MISSING + 安装提示。
     """
-    cmd = [mineru_cmd or "mineru", "-p", str(pdf), "-o", str(out_dir), "-b", "pipeline", "-l", "zh"]
-    logger.info("mineru.exec", cmd=cmd)
-    proc = subprocess.run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise TutorError(
-            "PLUGIN_NOT_AVAILABLE",
-            hint=f"mineru 失败 (exit={proc.returncode}): {proc.stderr[-500:]}",
-        )
-    candidates = list(out_dir.rglob(f"{pdf.stem}.md"))
-    if not candidates:
-        raise TutorError(
-            "CORPUS_NOT_FOUND",
-            hint=f"mineru 完成但没找到 {pdf.stem}.md 在 {out_dir}",
-        )
-    return candidates[0]
+    from .pdf_parser import parse_pdf
+
+    return parse_pdf(
+        pdf, out_dir, translate=translate, mineru_cmd=mineru_cmd or "mineru"
+    )
 
 
 # --------------------------------------------------------------------------- #
