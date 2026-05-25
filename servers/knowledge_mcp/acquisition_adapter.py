@@ -143,13 +143,14 @@ def _acquire_file(
 
 
 def _acquire_web(src: AcquireSource, corpus_dir: Path) -> tuple[CorpusSource, Path]:
-    raise TutorError(
-        "DEPENDENCY_MISSING",
-        hint=(
-            "web 源待接入：将在下一切片调用 research_tool.pipeline 的 "
-            "Collect(crawl4ai/firecrawl) + Clean 阶段，写入 corpus_dir"
-        ),
-    )
+    """web 源：委托 research-tool 采集 + 清洗（collect+clean），合并为 corpus markdown。
+
+    延迟导入 research_adapter，使本模块在未安装 research-tool 时仍可导入；真正缺依赖
+    时由 acquire_web 抛 DEPENDENCY_MISSING（含安装提示）。
+    """
+    from .research_adapter import acquire_web
+
+    return acquire_web(src, corpus_dir)
 
 
 def _acquire_video(src: AcquireSource, corpus_dir: Path) -> tuple[CorpusSource, Path]:

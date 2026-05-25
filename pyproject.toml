@@ -39,7 +39,8 @@ dependencies = [
 [project.optional-dependencies]
 # 复用桌面已有的调研引擎：用作 knowledge-mcp 的采集/抽取后端
 # 路径绑定见 [tool.uv.sources] 段（uv 装时生效）
-research = ["research-tool"]
+# [search] 拉搜索后端（ddgs/arxiv/tavily）；网页抓取走 httpx 回退，无需 crawl4ai
+research = ["research-tool[search]"]
 # L3 长期记忆 / 向量索引
 vector = ["chromadb>=0.5", "sentence-transformers>=3.0"]
 # 测试

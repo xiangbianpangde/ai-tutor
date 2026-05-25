@@ -237,22 +237,45 @@ class TestKnowledgeAcquire:
         if shutil.which("mineru") is None:
             pytest.skip("PDF→MD 需外部 mineru CLI + PDF 样本，CI 环境不带")
 
-    def test_acquire_web_video_stub(self, tmp_path, monkeypatch):
+    def test_acquire_web_wired_video_stub(self, tmp_path, monkeypatch):
         """
-        Scenario: web/video 源返回友好提示
+        Scenario: web 源已接 research-tool（mock 采集，不触网）；video 仍为 stub
         Given spec 要求 web/video 源
-        When acquire_subject(sources=[web])
-        Then 抛 DEPENDENCY_MISSING（未接入），hint 指明待实现
+        When acquire_subject(sources=[web]) → 走 research-tool 采集
+        Then web 不再抛 DEPENDENCY_MISSING；video 仍抛 DEPENDENCY_MISSING
         """
         monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'w.db'}")
         monkeypatch.setenv("AI_TUTOR_DATA_ROOT", str(tmp_path / "data"))
+
+        # mock 掉真实采集（research_adapter.acquire_web），避免触网
+        from servers.knowledge_mcp import research_adapter
+        from shared.schemas import CorpusSource
+
+        def _fake_web(src, corpus_dir):  # noqa: ANN001
+            md = corpus_dir / "web.md"
+            md.write_text("# 主题\n## 片段\n正文内容\n", encoding="utf-8")
+            return (
+                CorpusSource(type="web", format="md", original_file=src.uri,
+                             converted_file=str(md), language="zh", parser="research-tool"),
+                md,
+            )
+
+        monkeypatch.setattr(research_adapter, "acquire_web", _fake_web)
+
+        # web：不再抛 DEPENDENCY_MISSING，返回有效 corpus
+        res = call(_unwrap(kserver.acquire_subject)(
+            subject="webx", sources=[{"type": "web", "uri": "向量空间"}],
+            user_id="yhn",
+        ))
+        assert res.corpus_id
+
+        # video：仍是 stub
         with pytest.raises(TutorError) as exc:
             call(_unwrap(kserver.acquire_subject)(
-                subject="x", sources=[{"type": "web", "uri": "http://example.com"}],
+                subject="vidx", sources=[{"type": "video", "uri": "http://b.com/v"}],
                 user_id="yhn",
             ))
         assert exc.value.code == "DEPENDENCY_MISSING"
-        assert exc.value.hint  # 指向后续切片
 
 
 class TestKnowledgeBuildKG:

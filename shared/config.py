@@ -82,3 +82,15 @@ def get_deepseek_config() -> dict[str, str] | None:
     ) or "https://api.deepseek.com"
     model = _getenv_ci("DEEPSEEK_CHAT_MODEL", "DEEPSEEK_MODEL") or "deepseek-chat"
     return {"api_key": api_key, "base_url": base_url, "model": model}
+
+
+def get_tavily_config() -> dict[str, str] | None:
+    """返回 {'api_key'} 或 None（没配 key 时）。
+
+    用于 research-tool 采集阶段的 tavily 搜索后端；没有 key 时调用方应降级到
+    免费的 duckduckgo(web)/arxiv 引擎。
+    """
+    api_key = _getenv_ci("TAVILY_API_KEY", "Tavily_API_KEY")
+    if not api_key:
+        return None
+    return {"api_key": api_key}

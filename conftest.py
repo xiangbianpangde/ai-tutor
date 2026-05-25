@@ -27,13 +27,27 @@ from shared.storage import FileStore, RelationalStore
 
 @pytest.fixture(autouse=True)
 def _isolate_llm_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """测试隔离：禁止 server._llm() 偶然连真实 DeepSeek。
+    """测试隔离：禁止任何 server/_llm() 偶然连真实 DeepSeek，并保证离线确定性。
 
-    pytest 在 ai-tutor/ 下运行时，shared.config.load_env() 会从父目录
-    加载 .env（用户开发用），导致测试意外走付费 API。
+    两道防线：
+    1. 删除环境里已有的 DeepSeek/Tavily key（覆盖大小写变体）。
+    2. **把 shared.config._load_dotenv_file 打成 no-op**——否则处理器里调用的
+       load_env()（如 knowledge server 的 acquire_subject）会在测试**进行中**把
+       真实 .env 的 key 原样写回 os.environ，绕过上面的 delenv，导致 respond 等
+       测试走真实付费 API、非确定性失败（见 343s 实跑事故）。
     """
-    for var in ("DEEPSEEK_API_KEY", "Deepseek_API_KEY", "deepseek_api_key"):
+    for var in (
+        "DEEPSEEK_API_KEY", "Deepseek_API_KEY", "deepseek_api_key",
+        "TAVILY_API_KEY", "Tavily_API_KEY", "tavily_api_key",
+    ):
         monkeypatch.delenv(var, raising=False)
+    # 屏蔽 .env 加载：handler 里的 load_env() 调用变成无操作（不污染 os.environ）。
+    # 先把真实实现存一份（仅首次），供 test_config 等需要真实加载的测试显式恢复。
+    import shared.config as _cfg
+
+    if not hasattr(_cfg, "_REAL_LOAD_DOTENV_FILE"):
+        _cfg._REAL_LOAD_DOTENV_FILE = _cfg._load_dotenv_file
+    monkeypatch.setattr(_cfg, "_load_dotenv_file", lambda _p: None, raising=False)
     try:
         from servers.knowledge_mcp import server as kserver
 

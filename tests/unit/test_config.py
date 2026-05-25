@@ -13,6 +13,15 @@ from pathlib import Path
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _use_real_dotenv_loader(monkeypatch: pytest.MonkeyPatch) -> None:
+    """本模块专测 load_env 的真实加载行为，恢复被根 conftest 屏蔽的 _load_dotenv_file。"""
+    import shared.config as cfg
+
+    real = getattr(cfg, "_REAL_LOAD_DOTENV_FILE", cfg._load_dotenv_file)
+    monkeypatch.setattr(cfg, "_load_dotenv_file", real)
+
+
 def test_load_env_from_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from shared.config import load_env
 

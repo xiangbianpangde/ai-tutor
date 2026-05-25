@@ -7,7 +7,8 @@ AcquireSource = {type: "file"|"web"|"video", uri: str}
 
   - 单源 file: 继续工作（兼容 spine v1）
   - 多源 file: 全部合并到一个 CorpusManifest
-  - web/video: stub raise DEPENDENCY_MISSING + hint 指向后续切片
+  - web: 接 research-tool（采集被 mock，不触网）
+  - video: 仍为 stub，raise DEPENDENCY_MISSING
 """
 from __future__ import annotations
 
@@ -72,18 +73,31 @@ def test_acquire_multiple_file_sources_merges(
     assert manifest.total_chapters == 3
 
 
-def test_acquire_web_source_stub(db: RelationalStore, tmp_filestore: FileStore) -> None:
-    with pytest.raises(TutorError) as exc:
-        acquire(
-            subject="x",
-            version=None,
-            sources=[AcquireSource(type="web", uri="https://example.com")],
-            user_id="yhn",
-            file_store=tmp_filestore,
-            db=db,
+def test_acquire_web_source_via_research(
+    db: RelationalStore, tmp_filestore: FileStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """web 源现接 research-tool（mock 掉采集，不触网）：acquire 应产出一个 web CorpusSource。"""
+    from servers.knowledge_mcp import research_adapter
+    from shared.schemas import CorpusSource
+
+    def _fake(src, corpus_dir):  # noqa: ANN001
+        md = corpus_dir / "web.md"
+        md.write_text("# 主题\n## 片段\n正文内容\n", encoding="utf-8")
+        return (
+            CorpusSource(type="web", format="md", original_file=src.uri,
+                         converted_file=str(md), language="zh", parser="research-tool"),
+            md,
         )
-    assert exc.value.code == "DEPENDENCY_MISSING"
-    assert "research_tool" in (exc.value.hint or "") or "web" in (exc.value.hint or "")
+
+    monkeypatch.setattr(research_adapter, "acquire_web", _fake)
+    manifest, _corpus_id = acquire(
+        subject="x", version=None,
+        sources=[AcquireSource(type="web", uri="向量空间")],
+        user_id="yhn", file_store=tmp_filestore, db=db,
+    )
+    assert len(manifest.sources) == 1
+    assert manifest.sources[0].type == "web"
+    assert manifest.sources[0].parser == "research-tool"
 
 
 def test_acquire_video_source_stub(db: RelationalStore, tmp_filestore: FileStore) -> None:
