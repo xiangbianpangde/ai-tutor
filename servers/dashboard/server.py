@@ -14,12 +14,15 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse
 from starlette.routing import Route
 
+from servers.dashboard.layer_state import LAYER_FUNCS
+from servers.dashboard.state import get_dashboard_state
 from shared.logging_config import get_logger
 from shared.storage import RelationalStore
-from servers.dashboard.state import get_dashboard_state
 
 logger = get_logger("dashboard.server")
-_INDEX = Path(__file__).parent / "templates" / "index.html"
+_TEMPLATES = Path(__file__).parent / "templates"
+_INDEX = _TEMPLATES / "index.html"
+_LAYERS = _TEMPLATES / "layers.html"
 
 
 def _db() -> RelationalStore:
@@ -30,6 +33,10 @@ async def index(_request: Request) -> HTMLResponse:
     return HTMLResponse(_INDEX.read_text(encoding="utf-8"))
 
 
+async def layers_page(_request: Request) -> HTMLResponse:
+    return HTMLResponse(_LAYERS.read_text(encoding="utf-8"))
+
+
 async def api_state(_request: Request) -> JSONResponse:
     try:
         return JSONResponse(get_dashboard_state(_db()))
@@ -38,9 +45,27 @@ async def api_state(_request: Request) -> JSONResponse:
         return JSONResponse({"status": "error", "error": str(exc)}, status_code=200)
 
 
+async def api_layer(request: Request) -> JSONResponse:
+    """GET /api/layer/{layer} —— 单层只读状态。未知层 → 404 风格 JSON。"""
+    layer = request.path_params.get("layer", "")
+    fn = LAYER_FUNCS.get(layer)
+    if fn is None:
+        return JSONResponse(
+            {"error": f"unknown layer {layer!r}", "valid": list(LAYER_FUNCS)},
+            status_code=404,
+        )
+    try:
+        return JSONResponse({"layer": layer, **fn(_db())})
+    except Exception as exc:  # noqa: BLE001 — 面板永不因数据异常而崩
+        logger.warning("dashboard.layer_failed", layer=layer, error=str(exc))
+        return JSONResponse({"layer": layer, "error": str(exc)}, status_code=200)
+
+
 app = Starlette(routes=[
     Route("/", index),
+    Route("/layers", layers_page),
     Route("/api/state", api_state),
+    Route("/api/layer/{layer}", api_layer),
 ])
 
 

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ai-tutor 逐层视图</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#1a2129; --panel2:#222c37; --line:#2c3947;
+    --txt:#e6edf3; --dim:#8b98a5; --accent:#4fd1c5;
+    --green:#48bb78; --yellow:#ecc94b; --red:#f56565; --blue:#63b3ed;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font:14px/1.5 -apple-system,"Segoe UI",system-ui,sans-serif;padding:20px;max-width:1100px;margin:0 auto}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  header h1{font-size:18px;font-weight:600}
+  header h1 .dot{color:var(--accent)}
+  .ctrl{display:flex;gap:10px;align-items:center;color:var(--dim);font-size:12px}
+  .ctrl a,.ctrl button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;text-decoration:none}
+  .ctrl a:hover,.ctrl button:hover{border-color:var(--accent)}
+  nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+  nav button{background:var(--panel2);color:var(--dim);border:1px solid var(--line);border-radius:6px;padding:6px 14px;cursor:pointer;font-size:13px}
+  nav button.active{color:#0f1419;background:var(--accent);border-color:var(--accent);font-weight:600}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+  .panel h2{font-size:13px;color:var(--dim);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .card .lbl{color:var(--dim);font-size:12px;margin-bottom:4px}
+  .card .val{font-size:20px;font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line)}
+  th{color:var(--dim);font-weight:600}
+  td.dim{color:var(--dim)}
+  .bar{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px}
+  .bar .name{width:130px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar .seg{height:14px;border-radius:3px;background:var(--accent);min-width:2px}
+  .bar .n{color:var(--dim);font-size:12px}
+  .heat{display:flex;flex-wrap:wrap;gap:4px}
+  .cell{width:62px;height:42px;border-radius:5px;padding:4px;font-size:10px;color:#0f1419;overflow:hidden;border:1px solid var(--line)}
+  .cell .m{font-weight:700;font-size:12px}
+  .steps{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .step{padding:5px 11px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);font-size:13px;color:var(--dim)}
+  .step.done{color:var(--green);border-color:var(--green)}
+  .step.active{color:#0f1419;background:var(--accent);border-color:var(--accent);font-weight:600}
+  .spark{display:flex;align-items:flex-end;gap:3px;height:48px}
+  .spark .b{width:14px;border-radius:2px 2px 0 0}
+  .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600}
+  .muted{color:var(--dim);font-size:12px;font-style:italic}
+  .mermaid{background:var(--panel2);border-radius:8px;padding:10px;overflow:auto}
+  pre{background:var(--panel2);border-radius:8px;padding:10px;overflow:auto;font-size:12px;color:var(--dim)}
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="dot">●</span> ai-tutor 逐层视图</h1>
+  <div class="ctrl">
+    <span id="updated">—</span>
+    <button onclick="load()">刷新</button>
+    <a href="/">← 总览</a>
+  </div>
+</header>
+<nav id="nav"></nav>
+<div id="root"><div class="muted">加载中…</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+const LAYERS = [
+  ["L1","L1 基础设施"],["L2","L2 短期记忆"],["L3","L3 长期记忆"],["L4","L4 知识工程"],
+  ["L5","L5 学习者建模"],["L6","L6 教学引擎"],["L7","L7 交互层"],["pgfga","PGFGA 增益"],
+];
+const FLOW = {0:["SILENT","#8b98a5"],1:["SHALLOW","#63b3ed"],2:["FLUENT","#48bb78"],3:["DEEP","#4fd1c5"],4:["IMMERSED","#ecc94b"]};
+const STEPS = {
+  jiangjie:["GOAL","REDUCE","COMPLEMENT","RECONSTRUCT","REVIEW","NEXT"],
+  reduction:["INTRO","EXPLAIN","CHECK","PRACTICE","NEXT"],
+  feynman:["PROMPT","EVALUATE","PASS"],
+  socratic:["QUESTION","ANALYZE_ANSWER","REVEAL"],
+  analogy:["ESTABLISH_SOURCE","DRAW_ANALOGY","APPLY_ANALOGY","IDENTIFY_LIMITS","TRANSITION"],
+  pbl:["ASSIGN","PLAN_REVIEW","MILESTONE_CHECK","FINAL_REVIEW"],
+  spaced_repetition:["QUICK_QUIZ","CONCEPT_MAP","TEACH_BACK","DONE"],
+};
+const esc = s => (s==null?"":String(s)).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+let CUR = location.hash.slice(1) || "L1";
+try{ mermaid.initialize({startOnLoad:false, theme:"dark"}); }catch(e){}
+
+// ---- 通用渲染件 ----
+function card(lbl,val){ return `<div class="card"><div class="lbl">${esc(lbl)}</div><div class="val">${esc(val)}</div></div>`; }
+function cards(items){ return `<div class="cards">${items.map(([l,v])=>card(l,v)).join("")}</div>`; }
+function bars(obj){
+  const e = Object.entries(obj||{}); if(!e.length) return '<div class="muted">无数据</div>';
+  const max = Math.max(...e.map(([,v])=>v),1);
+  return e.map(([k,v])=>`<div class="bar"><span class="name">${esc(k)}</span><span class="seg" style="width:${Math.round(v/max*260)}px"></span><span class="n">${v}</span></div>`).join("");
+}
+function table(rows, cols){
+  if(!rows||!rows.length) return '<div class="muted">无数据</div>';
+  const head = cols.map(c=>`<th>${esc(c[1])}</th>`).join("");
+  const body = rows.map(r=>`<tr>${cols.map(c=>`<td>${esc(r[c[0]])}</td>`).join("")}</tr>`).join("");
+  return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+function notPersisted(o){ return o&&o.persisted===false ? `<div class="muted">⊘ ${esc(o.note||"运行时态，未落库")}</div>`:""; }
+function flowSpark(series){
+  if(!series||!series.length) return '<div class="muted">无心流数据</div>';
+  return `<div class="spark">${series.map(v=>{const f=FLOW[v]||["?","#888"];return `<div class="b" title="${f[0]}" style="height:${(v+1)/5*48}px;background:${f[1]}"></div>`;}).join("")}</div>`;
+}
+
+// ---- 各层渲染 ----
+const R = {
+  L1(d){ return `<div class="panel"><h2>存储统计</h2>${cards([["总行数",d.total_rows]])}
+    ${table(Object.entries(d.tables||{}).map(([k,v])=>({t:k,n:v})),[["t","表"],["n","行数"]])}
+    </div><div class="panel"><h2>插件 / 缓存</h2>${notPersisted(d.plugin_health)}<div class="muted">DB: ${esc(d.db_url)}</div></div>`; },
+  L2(d){ return cards([["活跃会话",d.active_count],["中断会话",d.interrupted_count]]) +
+    `<div class="panel"><h2>会话</h2>${table(d.sessions,[["session_id","会话"],["status","状态"],["current_concept_id","当前概念"],["has_checkpoint","断点"],["interrupt_count","打断"]])}</div>`; },
+  L3(d){ return cards([["追踪概念",d.tracked_concepts],["到期复习",d.due_count],["复习总次数",d.total_reviews]]) +
+    `<div class="panel"><h2>复习模式分布</h2>${bars(d.review_mode_distribution)}</div>
+     <div class="panel"><h2>遗忘曲线</h2>${table(d.curves,[["concept_id","概念"],["lambda","λ"],["review_streak","连续"],["due","到期"]])}</div>`; },
+  L4(d){ return cards([["概念数",d.concept_count],["当前 KG",d.active_kg_id||"—"]]) +
+    `<div class="panel"><h2>难度分布</h2>${bars(d.difficulty_distribution)}</div>
+     <div class="panel"><h2>关系类型分布</h2>${bars(d.relation_types)}</div>
+     <div class="panel"><h2>知识图谱拓扑</h2><div class="mermaid" id="mm">${esc(d.mermaid||"")||'<span class="muted">无</span>'}</div></div>
+     <div class="panel"><h2>KG 版本</h2>${table(d.graphs,[["kg_id","KG"],["version","版本"],["node_count","节点"],["edge_count","边"],["quality","质量"]])}</div>`; },
+  L5(d){ const heat = (d.bkt||[]).map(b=>{const m=b.p_mastery,c=m>=0.8?"#48bb78":(m>=0.4?"#ecc94b":"#f56565");return `<div class="cell" style="background:${c}" title="${esc(b.concept_id)}"><div>${esc((b.concept_id||"").split(":").pop())}</div><div class="m">${m}</div></div>`;}).join("");
+    return cards([["BKT 概念数",d.bkt_count],["认知负荷",d.current_cognitive_load??"—"],["画像版本",d.profile_version??"—"]]) +
+     `<div class="panel"><h2>BKT 掌握度热力图</h2><div class="heat">${heat||'<span class="muted">无</span>'}</div></div>
+      <div class="panel"><h2>错误类型分布</h2>${bars(d.error_types)}</div>`; },
+  L6(d){ if(d.status==="idle") return '<div class="panel muted">暂无活跃会话</div>';
+    const seq=STEPS[d.strategy]||[]; const i=seq.indexOf(d.strategy_state);
+    const stepbar = seq.length? `<div class="steps">${seq.map((s,k)=>`<span class="step ${k<i?'done':(k===i?'active':'')}">${esc(s)}</span>`).join("")}</div>`:'<div class="muted">无状态机</div>';
+    return cards([["策略",d.strategy||"—"],["状态",d.strategy_state||"—"],["认知负荷",d.cognitive_load??"—"]]) +
+     `<div class="panel"><h2>策略状态机</h2>${stepbar}</div>
+      <div class="panel"><h2>心流曲线</h2>${flowSpark(d.flow_series)}</div>
+      <div class="panel"><h2>增益回路</h2>${notPersisted(d.gain_loop)}</div>`; },
+  L7(d){ if(d.status==="idle") return '<div class="panel muted">暂无活跃会话</div>';
+    return cards([["对话轮次",d.turn_count]]) +
+     `<div class="panel"><h2>最近交互</h2>${table(d.dialogue,[["concept_id","概念"],["answer","回答"],["correctness","判分"],["flow_level","心流"]])}</div>
+      <div class="panel"><h2>产物</h2>${notPersisted(d.artifacts)}</div>`; },
+  pgfga(d){ if(d.status==="idle") return '<div class="panel muted">暂无活跃会话</div>';
+    const tcolor={rising:"var(--green)",falling:"var(--red)",flat:"var(--dim)",unknown:"var(--dim)"}[d.flow_trend]||"var(--dim)";
+    return `<div class="cards"><div class="card"><div class="lbl">心流趋势</div><div class="val" style="color:${tcolor}">${esc(d.flow_trend)}</div></div>${card("当前心流", (FLOW[d.current_flow_level]||["—"])[0])}</div>
+     <div class="panel"><h2>心流序列</h2>${flowSpark(d.recent_flow)}</div>
+     <div class="panel"><h2>非评判防火墙</h2>${notPersisted(d.firewall)}</div>
+     <div class="panel"><h2>SDT 信号</h2>${notPersisted(d.sdt_signals)}</div>`; },
+};
+
+function renderNav(){
+  document.getElementById("nav").innerHTML = LAYERS.map(([k,label])=>
+    `<button class="${k===CUR?'active':''}" onclick="go('${k}')">${esc(label)}</button>`).join("");
+}
+function go(k){ CUR=k; location.hash=k; renderNav(); load(); }
+
+async function load(){
+  renderNav();
+  const root=document.getElementById("root");
+  try{
+    const r=await fetch(`/api/layer/${CUR}`); const d=await r.json();
+    document.getElementById("updated").textContent=new Date().toLocaleTimeString();
+    if(d.error){ root.innerHTML=`<div class="panel"><span class="pill" style="background:var(--red);color:#fff">错误</span> ${esc(d.error)}</div>`; return; }
+    root.innerHTML=(R[CUR]||(x=>`<pre>${esc(JSON.stringify(x,null,2))}</pre>`))(d);
+    if(CUR==="L4" && d.mermaid){
+      const el=document.getElementById("mm");
+      try{ const {svg}=await mermaid.render("mmsvg", d.mermaid); el.innerHTML=svg; }
+      catch(e){ /* 渲染失败保留源码文本 */ }
+    }
+  }catch(e){ root.innerHTML=`<div class="panel muted">加载失败：${esc(e)}</div>`; }
+}
+renderNav(); load();
+</script>
+</body>
+</html>

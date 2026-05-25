@@ -28,3 +28,25 @@ def test_api_state_idle_when_empty(client):
     r = client.get("/api/state")
     assert r.status_code == 200
     assert r.json()["status"] == "idle"
+
+
+def test_layers_page_serves_html(client):
+    r = client.get("/layers")
+    assert r.status_code == 200
+    assert "逐层视图" in r.text
+    assert "/api/layer/" in r.text  # 前端按层取数端点
+
+
+@pytest.mark.parametrize("layer", ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "pgfga"])
+def test_api_layer_each_returns_json(client, layer):
+    r = client.get(f"/api/layer/{layer}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["layer"] == layer
+    assert "error" not in body
+
+
+def test_api_layer_unknown_404(client):
+    r = client.get("/api/layer/L99")
+    assert r.status_code == 404
+    assert "valid" in r.json()
