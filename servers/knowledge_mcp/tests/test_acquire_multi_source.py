@@ -24,7 +24,6 @@ from shared.errors import TutorError
 from shared.models import User
 from shared.storage import FileStore, RelationalStore
 
-
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 
 
@@ -111,6 +110,34 @@ def test_acquire_video_source_stub(db: RelationalStore, tmp_filestore: FileStore
             db=db,
         )
     assert exc.value.code == "DEPENDENCY_MISSING"
+
+
+def test_acquire_pdf_translate_flag_threads_to_parse_pdf(
+    db: RelationalStore, tmp_filestore: FileStore, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AcquireSource.translate=True 应一路串到 pdf_parser.parse_pdf（mock，不调 mineru）。"""
+    from servers.knowledge_mcp import pdf_parser
+
+    pdf = tmp_path / "paper.pdf"
+    pdf.write_bytes(b"%PDF-1.4 fake")
+    captured: dict = {}
+
+    def _fake_parse(p, out_dir, *, translate=False, **kw):  # noqa: ANN001
+        captured["translate"] = translate
+        md = out_dir / "paper.md"
+        md.write_text("# 标题\n## 节\n正文", encoding="utf-8")
+        return md
+
+    monkeypatch.setattr(pdf_parser, "parse_pdf", _fake_parse)
+
+    manifest, _cid = acquire(
+        subject="外文教材", version=None,
+        sources=[AcquireSource(type="file", uri=str(pdf), translate=True)],
+        user_id="yhn", file_store=tmp_filestore, db=db,
+    )
+    assert captured["translate"] is True
+    assert manifest.sources[0].type == "textbook"
 
 
 def test_acquire_empty_sources_raises(db: RelationalStore, tmp_filestore: FileStore) -> None:

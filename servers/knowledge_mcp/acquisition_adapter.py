@@ -37,6 +37,8 @@ logger = get_logger("knowledge_mcp.acquisition")
 class AcquireSource:
     type: Literal["file", "web", "video"]
     uri: str
+    # 仅 file(pdf) 生效：True 时先 mineru 抽源语言 md 再翻成中文（外文教材）
+    translate: bool = False
 
 
 _WIN_DRIVE_RE = re.compile(r"^[a-zA-Z]:[\\/]")
@@ -81,10 +83,10 @@ def _resolve_file(source_uri: str) -> tuple[Path, str]:
 def _convert_pdf(
     pdf: Path, out_dir: Path, mineru_cmd: str | None, *, translate: bool = False
 ) -> Path:
-    """PDF → markdown，委托隔离 CLI 管道（pdf2zh 翻译 → mineru 抽取）。
+    """PDF → markdown，委托 pdf_parser.parse_pdf。
 
-    translate=True 时先用 pdf2zh 把外文 PDF 翻成中文再抽；默认 False（中文教材）。
-    两个工具均为隔离 CLI（见 pdf_parser），缺失时抛 DEPENDENCY_MISSING + 安装提示。
+    translate=True 时 mineru 抽源语言 md → 树内 md_translator 译成中文；默认 False
+    （中文教材直接 mineru 抽中文）。mineru 为隔离 CLI，翻译为树内（DeepSeek）。
     """
     from .pdf_parser import parse_pdf
 
@@ -103,7 +105,7 @@ def _acquire_file(
 ) -> tuple[CorpusSource, Path]:
     src_path, fmt = _resolve_file(src.uri)
     if fmt == "pdf":
-        md_path = _convert_pdf(src_path, corpus_dir, mineru_cmd)
+        md_path = _convert_pdf(src_path, corpus_dir, mineru_cmd, translate=src.translate)
         return (
             CorpusSource(
                 type="textbook",

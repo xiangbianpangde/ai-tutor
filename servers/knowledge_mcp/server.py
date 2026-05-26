@@ -20,9 +20,9 @@ from shared.errors import TutorError
 from shared.llm_cache import CachedLLMProvider
 from shared.llm_client import LLMProvider, StubLLMProvider
 from shared.logging_config import configure_logging, get_logger
-from shared.providers.deepseek import DeepSeekProvider
-from shared.models import KnowledgeGraphRow, RelationRow
 from shared.models import ConceptRow as ConceptRowORM
+from shared.models import KnowledgeGraphRow, RelationRow
+from shared.providers.deepseek import DeepSeekProvider
 from shared.schemas import (
     AcquireResult,
     ArtifactURI,
@@ -33,18 +33,20 @@ from shared.schemas import (
 )
 from shared.storage import FileStore, RelationalStore
 
-from .acquisition_adapter import AcquireSource, acquire as acquire_impl
+from .acquisition_adapter import AcquireSource
+from .acquisition_adapter import acquire as acquire_impl
 from .kg_builder import DepthMode, get_builder
 from .kg_diff import diff_kg as diff_kg_impl
 from .kg_query import (
     extract_subgraph as extract_subgraph_impl,
+)
+from .kg_query import (
     shortest_learning_path as shortest_learning_path_impl,
 )
 from .kg_review import review_kg as review_kg_impl
 from .kg_rollback import rollback_kg as rollback_kg_impl
 from .kg_update import update_kg as update_kg_impl
 from .resolve_conflicts import find_conflicts as find_conflicts_impl
-
 
 configure_logging()
 logger = get_logger("knowledge_mcp.server")
@@ -122,7 +124,8 @@ async def acquire_subject(
     Args:
         subject: 科目显示名，如 "高等数学"
         sources: 来源列表。每项 `{"type": "file"|"web"|"video", "uri": "..."}`。
-                 当前切片仅 type="file" 完整实现；web/video 抛 DEPENDENCY_MISSING。
+                 file（含 PDF）与 web 已接入；video 仍抛 DEPENDENCY_MISSING。
+                 file(pdf) 可加 `"translate": "true"` → 外文 PDF 先译成中文再建图。
         user_id: 用户标识；默认 "default"
         version: 教材版本字符串
 
@@ -133,7 +136,16 @@ async def acquire_subject(
     db.init_schema()  # spine 期一键建表
     fs = _file_store()
 
-    typed_sources = [AcquireSource(type=s["type"], uri=s["uri"]) for s in sources]  # type: ignore[arg-type]
+    def _truthy(v: object) -> bool:
+        return str(v).strip().lower() in ("1", "true", "yes", "on")
+
+    typed_sources = [
+        AcquireSource(
+            type=s["type"], uri=s["uri"],  # type: ignore[arg-type]
+            translate=_truthy(s.get("translate", False)),
+        )
+        for s in sources
+    ]
 
     manifest, corpus_id = acquire_impl(
         subject=subject,
