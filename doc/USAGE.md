@@ -1,6 +1,7 @@
 # 使用指南 — 从一份资料到学完一科
 
 > 这份指南讲**怎么用**：把一科资料喂进去，到分阶段学完、复习。
+> **更详细的全工具参考见 [USER-MANUAL.md](./USER-MANUAL.md)**（含 PDF 翻译、web 调研、逐层面板、四 server 工具全表）。
 > 接入 MCP host 的配置见 [INTEGRATION.md](./INTEGRATION.md)；生产部署见 [DEPLOYMENT.md](./DEPLOYMENT.md)。
 > 真实教材验证见 [48H-VALIDATION.md](./48H-VALIDATION.md)。
 
@@ -23,9 +24,10 @@
 
 ```powershell
 cd C:\Users\yhn\Desktop\ai-tutor
-uv sync --extra dev                       # 装依赖
+uv sync --extra research --extra dev      # 装依赖（research=web采集，dev=测试；两 extra 一起，否则互相卸载）
 uv run python scripts/init_db.py          # 建库（或首次调用自动建）
-uv run pytest                             # 671 passed + 1 skipped = 健康
+uv run pytest                             # 761 passed + 1 skipped = 健康
+# PDF 源还需： uv tool install mineru
 ```
 
 - **DeepSeek key**：在 `.env` 写 `DEEPSEEK_API_KEY=sk-...`。
@@ -44,10 +46,13 @@ acquire_subject(subject="高等数学下册", sources=[{"type":"file","uri":"<�
 → 返回 corpus_id
 ```
 
-- **支持的源**：`.md` / `.txt`（直读）、`.pdf`（需 `mineru` CLI 做 OCR/转换）。
+- **支持的源**（可混传，合并进一个 corpus）：
+  - `file` `.md`/`.txt`（直读）、`.pdf`（需 `mineru` CLI）；外文 PDF 加 `"translate":"true"` → mineru 抽英文 md 后用 DeepSeek 译成中文。
+  - `web`：`{"type":"web","uri":"主题关键词"}` → research-tool 联网采集网页正文（需能访问 duckduckgo/外站，CN 多半要代理）。
+  - `video`：暂未接入（抛 DEPENDENCY_MISSING）。
 - **PDF 注意**：扫描影像 PDF（无文本层）需要 OCR；本机没装 mineru 时，先把资料整理成
-  **带 `#`/`##`/`###` 标题的 Markdown**（标题层级 = 章/节/概念），用 `.md` 源即可，
-  不依赖任何 OCR。范例结构见 `examples/gaoshu_xiace_structure.md`。
+  **带 `#`/`##`/`###` 标题的 Markdown**（标题层级 = 章/节/概念），用 `.md` 源即可，不依赖任何 OCR。
+- 详见 [USER-MANUAL.md §6.1](./USER-MANUAL.md#61-采集三种源)。
 
 ### 2.2 建图谱 `build_knowledge_graph`
 
@@ -156,8 +161,10 @@ uv run python -m servers.dashboard.server     # 默认读 data/tutor.db，→ ht
 # 指向别的库：先设 DATABASE_URL=sqlite:///绝对路径.db
 ```
 
-浏览器打开 **http://localhost:8501**，4 个区域每 3 秒刷新：当前概念/心流/策略 · 策略步骤条 ·
-掌握度分布 + 最近交互 · 48h Phase 进度。只读、独立进程，不影响教学。
+- **总览页** **http://localhost:8501/**：4 个区域每 3 秒刷新——当前概念/心流/策略 · 策略步骤条 · 掌握度分布 + 最近交互 · 48h Phase 进度。
+- **逐层页** **http://localhost:8501/layers**：8 个 Tab 分层只读——L1 存储 / L2 会话 / L3 遗忘曲线 / L4 KG Mermaid 拓扑 / L5 BKT 热力图 / L6 策略状态机+心流 / L7 对话 / PGFGA 心流趋势。
+
+只读、独立进程，不影响教学。
 
 ---
 
@@ -205,8 +212,8 @@ asyncio.run(run())
 ## 8. 一页速查
 
 ```
-准备:   uv sync --extra dev → init_db → .env(DEEPSEEK_API_KEY)
-建图:   acquire_subject(.md/.pdf) → build_knowledge_graph(depth=full)   # 自动 link subject
+准备:   uv sync --extra research --extra dev → init_db → .env(DEEPSEEK_API_KEY)  # PDF 还需 uv tool install mineru
+建图:   acquire_subject(.md/.pdf/web) → build_knowledge_graph(depth=full)   # 自动 link subject
 摸底:   cold_start_probe → submit_cold_start
 开课:   start_learning_session → [advance(讲解) | respond(问答)] × N → 自动切概念
 进度:   get_learning_progress / resume_learning
