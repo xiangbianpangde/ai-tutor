@@ -6,6 +6,7 @@
 - multi_agent  三角色对话脚本 JSON（llm 给定时 LLM 生成，否则模板）
 - slides       自包含 HTML 幻灯（装 python-pptx 则升级 .pptx）
 - audio        朗读讲稿 .md（装 edge-tts 则合成 .mp3）
+- study_pack   语料按章节拆成 15-30 分钟/份的小文件 + 索引（#2：告别一次读 5 万行）
 
 设计:
 - KG 必须存在（KG_NOT_FOUND 抛 TutorError）
@@ -46,6 +47,7 @@ from .notes import generate_notes
 from .quiz import generate_quiz
 from .simulation import generate_simulation
 from .slides import generate_slides
+from .study_pack import generate_study_pack
 
 logger = get_logger("digest_mcp.orchestrator")
 
@@ -54,6 +56,7 @@ _DEFAULT_FORMATS = ["mindmap", "quiz"]
 _ALL_FORMATS = {
     "mindmap", "notes", "quiz",
     "slides", "audio", "simulation", "multi_agent",
+    "study_pack",
 }
 
 
@@ -109,6 +112,8 @@ def digest(
                 artifacts.append(generate_slides(db=db, kg_id=kg_id, out_dir=out_dir))
             elif fmt == "audio":
                 artifacts.append(generate_audio(db=db, kg_id=kg_id, out_dir=out_dir))
+            elif fmt == "study_pack":
+                artifacts.extend(generate_study_pack(db=db, kg_id=kg_id, out_dir=out_dir))
             else:
                 warnings.append(
                     f"未知 format={fmt!r}（支持: {', '.join(sorted(_ALL_FORMATS))}）"
