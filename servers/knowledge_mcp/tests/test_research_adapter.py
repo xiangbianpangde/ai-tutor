@@ -80,6 +80,37 @@ def test_merge_markdown_skips_thin_and_unreadable(tmp_path: Path) -> None:
     assert "## thin" not in text  # 薄残文不产出标题
 
 
+def test_merge_markdown_dedups_same_source_across_facets(tmp_path: Path) -> None:
+    """FIX-K：deepen 多子面搜回同一篇文章 → 同 URL 或同正文只入料一次。"""
+    same_body = _long("同一篇文章的正文")
+    (tmp_path / "a.md").write_text(
+        "<!-- source: https://blog.example.com/p/1 -->\n<!-- title: 标题甲 -->\n\n" + same_body,
+        encoding="utf-8",
+    )
+    (tmp_path / "b.md").write_text(  # 同 URL：另一个子面又抓了一次
+        "<!-- source: https://blog.example.com/p/1 -->\n<!-- title: 标题甲 -->\n\n" + same_body,
+        encoding="utf-8",
+    )
+    (tmp_path / "c.md").write_text(  # URL 不同但正文相同：镜像/转载站
+        "<!-- source: https://mirror.example.com/p/9 -->\n<!-- title: 标题乙 -->\n\n" + same_body,
+        encoding="utf-8",
+    )
+    (tmp_path / "d.md").write_text(
+        "<!-- source: https://blog.example.com/p/2 -->\n<!-- title: 标题丙 -->\n\n"
+        + _long("不同的正文"),
+        encoding="utf-8",
+    )
+    out = tmp_path / "merged.md"
+    _, kept = research_adapter._merge_markdown(
+        [tmp_path / n for n in ("a.md", "b.md", "c.md", "d.md")], "主题", out
+    )
+    assert kept == 2
+    text = out.read_text(encoding="utf-8")
+    assert text.count("## 标题甲") == 1
+    assert "## 标题乙" not in text
+    assert "## 标题丙" in text
+
+
 # ----------------------------- _build_config ----------------------------- #
 
 def _isolate_env(monkeypatch) -> None:

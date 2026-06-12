@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from datetime import datetime
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 from shared.errors import TutorError
 from shared.logging_config import get_logger
@@ -83,11 +82,94 @@ def demote_headings(text: str, *, min_level: int) -> str:
 
 # 「非章节标题」过滤（#22 根因之一）：纯分隔线 / 来源文件名（01-edu.aliyun.com-087e03）/
 # 含 URL / 超长 / 以句末标点结尾的整句。问号、叹号不算句末——「什么是大模型？」是合法标题。
+# FIX-K（FastAPI web 语料复跑实测）：博客正文里**未围栏**的代码注释顶格出现时，
+# `# 注释` 在 markdown 语法上就是合法标题，围栏跳过救不了——只能按文本特征过滤：
+# 时间戳 / 裸代码文件名 / 装饰性注释（===== xx =====）/ 含 emoji·箭头 /
+# 批注引导（正确：/注意：…）/ 含逗号或以冒号收尾的整句。
 _NOISE_SEPARATOR_RE = re.compile(r"^[=\-_*~·•#>\s]+$")
 _NOISE_SOURCE_FILE_RE = re.compile(r"^\d{1,3}-[\w.-]+-[0-9a-f]{4,12}$", re.IGNORECASE)
-_NOISE_URL_RE = re.compile(r"https?://|www\.")
+_NOISE_URL_RE = re.compile(r"\w+://|www\.")  # 任意 scheme（postgresql:// 也算）
+_NOISE_ASSIGNMENT_RE = re.compile(r"""=\s*["']""")  # 代码赋值行（realm="protected"）
+_NOISE_CODE_CALL_RE = re.compile(r"^[\w.]+\(.*\)\s*[:;]?$")  # 裸函数调用行 asyncio.run(x())
+_NOISE_NO_WORDS_RE = re.compile(r"[\W\d_]+")  # 只有数字/标点（mkdocs 标注 "(1)!"）
+# 英文整句注释（"Do some stuff to create..."）：≥4 词且 ≥2 个功能词
+_EN_STOPWORDS = frozenset(
+    "a an the this that these those is are was were be will would can could to of in on at "
+    "for with and or some any do does did it its you your we our".split()
+)
+_NOISE_TIMESTAMP_RE = re.compile(
+    r"^\d{4}[-/.年]\s?\d{1,2}[-/.月]\s?\d{1,2}日?([ T]\d{1,2}:\d{2}(:\d{2})?)?$"
+)
+_NOISE_BARE_FILENAME_RE = re.compile(  # 含相对路径形态 app/routers/users.py
+    r"^[\w.\-/\\ ]{1,60}\.(py|pyc|ipynb|js|jsx|ts|tsx|mjs|json|jsonl|yaml|yml|toml|ini|cfg|conf"
+    r"|env|md|rst|txt|html|htm|css|scss|sql|db|sh|bash|zsh|bat|ps1|dockerfile|lock|csv|tsv"
+    r"|xml|proto|go|rs|java|kt|c|h|cpp|hpp)\s*(（.{0,16}）|\(.{0,16}\))?$",
+    re.IGNORECASE,
+)
+_NOISE_REPO_PATH_RE = re.compile(r"\bat (main|master)$")  # GitHub 仓库路径页标题尾巴
+_NOISE_DECORATED_RE = re.compile(r"^[=\-*~#]{3,}.*[=\-*~#]{3,}$")
+_NOISE_DOTFILE_RE = re.compile(  # .env.production / .gitignore；放过 ".NET" 这类技术名
+    r"^\.(env|git[\w-]*|docker[\w-]*|npmrc|babelrc|eslintrc[\w.]*|prettierrc[\w.]*"
+    r"|editorconfig|venv)(\.[\w.-]+)?$",
+    re.IGNORECASE,
+)
+# emoji / 箭头 / 装饰符号（✅👇→▶…）。刻意绕开 U+2460-24FF（①⑴ⓐ 枚举编号是合法标题）。
+_NOISE_SYMBOL_RE = re.compile(
+    "[\U0001F000-\U0001FAFF"  # emoji 主区（👇🔥📌…）
+    "←-⇿"           # 箭头（→ ⇒）
+    "⌀-⑟"           # 杂项技术符号（⌚⏰）
+    "─-➿"           # 制表/几何/dingbats（▶ ■ ✅ ❌ ⚠ ➡）
+    "⬀-⯿"           # 杂项符号与箭头（⬇ ⭐）
+    "️]"                 # emoji 变体选择符
+)
+_NOISE_CALLOUT_RE = re.compile(
+    r"^(正确|错误|注意|提示|警告|示例|例如|举例|说明|备注|详细介绍|tips?|note|warning)\s*[:：]",
+    re.IGNORECASE,
+)
 _MAX_TITLE_CHARS = 64
-_SENTENCE_ENDINGS = ("。", "．", "；", ";")
+_SENTENCE_ENDINGS = ("。", "．", "；", ";", "：", ":", "，", ",")
+
+# 来源标题的「站点/栏目」尾巴（`xxx - CSDN博客` / `xxx | 思否`）。仅当尾段命中
+# 站点关键词才剥；命中后允许再剥一段短尾（作者名 / `- FastAPI` 这类链式尾巴）。
+_SITE_SUFFIX_SEP_RE = re.compile(r"\s+[-|–—｜]+\s+")
+_SITE_SUFFIX_KEYWORD_RE = re.compile(
+    r"博客|笔记|技术栈|思否|segmentfault|掘金|知乎|简书|csdn|腾讯云|阿里云|社区|51cto"
+    r"|infoq|开源中国|oschina|文档|教程|专栏|框架|百科|wiki|github|gitee|stack\s*overflow"
+    r"|medium|博客园|bilibili|哔哩哔哩|^fastapi$|^pydantic$",
+    re.IGNORECASE,
+)
+
+
+def strip_site_suffix(title: str) -> str:
+    """剥掉来源页标题的站点尾巴：`路径参数 - FastAPI - FastAPI 框架` → `路径参数`。
+
+    两遍：① 带空格分隔（` - `/` | `），命中站点关键词的尾段剥掉，之后允许再剥一段
+    短作者尾；② 无空格连字符（`…IO堵塞-开发者社区-阿里云`），只剥关键词命中段。
+    未剥离时原样返回（不重组字符串，避免把 `—`/`｜` 误改成 `-`）。
+    """
+    segments = _SITE_SUFFIX_SEP_RE.split(title)
+    stripped_site = False
+    popped = False
+    while len(segments) > 1:
+        tail = segments[-1].strip()
+        if _SITE_SUFFIX_KEYWORD_RE.search(tail):
+            segments.pop()
+            stripped_site = popped = True
+            continue
+        # 站点尾段之前常挂作者名/产品名短尾，只在已剥过站点段后再剥一段
+        if stripped_site and len(tail) <= 16:
+            segments.pop()
+            stripped_site = False
+            popped = True
+            continue
+        break
+    out = " - ".join(s.strip() for s in segments).strip() if popped else title
+
+    # 第二遍：保留分隔符切分，剥尾后按原分隔符精确重建
+    parts = re.split(r"([-—｜|])", out)
+    while len(parts) > 2 and _SITE_SUFFIX_KEYWORD_RE.search(parts[-1].strip()):
+        parts = parts[:-2]
+    return "".join(parts).strip("-—｜| ").strip()
 
 
 def is_noise_title(title: str) -> bool:
@@ -100,6 +182,41 @@ def is_noise_title(title: str) -> bool:
     if _NOISE_SOURCE_FILE_RE.match(t):
         return True
     if _NOISE_URL_RE.search(t):
+        return True
+    if _NOISE_TIMESTAMP_RE.match(t):
+        return True
+    if _NOISE_BARE_FILENAME_RE.match(t):
+        return True
+    if _NOISE_DECORATED_RE.match(t):
+        return True
+    if _NOISE_SYMBOL_RE.search(t):
+        return True
+    if _NOISE_CALLOUT_RE.match(t):
+        return True
+    if "，" in t:  # 概念名不该是带逗号的整句（"创建一个线程池，比如最多4个线程"）
+        return True
+    if "！" in t[:-1] or "!" in t[:-1]:  # 中段感叹（"可以！async def 也支持"）；句尾感叹合法
+        return True
+    if _NOISE_ASSIGNMENT_RE.search(t):
+        return True
+    if _NOISE_NO_WORDS_RE.fullmatch(t):
+        return True
+    if _NOISE_DOTFILE_RE.match(t):
+        return True
+    if _NOISE_CODE_CALL_RE.match(t):
+        return True
+    if _NOISE_REPO_PATH_RE.search(t):
+        return True
+    if t.endswith(("...", "…")):  # 搜索结果页的截断标题（"…两种启动方式差异的 ..."）
+        return True
+    if " --" in t:  # 命令行标题（"启动：uvicorn main:app --reload"）
+        return True
+    words = re.findall(r"[A-Za-z']+", t)
+    if (
+        len(words) >= 4
+        and not re.search(r"[一-鿿]", t)
+        and sum(w.lower() in _EN_STOPWORDS for w in words) >= 2
+    ):  # 英文整句注释（"Do some stuff to create the burgers"）
         return True
     if len(t) > _MAX_TITLE_CHARS:
         return True
@@ -115,6 +232,7 @@ def _iter_headings(markdown: str) -> Iterator[tuple[int, str, int]]:
         if not m:
             continue
         title = m.group("title").strip().strip("*_`~").strip()
+        title = strip_site_suffix(title)
         if is_noise_title(title):
             continue
         yield len(m.group("hashes")), title, line_no
@@ -400,8 +518,44 @@ def _persist_kg(
     quality: QualityReport,
     manifest: dict,
 ) -> None:
-    """把 concepts + edges 落 knowledge_graphs/concepts/relations 三张表。"""
+    """把 concepts + edges 落 knowledge_graphs/concepts/relations 三张表。
+
+    重建语义（FIX-K）：
+    - kg_id 由 corpus+depth 确定（`{corpus}-kg-full-v1`），同一语料重建（修过滤器后
+      重跑）→ 同 id KG 整体替换，不让主键冲突把重建变成死路。
+    - concept.id（`{subject}:{chapter}:{slug}`）**不含 corpus 命名空间**，而 corpus_id
+      含时间戳——同科目重新采集后重建必然撞旧根版本 KG 的概念主键（ACP 实测只能靠
+      手工删库脚本绕过）。撞 id 的同科目旧根版本 KG 在此整体替换并告警；versioned
+      派生 KG 的概念 id 带 `@short` 后缀，不受影响。
+    """
     with db.session() as s:
+        existing = s.get(KnowledgeGraphRow, kg_id)
+        if existing is not None:
+            s.query(ConceptRow).filter_by(kg_id=kg_id).delete()
+            s.query(RelationRow).filter_by(kg_id=kg_id).delete()
+            s.delete(existing)
+            logger.warning("kg.rebuild.replace", kg_id=kg_id)
+
+        new_ids = [c.id for c in concepts]
+        blocking: set[str] = set()
+        for i in range(0, len(new_ids), 500):  # SQLite IN 变量数上限保护
+            rows = (
+                s.query(ConceptRow.kg_id)
+                .filter(ConceptRow.id.in_(new_ids[i : i + 500]), ConceptRow.kg_id != kg_id)
+                .distinct()
+                .all()
+            )
+            blocking.update(r[0] for r in rows)
+        for old_kg_id in sorted(blocking):
+            s.query(ConceptRow).filter_by(kg_id=old_kg_id).delete()
+            s.query(RelationRow).filter_by(kg_id=old_kg_id).delete()
+            old_row = s.get(KnowledgeGraphRow, old_kg_id)
+            if old_row is not None:
+                s.delete(old_row)
+            logger.warning(
+                "kg.rebuild.replace_subject_kg", old_kg_id=old_kg_id, new_kg_id=kg_id
+            )
+        s.flush()
         s.add(
             KnowledgeGraphRow(
                 kg_id=kg_id,

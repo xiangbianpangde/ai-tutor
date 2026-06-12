@@ -61,10 +61,41 @@ def test_study_pack_splits_and_indexes(kg_from_corpus, tmp_path: Path) -> None:
     assert len(arts) == len(parts) + 1  # 索引 + 各分片
 
 
-def test_study_pack_missing_source_raises(tmp_db: RelationalStore, tmp_path: Path) -> None:
-    from shared.models import KnowledgeGraphRow
+def test_study_pack_recurses_below_h2(tmp_db: RelationalStore, tmp_path: Path) -> None:
+    """FIX-K：web 语料结构 H1=科目→H2=主题→H3=来源，单 H2 超长时继续按 H3 下钻。"""
+    from servers.digest_mcp.study_pack import (
+        CHARS_PER_MIN,
+        MAX_MIN_PER_PART,
+        generate_study_pack,
+    )
+    from servers.knowledge_mcp.kg_enrich_adapter import build_kg_toc
 
+    article = "\n".join(
+        "模拟来源文章正文，密度接近真实清洗产物，用来撑大主题的体积。" * 8 for _ in range(15)
+    )
+    md = tmp_path / "web_corpus.md"
+    md.write_text(
+        "# FastAPI 后端开发\n\n"
+        "## 主题一 路由与请求\n\n"
+        + "\n".join(f"### 来源文章 {j}\n\n{article}\n" for j in range(6))
+        + "\n## 主题二 部署\n\n短主题内容。\n",
+        encoding="utf-8",
+    )
+    kg_id, *_ = build_kg_toc(corpus_id="c2", subject_slug="t2", markdown_path=md, db=tmp_db)
+    generate_study_pack(db=tmp_db, kg_id=kg_id, out_dir=tmp_path / "out")
+
+    pack_dir = tmp_path / "out" / f"study_pack-{kg_id}"
+    parts = sorted(p for p in pack_dir.glob("*.md") if p.name != "00_索引.md")
+    assert len(parts) >= 3  # 主题一被按 H3 细分（21600 字 ≈ 3 份），而不是一整块 ⚠️超长
+    max_chars = MAX_MIN_PER_PART * CHARS_PER_MIN
+    for p in parts:
+        assert len(p.read_text(encoding="utf-8")) <= max_chars * 1.5
+    assert "⚠️超长" not in (pack_dir / "00_索引.md").read_text(encoding="utf-8")
+
+
+def test_study_pack_missing_source_raises(tmp_db: RelationalStore, tmp_path: Path) -> None:
     from servers.digest_mcp.study_pack import generate_study_pack
+    from shared.models import KnowledgeGraphRow
 
     with tmp_db.session() as s:
         s.add(

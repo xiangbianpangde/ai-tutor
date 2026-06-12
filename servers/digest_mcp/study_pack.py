@@ -11,8 +11,8 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 from shared.errors import TutorError
 from shared.logging_config import get_logger
@@ -60,13 +60,20 @@ def _chars(lines: list[str]) -> int:
     return sum(len(l) for l in lines)
 
 
-def _split_chapter(title: str, lines: list[str], max_chars: int) -> list[tuple[str, list[str]]]:
-    """超长章按 H2 切块，相邻小块回填合并到 max_chars 以内。"""
+def _split_chapter(
+    title: str, lines: list[str], max_chars: int, level: int = 2
+) -> list[tuple[str, list[str]]]:
+    """超长章按下一级标题递归切块，相邻小块回填合并到 max_chars 以内。
+
+    FIX-K 补充：web 语料结构是 `H1=科目 → H2=主题 → H3=来源文章`，只切到 H2
+    会得到几个 ⚠️超长大块（FastAPI 复跑实测 1.4MB → 3 块）——单块仍超长时
+    继续往 H3…H6 下钻，直到尺寸达标或没有更深标题。
+    """
     head: list[str] = []
     chunks: list[tuple[str, list[str]]] = []
     cur: tuple[str, list[str]] | None = None
-    for line, level, t in _iter_lines("\n".join(lines)):
-        if level == 2:
+    for line, lv, t in _iter_lines("\n".join(lines)):
+        if lv == level:
             if cur is not None:
                 chunks.append(cur)
             cur = (f"{title}·{t}", [line])
@@ -77,13 +84,23 @@ def _split_chapter(title: str, lines: list[str], max_chars: int) -> list[tuple[s
     if cur is not None:
         chunks.append(cur)
 
-    if not chunks:  # 没有 H2 可切：整章一份（超长也只能如此，索引会标出来）
+    if not chunks:  # 本级没有标题可切：往更深一级试；到底仍超长就整章一份（索引会标出）
+        if level < 6:
+            return _split_chapter(title, lines, max_chars, level + 1)
         return [(title, lines)]
-    # 章头（H1 行 + 第一个 H2 之前的内容）并入第一块
+    # 章头（本级标题行 + 第一个子标题之前的内容）并入第一块
     chunks[0] = (chunks[0][0], head + chunks[0][1])
 
-    merged: list[tuple[str, list[str]]] = []
+    # 单块仍超长 → 递归下一级
+    expanded: list[tuple[str, list[str]]] = []
     for t, ls in chunks:
+        if _chars(ls) > max_chars and level < 6:
+            expanded.extend(_split_chapter(t, ls, max_chars, level + 1))
+        else:
+            expanded.append((t, ls))
+
+    merged: list[tuple[str, list[str]]] = []
+    for t, ls in expanded:
         if merged and _chars(merged[-1][1]) + _chars(ls) <= max_chars:
             merged[-1] = (merged[-1][0], merged[-1][1] + ls)
         else:

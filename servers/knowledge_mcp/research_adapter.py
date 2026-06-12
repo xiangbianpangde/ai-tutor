@@ -19,6 +19,7 @@ research-tool 是本地路径依赖（pyproject [project.optional-dependencies] 
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import re
 from pathlib import Path
 from typing import Any
@@ -87,11 +88,15 @@ def _merge_markdown(files: list[Path], topic: str, out_path: Path) -> tuple[Path
     `<!-- title: ... -->`，缺则退回文件名——文件名当标题曾让 KG 长出
     「01-edu.aliyun.com-087e03」这类概念，见 #22）。来源正文剥掉元数据注释、
     标题整体降到 ≥3 级；清洗后几乎无残文（<200 字符）的来源跳过。
+
+    FIX-K：deepen 的多个子面经常搜回同一篇文章（FastAPI 复跑实测 49 组重名概念），
+    按 (来源URL, 正文哈希) 去重——同 URL 或同正文只入料一次。
     """
     from .kg_enrich_adapter import demote_headings
 
     parts = [f"# {topic}\n"]
     kept = 0
+    seen: set[str] = set()
     for f in sorted(files):
         try:
             text = f.read_text(encoding="utf-8").strip()
@@ -101,6 +106,11 @@ def _merge_markdown(files: list[Path], topic: str, out_path: Path) -> tuple[Path
         if len(body) < _MIN_BODY_CHARS:
             logger.warning("research.merge.skip_thin", file=f.name, chars=len(body))
             continue
+        keys = [k for k in (meta.get("source"), hashlib.sha1(body.encode()).hexdigest()) if k]
+        if any(k in seen for k in keys):
+            logger.info("research.merge.skip_dup", file=f.name, source=meta.get("source", "?"))
+            continue
+        seen.update(keys)
         title = (meta.get("title") or f.stem.replace("_", " ")).strip() or "片段"
         title = title[:_MAX_SOURCE_TITLE_CHARS]
         body = demote_headings(body, min_level=3)

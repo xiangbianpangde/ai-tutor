@@ -10,7 +10,6 @@ from servers.knowledge_mcp.kg_enrich_adapter import build_kg_toc
 from shared.models import ConceptRow, KnowledgeGraphRow, RelationRow, User
 from shared.storage import FileStore, RelationalStore
 
-
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 
 
@@ -83,8 +82,9 @@ def test_build_kg_toc_full_flow(setup_user: RelationalStore, tmp_filestore: File
 
 def test_kg_concept_ids_match_regex(setup_user: RelationalStore, tmp_filestore: FileStore) -> None:
     """生成的所有 Concept.id 必须符合 spec 的 regex。"""
-    from shared.schemas import CONCEPT_ID_PATTERN
     import re
+
+    from shared.schemas import CONCEPT_ID_PATTERN
 
     manifest, corpus_id = acquire(
         subject="高数",
@@ -159,3 +159,128 @@ def test_demote_headings_fence_aware() -> None:
     assert lines[0] == "## 标题"
     assert lines[2] == "# 代码注释"  # 代码块内不动
     assert lines[4] == "### 子标题"
+
+
+# ------------------- FIX-K：web 语料噪声形态（FastAPI 复跑回归） ------------------- #
+# 博客正文里未围栏的代码注释顶格出现时，`# 注释` 在 markdown 语法上就是标题，
+# 围栏跳过救不了。FastAPI 复跑实测 30 抽样噪声 ≈60%，按文本特征补过滤。
+
+
+def test_build_toc_skips_web_corpus_noise_titles(tmp_path: Path) -> None:
+    """时间戳/裸文件名/装饰注释/emoji·箭头/批注引导/含逗号整句/尾冒号 不再成为概念。"""
+    from servers.knowledge_mcp.kg_enrich_adapter import _build_toc
+
+    md = tmp_path / "web_noisy.md"
+    md.write_text(
+        "# FastAPI 后端开发\n"
+        "## 依赖注入\n"
+        "# 2025-04-24 14:25:07\n"
+        "# main.py\n"
+        "# deps.py（追加）\n"
+        "# ===== 商品路由 =====\n"
+        "# ✅ 保留时区信息\n"
+        "# Code below omitted 👇\n"
+        "# require_admin → get_current_user\n"
+        "# 正确：用异步HTTP客户端\n"
+        "# 创建一个线程池，比如最多4个线程\n"
+        "# FastAPI 自动解析整条依赖链：\n"
+        '# 固定 realm="protected"\n'
+        '# DATABASE_URL = "postgresql://user:password@postgresserver/db"\n'
+        "# (1)!\n"
+        "# .env.production\n"
+        "# app/routers/users.py\n"
+        "# FastAPI_Study/FastAPI框架学习/03-请求与响应 at main\n"
+        "# asyncio.run(demo_async_patterns())\n"
+        "# 启动：uvicorn main:app --reload\n"
+        "# 关于FastAPI生产环境部署是否仍需Gunicorn及两种启动方式差异的 ...\n"
+        "# 可以！async def 和普通 def 都支持\n"
+        "# Do some sequential stuff to create the burgers\n"
+        "# this will record details of a successful validation to logfire\n"
+        "## ① 编号小节保留\n"
+        "## What is Dependency Injection\n"
+        "## 第三层：服务层\n",
+        encoding="utf-8",
+    )
+    concepts, _edges = _build_toc(subject_slug="t", markdown_path=md)
+    names = [c.names[0] for c in concepts]
+    assert names == [
+        "FastAPI 后端开发",
+        "依赖注入",
+        "① 编号小节保留",
+        "What is Dependency Injection",
+        "第三层：服务层",
+    ]
+
+
+def test_strip_site_suffix() -> None:
+    """来源页标题剥站点尾巴（命中站点关键词才剥，普通标题不受影响）。"""
+    from servers.knowledge_mcp.kg_enrich_adapter import strip_site_suffix
+
+    assert strip_site_suffix("路径参数 - FastAPI - FastAPI 框架") == "路径参数"
+    assert (
+        strip_site_suffix("【框架篇二】FastAPI路由与请求处理 - 技术栈")
+        == "【框架篇二】FastAPI路由与请求处理"
+    )
+    assert strip_site_suffix("FastAPI生产部署指南 - 一名程序媛呀 - 博客园") == "FastAPI生产部署指南"
+    assert (
+        strip_site_suffix("FastAPI依赖注入系统及调试技巧 - SegmentFault 思否")
+        == "FastAPI依赖注入系统及调试技巧"
+    )
+    assert strip_site_suffix("12、Fastapi 请求与响应 - JoPa学习笔记") == "12、Fastapi 请求与响应"
+    assert strip_site_suffix("依赖项 - FastAPI") == "依赖项"  # 官方文档尾巴
+    assert (
+        strip_site_suffix("详解FastAPI如何利用异步编程模型避免IO堵塞-开发者社区-阿里云")
+        == "详解FastAPI如何利用异步编程模型避免IO堵塞"
+    )  # 无空格连字符尾巴
+    assert strip_site_suffix("依赖注入 - 高级用法") == "依赖注入 - 高级用法"  # 非站点尾巴不剥
+    assert strip_site_suffix("FastAPI——快速入门") == "FastAPI——快速入门"  # 未剥离不重组分隔符
+    assert strip_site_suffix("JWT密钥和算法") == "JWT密钥和算法"
+
+
+def test_rebuild_same_corpus_replaces_kg(
+    setup_user: RelationalStore, tmp_filestore: FileStore
+) -> None:
+    """同一语料重建：同 kg_id 整体替换，不再主键冲突（修过滤器后重跑是常规操作）。"""
+    manifest, corpus_id = acquire(
+        subject="重建测试",
+        version="v1",
+        sources=[AcquireSource(type="file", uri=str(FIXTURE))],
+        user_id="yhn",
+        file_store=tmp_filestore,
+        db=setup_user,
+    )
+    md_path = Path(manifest.file_paths["markdown"])
+    kg_id_1, concepts_1, *_ = build_kg_toc(
+        corpus_id=corpus_id, subject_slug="rebuild-t", markdown_path=md_path, db=setup_user
+    )
+    kg_id_2, concepts_2, *_ = build_kg_toc(
+        corpus_id=corpus_id, subject_slug="rebuild-t", markdown_path=md_path, db=setup_user
+    )
+    assert kg_id_2 == kg_id_1
+    with setup_user.session() as s:
+        assert s.query(KnowledgeGraphRow).filter_by(kg_id=kg_id_1).count() == 1
+        assert s.query(ConceptRow).filter_by(kg_id=kg_id_1).count() == len(concepts_2)
+        assert s.query(RelationRow).filter_by(kg_id=kg_id_1).count() > 0
+
+
+def test_rebuild_subject_with_new_corpus_replaces_old_root_kg(
+    setup_user: RelationalStore, tmp_path: Path
+) -> None:
+    """concept.id 不含 corpus 命名空间、corpus_id 含时间戳：同科目重新采集后重建
+    曾必然撞旧 KG 概念主键（ACP 只能手工删库绕过）→ 撞 id 的旧根版本 KG 整体替换。"""
+    from servers.knowledge_mcp.kg_enrich_adapter import build_kg_toc
+
+    md = tmp_path / "m.md"
+    md.write_text("# 章节甲\n## 小节乙\n", encoding="utf-8")
+    kg_id_1, *_ = build_kg_toc(
+        corpus_id="same-subject-aaa111", subject_slug="resub", markdown_path=md, db=setup_user
+    )
+    md.write_text("# 章节甲\n## 小节乙\n## 小节丙\n", encoding="utf-8")
+    kg_id_2, concepts_2, *_ = build_kg_toc(
+        corpus_id="same-subject-bbb222", subject_slug="resub", markdown_path=md, db=setup_user
+    )
+    assert kg_id_2 != kg_id_1
+    with setup_user.session() as s:
+        assert s.get(KnowledgeGraphRow, kg_id_1) is None  # 旧根版本被替换
+        assert s.query(ConceptRow).filter_by(kg_id=kg_id_1).count() == 0
+        assert s.query(ConceptRow).filter_by(kg_id=kg_id_2).count() == len(concepts_2)
