@@ -104,3 +104,58 @@ def test_kg_concept_ids_match_regex(setup_user: RelationalStore, tmp_filestore: 
     pattern = re.compile(CONCEPT_ID_PATTERN)
     bad = [c.id for c in concepts if not pattern.match(c.id)]
     assert not bad, f"non-conformant ids: {bad}"
+
+
+# ----------------------------- FIX-A：标题治理（#22 回归） ----------------------------- #
+
+
+def test_build_toc_skips_code_fences_and_noise_titles(tmp_path: Path) -> None:
+    """代码块注释 / 来源文件名 / 分隔线 / URL / 整句 不再成为概念；问句式标题保留。"""
+    from servers.knowledge_mcp.kg_enrich_adapter import _build_toc
+
+    md = tmp_path / "noisy.md"
+    md.write_text(
+        "# 真实章节\n"
+        "## 真实小节\n"
+        "```python\n"
+        "# ============================================================\n"
+        "# 代码注释不是标题\n"
+        "print('x')\n"
+        "```\n"
+        "## 01-edu.aliyun.com-087e03\n"
+        "## ============\n"
+        "## https://example.com/page\n"
+        "## 新加坡和北京地域的API Key不同，要分开获取再分别配置环境变量；\n"
+        "## 什么是大模型？\n"
+        "## 另一个真实小节\n",
+        encoding="utf-8",
+    )
+    concepts, _edges = _build_toc(subject_slug="t", markdown_path=md)
+    names = [c.names[0] for c in concepts]
+    assert names == ["真实章节", "真实小节", "什么是大模型？", "另一个真实小节"]
+
+
+def test_quality_warns_on_duplicate_names(tmp_path: Path) -> None:
+    """重复概念名只告警不静默去重（跨章同名小节合法，归并交给 merge_concepts）。"""
+    from servers.knowledge_mcp.kg_enrich_adapter import _build_toc, _compute_quality
+
+    md = tmp_path / "dup.md"
+    md.write_text(
+        "# 第一章\n## QwenTTS 服务配置\n# 第二章\n## QwenTTS 服务配置\n",
+        encoding="utf-8",
+    )
+    concepts, edges = _build_toc(subject_slug="t", markdown_path=md)
+    assert len(concepts) == 4  # 不去重
+    q = _compute_quality(concepts, edges)
+    assert any("重复概念名" in w for w in q.warnings)
+
+
+def test_demote_headings_fence_aware() -> None:
+    from servers.knowledge_mcp.kg_enrich_adapter import demote_headings
+
+    text = "# 标题\n```\n# 代码注释\n```\n## 子标题"
+    out = demote_headings(text, min_level=2)
+    lines = out.splitlines()
+    assert lines[0] == "## 标题"
+    assert lines[2] == "# 代码注释"  # 代码块内不动
+    assert lines[4] == "### 子标题"

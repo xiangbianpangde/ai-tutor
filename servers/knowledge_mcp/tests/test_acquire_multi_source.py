@@ -52,7 +52,11 @@ def test_acquire_single_file_source(db: RelationalStore, tmp_filestore: FileStor
 def test_acquire_multiple_file_sources_merges(
     db: RelationalStore, tmp_filestore: FileStore, tmp_path: Path
 ) -> None:
-    """两个本地 md：每个产生一个 CorpusSource，合并到同一 manifest。"""
+    """两个本地 md：合并成 00_corpus.md，KG 消费全部来源（修复「只吃第一个源」）。
+
+    合并结构：`# subject` 伞 + 各源标题降级到 ≥2 级，所以章节数 = 1（subject），
+    小节数 = 两个 md 原 H1 之和 = 2 + 1 = 3。
+    """
     second = tmp_path / "second.md"
     second.write_text("# 章节 A\n## 节 A.1\n", encoding="utf-8")
 
@@ -68,8 +72,15 @@ def test_acquire_multiple_file_sources_merges(
         db=db,
     )
     assert len(manifest.sources) == 2
-    # 章节数 = 两个 md 的 # 总和 = 2 + 1
-    assert manifest.total_chapters == 3
+
+    merged = Path(manifest.file_paths["markdown"])
+    assert merged.name == "00_corpus.md"
+    text = merged.read_text(encoding="utf-8")
+    # 两个来源的内容都进了 KG 消费的主文件
+    assert "极限与连续" in text  # 来自 FIXTURE
+    assert "章节 A" in text     # 来自 second.md
+    assert manifest.total_chapters == 1   # subject 伞
+    assert manifest.total_sections == 3   # 原 2 + 1 个 H1 → H2
 
 
 def test_acquire_web_source_via_research(

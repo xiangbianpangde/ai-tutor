@@ -126,6 +126,7 @@ async def acquire_subject(
         sources: 来源列表。每项 `{"type": "file"|"web"|"video", "uri": "..."}`。
                  file（含 PDF）与 web 已接入；video 仍抛 DEPENDENCY_MISSING。
                  file(pdf) 可加 `"translate": "true"` → 外文 PDF 先译成中文再建图。
+                 web 可加 `"deepen": "true"` → LLM 拆 3-5 个子面分别采集后归并（覆盖更广）。
         user_id: 用户标识；默认 "default"
         version: 教材版本字符串
 
@@ -143,6 +144,7 @@ async def acquire_subject(
         AcquireSource(
             type=s["type"], uri=s["uri"],  # type: ignore[arg-type]
             translate=_truthy(s.get("translate", False)),
+            deepen=_truthy(s.get("deepen", False)),
         )
         for s in sources
     ]

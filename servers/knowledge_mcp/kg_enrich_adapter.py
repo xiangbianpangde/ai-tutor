@@ -29,17 +29,95 @@ logger = get_logger("knowledge_mcp.kg_enrich")
 
 
 _HEADING_RE = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<title>.+?)\s*$")
+_FENCE_RE = re.compile(r"^\s{0,3}(?P<marker>```|~~~)")
 
 
 from shared.slug import slugify as _slug  # noqa: E402  function alias
 
 
-def _iter_headings(markdown: str) -> Iterator[tuple[int, str, int]]:
-    """逐行扫 markdown，yield (level, title, line_no)。"""
-    for line_no, line in enumerate(markdown.splitlines(), start=1):
-        m = _HEADING_RE.match(line)
+def iter_markdown_lines(text: str) -> Iterator[tuple[int, str, bool]]:
+    """逐行扫 markdown，yield (line_no, line, in_code)。
+
+    跟踪 ```/~~~ 围栏开闭（围栏标记行本身也算 in_code）。采集语料含大量示例代码，
+    代码里的 `# 注释` 不是章节标题——ACP 实测它们曾批量变成 KG 概念（#22）。
+    """
+    fence: str | None = None
+    for line_no, line in enumerate(text.splitlines(), start=1):
+        m = _FENCE_RE.match(line)
         if m:
-            yield len(m.group("hashes")), m.group("title").strip(), line_no
+            marker = m.group("marker")
+            if fence is None:
+                fence = marker
+            elif marker == fence:
+                fence = None
+            yield line_no, line, True
+            continue
+        yield line_no, line, fence is not None
+
+
+def demote_headings(text: str, *, min_level: int) -> str:
+    """把正文标题整体降级，使最小标题层级 ≥ min_level（fence 感知，封顶 6 级，只降不升）。
+
+    合并语料会给每个来源加上层标题（`# 主题` / `## 来源`），来源正文里的 H1/H2
+    若不降级会跳出所属层级，被 KG 当成顶层章节。
+    """
+    levels = [
+        len(m.group("hashes"))
+        for _no, line, in_code in iter_markdown_lines(text)
+        if not in_code and (m := _HEADING_RE.match(line))
+    ]
+    shift = min_level - min(levels) if levels else 0
+    if shift <= 0:
+        return text
+
+    out: list[str] = []
+    for _no, line, in_code in iter_markdown_lines(text):
+        m = None if in_code else _HEADING_RE.match(line)
+        if m:
+            level = min(len(m.group("hashes")) + shift, 6)
+            out.append("#" * level + " " + m.group("title"))
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
+# 「非章节标题」过滤（#22 根因之一）：纯分隔线 / 来源文件名（01-edu.aliyun.com-087e03）/
+# 含 URL / 超长 / 以句末标点结尾的整句。问号、叹号不算句末——「什么是大模型？」是合法标题。
+_NOISE_SEPARATOR_RE = re.compile(r"^[=\-_*~·•#>\s]+$")
+_NOISE_SOURCE_FILE_RE = re.compile(r"^\d{1,3}-[\w.-]+-[0-9a-f]{4,12}$", re.IGNORECASE)
+_NOISE_URL_RE = re.compile(r"https?://|www\.")
+_MAX_TITLE_CHARS = 64
+_SENTENCE_ENDINGS = ("。", "．", "；", ";")
+
+
+def is_noise_title(title: str) -> bool:
+    """该标题是否不应成为 KG 概念。"""
+    t = title.strip().strip("*_`~").strip()
+    if not t:
+        return True
+    if _NOISE_SEPARATOR_RE.match(t):
+        return True
+    if _NOISE_SOURCE_FILE_RE.match(t):
+        return True
+    if _NOISE_URL_RE.search(t):
+        return True
+    if len(t) > _MAX_TITLE_CHARS:
+        return True
+    return t.endswith(_SENTENCE_ENDINGS)
+
+
+def _iter_headings(markdown: str) -> Iterator[tuple[int, str, int]]:
+    """逐行扫 markdown，yield (level, title, line_no)。跳过代码围栏内的行与噪声标题。"""
+    for line_no, line, in_code in iter_markdown_lines(markdown):
+        if in_code:
+            continue
+        m = _HEADING_RE.match(line)
+        if not m:
+            continue
+        title = m.group("title").strip().strip("*_`~").strip()
+        if is_noise_title(title):
+            continue
+        yield len(m.group("hashes")), title, line_no
 
 
 def _bloom(level: int) -> str:
@@ -226,6 +304,16 @@ def _compute_quality(concepts: list[Concept], edges: list[Relation]) -> QualityR
         warnings.append(
             f"概念类别分布失衡：{dominant_ratio:.0%} 都是「{dominant[0]}」，"
             f"定义/方法/定理分布建议更均衡"
+        )
+    # 4) 重复概念名 —— 多源近重复语料未归并的典型症状。跨章同名小节（习题/小结）
+    #    是合法的，所以只告警不静默去重；去重交给人工 update_kg merge_concepts。
+    name_counts = Counter(c.names[0].strip() for c in concepts)
+    dup_names = [n for n, cnt in name_counts.items() if cnt > 1]
+    if dup_names:
+        sample = "、".join(dup_names[:3])
+        warnings.append(
+            f"{len(dup_names)} 组重复概念名（如：{sample}）——若来自多源重复语料，"
+            f"建议先整理语料或用 update_kg merge_concepts 归并"
         )
 
     return QualityReport(

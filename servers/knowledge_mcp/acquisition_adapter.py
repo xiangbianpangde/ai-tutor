@@ -39,6 +39,8 @@ class AcquireSource:
     uri: str
     # 仅 file(pdf) 生效：True 时先 mineru 抽源语言 md 再翻成中文（外文教材）
     translate: bool = False
+    # 仅 web 生效：True 时 LLM 把主题拆 3-5 个互补子面分别采集后归并（#9 覆盖不足）
+    deepen: bool = False
 
 
 _WIN_DRIVE_RE = re.compile(r"^[a-zA-Z]:[\\/]")
@@ -165,6 +167,50 @@ _DISPATCH = {
 
 
 # --------------------------------------------------------------------------- #
+# 多源合并 —— KG 消费的是单一 markdown，必须把所有来源并进去
+# --------------------------------------------------------------------------- #
+
+
+def _source_label(cs: CorpusSource) -> str:
+    """来源的展示标签：web 源是调研主题，file 源是文件名。"""
+    if cs.type == "web":
+        return cs.original_file
+    return Path(cs.original_file).stem
+
+
+def _merge_sources_markdown(
+    *, subject: str, entries: list[tuple[str, Path]], out_path: Path
+) -> Path:
+    """多源合并为单一 corpus markdown：`# subject` 伞 + 各源正文降级到 ≥2 级。
+
+    修复「KG 只吃第一个源」：build_knowledge_graph 只读 file_paths["markdown"]，
+    旧实现把它指到 md_paths[0]，其余来源被静默丢弃（用户被迫手工合并，见 #8/#14）。
+    没有任何标题的来源（纯文本）补一个 `## label` 锚点，保证内容有归属层级。
+    """
+    from .kg_enrich_adapter import _HEADING_RE, demote_headings, iter_markdown_lines
+
+    parts = [f"# {subject}\n"]
+    for label, md_path in entries:
+        try:
+            body = md_path.read_text(encoding="utf-8").strip()
+        except OSError:
+            logger.warning("acquire.merge.unreadable", file=str(md_path))
+            continue
+        if not body:
+            continue
+        has_heading = any(
+            not in_code and _HEADING_RE.match(line)
+            for _no, line, in_code in iter_markdown_lines(body)
+        )
+        if has_heading:
+            parts.append("\n" + demote_headings(body, min_level=2) + "\n")
+        else:
+            parts.append(f"\n## {label}\n\n{body}\n")
+    out_path.write_text("\n".join(parts), encoding="utf-8")
+    return out_path
+
+
+# --------------------------------------------------------------------------- #
 # 入口
 # --------------------------------------------------------------------------- #
 
@@ -211,17 +257,23 @@ def acquire(
         corpus_sources.append(corpus_source)
         md_paths.append(md_path)
 
-    # 统计：合并所有 md 文件的 # / ##
-    total_chapters = 0
-    total_sections = 0
-    for md_path in md_paths:
-        text = md_path.read_text(encoding="utf-8")
-        total_chapters += sum(1 for line in text.splitlines() if line.startswith("# "))
-        total_sections += sum(1 for line in text.splitlines() if line.startswith("## "))
+    # 多源 → 合并为单一 corpus markdown；KG（build_knowledge_graph）只消费
+    # file_paths["markdown"]，不合并的话除第一个源外全部被丢弃。
+    primary_md = md_paths[0]
+    if len(md_paths) > 1:
+        entries = [(_source_label(cs), p) for cs, p in zip(corpus_sources, md_paths)]
+        primary_md = _merge_sources_markdown(
+            subject=subject, entries=entries, out_path=corpus_dir / "00_corpus.md"
+        )
 
-    # file_paths：多源时合并为 dict[label, path]
+    # 统计：基于 KG 实际消费的 markdown 的 # / ##
+    text = primary_md.read_text(encoding="utf-8")
+    total_chapters = sum(1 for line in text.splitlines() if line.startswith("# "))
+    total_sections = sum(1 for line in text.splitlines() if line.startswith("## "))
+
+    # file_paths：保留每个原始来源 + "markdown" 指向 KG 消费的主文件
     file_paths = {f"markdown_{i}": str(p) for i, p in enumerate(md_paths)}
-    file_paths["markdown"] = str(md_paths[0])  # 兼容单源调用方
+    file_paths["markdown"] = str(primary_md)
 
     manifest = CorpusManifest(
         corpus_id=corpus_id,
