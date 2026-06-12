@@ -62,11 +62,17 @@ from .pace_controller import PaceController
 from .strategy_selector import select_strategy
 from .teaching_actions import (
     COUNTER_EXAMPLE_ERROR_TYPES,
+    make_break_suggestion,
     make_pace_feedback,
     make_show_counter_example,
 )
 
 _MAX_HISTORY = 20
+
+# #10 连续学习时长 → 休息建议：连续学习超过 BREAK_AFTER_MIN 分钟主动建议休息；
+# 两次作答间隔超过 _STREAK_GAP_MIN 分钟视为已休息，连续段起点重置。
+BREAK_AFTER_MIN = 50.0
+_STREAK_GAP_MIN = 15.0
 
 logger = get_logger("tutoring_mcp.engine")
 
@@ -78,17 +84,22 @@ def select_system_action(
     new_load: float,
     error_analysis: ErrorAnalysis | None,
     concept: Concept,
+    need_break: bool = False,
+    streak_min: float = 0.0,
 ) -> TeachingAction | None:
     """respond 后由系统主动插入的动作（按优先级，先到先决）：
 
     1. 回路断裂修复 break_suggestion —— 关系/安全感最高优先
-    2. pace_feedback —— 认知负荷「上升沿」跨过过载阈值时主动告知放慢
-    3. show_counter_example —— 概念混淆/过度泛化 且 概念带反例
+    2. 连续学习时长休息建议 —— 墙钟触发（#10），不依赖答错任何题
+    3. pace_feedback —— 认知负荷「上升沿」跨过过载阈值时主动告知放慢
+    4. show_counter_example —— 概念混淆/过度泛化 且 概念带反例
 
     都不满足 → None（保持原有"无后续动作"行为）。纯函数，便于单测全分支。
     """
     if brk is not None:
         return repair(break_type=brk.type)
+    if need_break:
+        return make_break_suggestion(streak_min=streak_min)
     if PaceController.crossed_into_overload(prev_load, new_load):
         return make_pace_feedback(direction="slow_down", reason="cognitive_overload_onset")
     if (
@@ -401,6 +412,8 @@ class TeachingEngine:
 
         ctx.focus.primary_concept = concept.id
         ctx.focus.last_action_type = action.type
+        # 判分要看到题目本身（#18/#20）：respond 把它传给 LLMScorer
+        ctx.focus.last_action_content = (action.content or "")[:600]
         self.sessions.save(ctx)
         return action
 
@@ -460,8 +473,12 @@ class TeachingEngine:
             raise TutorError("DEPENDENCY_MISSING", hint="current_concept_id 未设置")
         concept = self._load_concept(ctx.current_concept_id)
 
-        # 1) 判分（LLM 优先，启发式 fallback）
-        score = self.scorer.score(concept=concept, student_answer=answer)
+        # 1) 判分（LLM 优先，启发式 fallback）；带上题目原文，答非所问最高 partial
+        score = self.scorer.score(
+            concept=concept,
+            student_answer=answer,
+            question=ctx.focus.last_action_content,
+        )
         correctness = score.correctness
 
         # 2) BKT 更新
@@ -547,15 +564,41 @@ class TeachingEngine:
             logger.warning("respond.memory_record_failed", error=str(exc))
 
         # T3: 心流追踪 + 增益回路
+        now = datetime.utcnow()
         new_turn = {
             "answer": answer,
             "correctness": correctness,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": now.isoformat(),
             "was_self_corrected": False,
             "has_initiative_marker": False,
             "concept_id": concept.id,
         }
         ctx.recent_history = (ctx.recent_history + [new_turn])[-_MAX_HISTORY:]
+
+        # #10: 连续学习时长追踪。与上一轮间隔 > _STREAK_GAP_MIN 分钟视为已休息，
+        # 重置连续段起点；否则累计 active_time_min（接线一直无人写的 meta 字段）。
+        prev_ts: datetime | None = None
+        if len(ctx.recent_history) >= 2:
+            raw_prev = ctx.recent_history[-2].get("timestamp")
+            if isinstance(raw_prev, str):
+                try:
+                    prev_ts = datetime.fromisoformat(raw_prev)
+                except ValueError:
+                    prev_ts = None
+        if prev_ts is None or (now - prev_ts).total_seconds() > _STREAK_GAP_MIN * 60:
+            ctx.meta.continuous_start_at = now
+        else:
+            if ctx.meta.continuous_start_at is None:
+                ctx.meta.continuous_start_at = prev_ts
+            ctx.meta.active_time_min += (now - prev_ts).total_seconds() / 60
+        ctx.meta.total_elapsed_min = (now - ctx.meta.started_at).total_seconds() / 60
+
+        streak_min = (now - (ctx.meta.continuous_start_at or now)).total_seconds() / 60
+        last_break = ctx.meta.last_break_suggested_at
+        need_break = streak_min >= BREAK_AFTER_MIN and (
+            last_break is None
+            or (now - last_break).total_seconds() >= BREAK_AFTER_MIN * 60
+        )
 
         # 把 ISO 时间戳还原成 datetime 给信号计算用
         from datetime import datetime as _dt
@@ -594,7 +637,11 @@ class TeachingEngine:
             new_load=ctx.meta.current_cognitive_load,
             error_analysis=error_analysis,
             concept=concept,
+            need_break=need_break,
+            streak_min=streak_min,
         )
+        if next_action is not None and next_action.metadata.get("trigger") == "study_streak":
+            ctx.meta.last_break_suggested_at = now
         if next_action is not None:
             logger.info(
                 "respond.system_action",

@@ -168,3 +168,42 @@ def test_get_action_before_start_safe() -> None:
     s = ReductionStrategy()
     a = s.get_action()
     assert isinstance(a, TeachingAction)
+
+
+# ------------- FIX-E：PRACTICE 接受 answered（#16/#20 死循环回归） ------------- #
+# respond 统一发 "answered"，旧实现 PRACTICE 只认 "practice_done"——对练习作答
+# 永远推不动状态机，ACP 实测连续 14 步 give_exercise。
+
+
+def _practice_strategy():
+    from servers.tutoring_mcp.strategies.reduction import ReductionStrategy
+
+    s = ReductionStrategy()
+    s.start(target=_concept(), mastery_map={}, params={})
+    s.state = "PRACTICE"
+    return s
+
+
+def test_practice_answered_correct_goes_next() -> None:
+    s = _practice_strategy()
+    s.transition(event="answered", payload={"correctness": "correct"})
+    assert s.state == "NEXT"
+
+
+def test_practice_answered_partial_goes_next() -> None:
+    s = _practice_strategy()
+    s.transition(event="answered", payload={"correctness": "partial"})
+    assert s.state == "NEXT"
+
+
+def test_practice_answered_incorrect_back_to_explain() -> None:
+    s = _practice_strategy()
+    s.transition(event="answered", payload={"correctness": "incorrect"})
+    assert s.state == "EXPLAIN"
+    assert s.attempt_count == 1
+
+
+def test_practice_done_legacy_event_still_works() -> None:
+    s = _practice_strategy()
+    s.transition(event="practice_done", payload={"accuracy": 0.9})
+    assert s.state == "NEXT"

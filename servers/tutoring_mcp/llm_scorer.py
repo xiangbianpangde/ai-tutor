@@ -36,14 +36,20 @@ _SYSTEM = (
 )
 
 
-def _build_prompt(concept: Concept, answer: str) -> str:
+def _build_prompt(concept: Concept, answer: str, question: str | None = None) -> str:
     name = concept.names[0]
+    question_block = f"\n题目（学生正在回答的提问/练习）: {question}\n" if question else ""
+    question_rule = (
+        "\n- 答案必须正面回应题目本身；答非所问（内容与概念沾边但没回答题目）最高只能 partial"
+        if question
+        else ""
+    )
     return f"""判断学生答案是否抓住了概念定义的核心。只输出 JSON：
 
 概念: {name}
 官方定义: {concept.definition}
 通俗解释: {concept.informal_description or "(无)"}
-
+{question_block}
 学生答案: {answer}
 
 输出格式:
@@ -57,7 +63,7 @@ def _build_prompt(concept: Concept, answer: str) -> str:
 判断标准:
 - correct (>=0.8): 触达核心要点
 - partial (0.4-0.8): 部分要点对，缺关键
-- incorrect (<0.4): 完全偏题或空白
+- incorrect (<0.4): 完全偏题或空白{question_rule}
 """
 
 
@@ -130,7 +136,11 @@ class LLMScorer:
     def __init__(self, llm: LLMProvider) -> None:
         self.llm = llm
 
-    def score(self, *, concept: Concept, student_answer: str) -> ScoreResult:
+    def score(
+        self, *, concept: Concept, student_answer: str, question: str | None = None
+    ) -> ScoreResult:
+        """判分。question 是学生正在回答的题目原文——不传则退化为只比对概念定义
+        （旧行为），传了则要求答案正面回应题目，答非所问最高 partial。"""
         # 空答案：不浪费 LLM
         if not (student_answer or "").strip():
             return ScoreResult(
@@ -141,7 +151,7 @@ class LLMScorer:
             )
 
         # 调 LLM
-        prompt = _build_prompt(concept, student_answer)
+        prompt = _build_prompt(concept, student_answer, question)
         try:
             resp = self.llm.chat(
                 messages=[

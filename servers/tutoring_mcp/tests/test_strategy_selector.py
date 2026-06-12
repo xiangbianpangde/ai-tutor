@@ -241,3 +241,37 @@ def test_overload_still_prefers_analogy_over_jiangjie() -> None:
         mastered_ratio=0.0,
     )
     assert name == "analogy"
+
+
+# ------------------- FIX-G：feynman 可达（#12 回归） ------------------- #
+
+
+def test_default_profile_mid_mastery_picks_feynman() -> None:
+    """默认画像（self_assessment_accuracy=0.6 尚未被证实）+ 中段掌握 → feynman。
+
+    旧门槛 `< 0.5` 在默认画像下数学上不可达——feynman 永远选不中（#12 根因）。
+    """
+    from servers.tutoring_mcp.strategy_selector import select_strategy
+
+    name = select_strategy(
+        concept=_concept(),
+        mastery=0.5,
+        cognitive_load=0.3,
+        profile=_profile(),  # 全默认：transfer 0.4 / self_assess 0.6
+        mastered_ratio=0.0,
+    )
+    assert name == "feynman"
+
+
+def test_proven_accurate_self_assessor_skips_feynman() -> None:
+    """自评准确度已被证实（>0.6）→ 不再强制费曼输出式检验。"""
+    from servers.tutoring_mcp.strategy_selector import select_strategy
+
+    name = select_strategy(
+        concept=_concept(),
+        mastery=0.5,
+        cognitive_load=0.3,
+        profile=_profile(self_assessment_accuracy=0.75),
+        mastered_ratio=0.0,
+    )
+    assert name != "feynman"

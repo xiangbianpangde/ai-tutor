@@ -422,6 +422,9 @@ class FocusState(BaseModel):
     primary_concept: str = ""
     supporting_concepts: list[str] = Field(default_factory=list)
     last_action_type: str | None = None
+    # 最近一次教学动作的内容（截断）。判分必须能看到题目本身——
+    # 只比对「概念定义 vs 答案」会把答非所问判对（#18/#20 根因）。
+    last_action_content: str | None = None
     expected_next_action: str | None = None
 
 
@@ -445,6 +448,9 @@ class SessionMeta(BaseModel):
     interrupt_count: int = 0
     checkpoint_count: int = 0
     current_cognitive_load: float = Field(default=0.0, ge=0.0, le=1.0)
+    # 连续学习段（#10 学习时长→休息建议）：作答间隔超过阈值视为休息过、重置起点
+    continuous_start_at: datetime | None = None
+    last_break_suggested_at: datetime | None = None
 
 
 class SessionStats(BaseModel):

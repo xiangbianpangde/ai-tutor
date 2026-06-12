@@ -62,3 +62,20 @@ def make_pace_feedback(
         estimated_duration_min=1,
         metadata={"direction": direction, "reason": reason, "pgfga": "pace_transparency"},
     )
+
+
+def make_break_suggestion(*, streak_min: float) -> TeachingAction:
+    """构造连续学习时长触发的休息建议（#10）。
+
+    与 gain_loop_monitor.repair 的回路修复不同：这里按墙钟连续时长主动触发，
+    不需要学生答错任何题。metadata.trigger 用于引擎识别来源并记录提醒时间。
+    """
+    return TeachingAction(
+        type="break_suggestion",
+        content=(
+            f"你已经连续学了约 {round(streak_min)} 分钟——建议休息 5–10 分钟再继续。"
+            f"间隔休息比连续硬撑记得更牢，回来后我们从这里接着走。"
+        ),
+        estimated_duration_min=1,
+        metadata={"trigger": "study_streak", "streak_min": round(streak_min, 1)},
+    )

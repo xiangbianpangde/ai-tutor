@@ -138,3 +138,33 @@ def test_score_clamps_raw_score_to_unit() -> None:
         concept=_concept(), student_answer="任意"
     )
     assert 0.0 <= r.raw_score <= 1.0
+
+
+# ------------------- FIX-D：判分题目感知（#18/#20 回归） ------------------- #
+
+
+def test_score_passes_question_and_off_topic_rule() -> None:
+    """传了题目 → prompt 必须含题目原文与「答非所问最高 partial」规则。"""
+    from servers.tutoring_mcp.llm_scorer import LLMScorer
+
+    llm = MockLLMProvider(canned_responses=[_llm_correct()])
+    r = LLMScorer(llm=llm).score(
+        concept=_concept(),
+        student_answer="词袋统计词频，不保留词序",
+        question="请判断：词袋模型保留词序，对吗？",
+    )
+    assert r.correctness == "correct"
+    prompt = llm.calls[-1]["messages"][-1]["content"]
+    assert "请判断：词袋模型保留词序，对吗？" in prompt
+    assert "答非所问" in prompt
+
+
+def test_score_without_question_keeps_legacy_prompt() -> None:
+    """不传题目 → 退化为旧 prompt（只比对概念定义），不带答非所问规则。"""
+    from servers.tutoring_mcp.llm_scorer import LLMScorer
+
+    llm = MockLLMProvider(canned_responses=[_llm_correct()])
+    LLMScorer(llm=llm).score(concept=_concept(), student_answer="词袋统计词频")
+    prompt = llm.calls[-1]["messages"][-1]["content"]
+    assert "答非所问" not in prompt
+    assert "题目（学生正在回答的提问/练习）" not in prompt

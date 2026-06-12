@@ -49,7 +49,9 @@ _PRIOR_BASE: dict[str, float] = {"correct": 0.88, "partial": 0.5, "incorrect": 0
 
 
 class _Scorer(Protocol):
-    def score(self, *, concept: Concept, student_answer: str): ...
+    def score(
+        self, *, concept: Concept, student_answer: str, question: str | None = None
+    ): ...
 
 
 def band_of(abstract_level: float) -> ColdStartBand:
@@ -179,7 +181,9 @@ def grade_assessment(
             correctness, raw = "incorrect", 0.0
             self_report: SelfReport = ans.self_report if ans else "dont_know"
         else:
-            sr = scorer.score(concept=concept, student_answer=ans.answer)
+            sr = scorer.score(
+                concept=concept, student_answer=ans.answer, question=probe.question
+            )
             correctness, raw = sr.correctness, float(sr.raw_score)
             self_report = ans.self_report
 

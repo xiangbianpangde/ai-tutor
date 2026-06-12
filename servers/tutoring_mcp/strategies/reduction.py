@@ -135,15 +135,20 @@ class ReductionStrategy(Strategy):
             else:
                 self.state = "EXPLAIN"
             return
-        if self.state == "PRACTICE" and event == "practice_done":
-            acc = float((payload or {}).get("accuracy", 0.0))
-            if acc > 0.8:
+        if self.state == "PRACTICE" and event in ("practice_done", "answered"):
+            # respond 统一发 "answered"（带 correctness），旧的 "practice_done"（带
+            # accuracy）保留兼容。修复 #16/#20：此前 PRACTICE 只认 practice_done，
+            # 对练习作答永远推不动状态机 → 实测无限 give_exercise 死循环。
+            if event == "answered":
+                corr = (payload or {}).get("correctness", "incorrect")
+                acc = {"correct": 1.0, "partial": 0.6, "incorrect": 0.0}.get(corr, 0.0)
+            else:
+                acc = float((payload or {}).get("accuracy", 0.0))
+            if acc >= 0.5:
                 self.state = "NEXT"
-            elif acc < 0.5:
+            else:
                 self.state = "EXPLAIN"
                 self.attempt_count += 1
-            else:
-                self.state = "NEXT"
             return
         if self.state == "NEXT" and event in ("next", "start_next_concept"):
             # 外部应传新 target 后再调 start()

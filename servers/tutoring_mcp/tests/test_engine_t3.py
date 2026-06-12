@@ -169,3 +169,63 @@ def test_recent_history_capped_at_max(engine_env) -> None:
 
     final = sessions.load(ctx.session_id)
     assert len(final.recent_history) <= 20
+
+
+# ------------------- FIX-F：连续学习时长 → 休息建议（#10） ------------------- #
+# 答案掺因果词（因为/所以）保持正向心流信号，避免 detect_break 的
+# 情绪平/退场分支抢占优先级，专测墙钟触发。
+
+
+def test_long_streak_triggers_break_suggestion(engine_env) -> None:
+    """连续学习 ≥50 分钟 → respond 主动插入休息建议（无须答错任何题）。"""
+    from datetime import timedelta
+
+    from freezegun import freeze_time
+
+    from servers.tutoring_mcp.engine import TeachingEngine
+
+    db, sessions, ctx, llm = engine_env
+    engine = TeachingEngine(db=db, sessions=sessions, llm=llm)
+
+    triggers: list[str | None] = []
+    with freeze_time("2026-06-12 10:00:00") as frozen:
+        for i in range(6):  # 每 10 分钟一轮，第 6 轮时连续时长达 50 分钟
+            r = engine.respond(
+                ctx.session_id,
+                answer=f"因为词频统计是核心，所以第{i}轮我认为定义成立",
+            )
+            triggers.append(
+                (r.next_action.metadata or {}).get("trigger") if r.next_action else None
+            )
+            frozen.tick(timedelta(minutes=10))
+
+    assert "study_streak" in triggers
+    reloaded = sessions.load(ctx.session_id)
+    assert reloaded.meta.last_break_suggested_at is not None
+    assert reloaded.meta.active_time_min >= 50
+
+
+def test_rest_gap_resets_streak_no_break(engine_env) -> None:
+    """中途休息（间隔 >15 分钟）重置连续段——两段各 30 分钟不触发休息建议。"""
+    from datetime import timedelta
+
+    from freezegun import freeze_time
+
+    from servers.tutoring_mcp.engine import TeachingEngine
+
+    db, sessions, ctx, llm = engine_env
+    engine = TeachingEngine(db=db, sessions=sessions, llm=llm)
+
+    triggers: list[str | None] = []
+    with freeze_time("2026-06-12 10:00:00") as frozen:
+        for i, minutes in enumerate((10, 10, 10, 20, 10, 10, 10)):  # 第 4 步隔 20 分钟
+            r = engine.respond(
+                ctx.session_id,
+                answer=f"因为定义包含两个要点，所以第{i}轮回答仍然成立",
+            )
+            triggers.append(
+                (r.next_action.metadata or {}).get("trigger") if r.next_action else None
+            )
+            frozen.tick(timedelta(minutes=minutes))
+
+    assert "study_streak" not in triggers

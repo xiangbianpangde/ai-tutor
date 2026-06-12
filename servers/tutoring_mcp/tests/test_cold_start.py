@@ -152,7 +152,7 @@ class _FakeScorer:
 
     mapping: dict[str, ScoreResult]
 
-    def score(self, *, concept, student_answer):
+    def score(self, *, concept, student_answer, question=None):
         return self.mapping.get(
             concept.id,
             ScoreResult(correctness="incorrect", raw_score=0.0, evidence="default"),

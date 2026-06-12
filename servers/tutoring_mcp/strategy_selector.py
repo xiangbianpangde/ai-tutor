@@ -69,8 +69,11 @@ def select_strategy(
     if 0.3 <= mastery < 0.6 and cog.transfer_ability > 0.5:
         return "socratic"
 
-    # 6: 中等 mastery + 自评不准 → 让学生讲出来
-    if 0.4 <= mastery < 0.7 and meta.self_assessment_accuracy < 0.5:
+    # 6: 中等 mastery + 自评可信度尚未被证实 → 让学生讲出来（费曼输出式检验）。
+    #    门槛含画像默认值 0.6：只有 checkpoint 工具会更新 self_assessment_accuracy，
+    #    旧的 `< 0.5` 在默认画像下数学上不可达——feynman 永远选不中（#12 根因）。
+    #    整体进度已高（mastered_ratio > 0.6）时让位给规则 7 的项目驱动（pbl）。
+    if 0.4 <= mastery < 0.7 and meta.self_assessment_accuracy <= 0.6 and mastered_ratio <= 0.6:
         return "feynman"
 
     # 7: 总体掌握度高 → 项目驱动
