@@ -13,6 +13,7 @@ htmlcov/
 .ruff_cache/
 
 # 数据 / 产物（运行时生成）
+data/cli_state.json
 data/*.db
 data/*.db-journal
 data/corpora/
