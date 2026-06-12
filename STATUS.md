@@ -1,6 +1,6 @@
 # AI-Tutor 开发状态
 
-> 更新: 2026-06-12（22 问题根因调查完成 + 10 项 v1 修复落地）
+> 更新: 2026-06-13（新科目复跑验证通过 + tutor_cli 统一入口 + FIX-K）
 > 流程档位: 标准
 > 收束节点: 功能点3后 / 功能点7后 / 功能点11后
 
@@ -13,7 +13,7 @@
 | MCP server | 4/4 ✅ |
 | Tool 总数 | 32 ✅ |
 | 教学策略 | 7（2 完整 + 5 精简）|
-| 测试 | 786 全绿（2026-06-12）|
+| 测试 | 792 全绿（2026-06-13）|
 | 架构 | MCP Server + Claude Desktop |
 
 ## 2026-06-12 · 22 问题根因调查与修复
@@ -36,6 +36,25 @@
 
 **真实语料验证**：ACP 75,393 行 merged md 重过新解析器——概念 356→211，噪声 126→**0**。
 **架构级问题**（#3#4#5#6#7#11#15#21）：根因确认在 v1 架构，修复落 v2（验收红线已写入 `doc/plan/开发清单.md`），v1 不再投入。
+
+## 2026-06-12/13 · 新科目复跑验证（FastAPI 后端开发）+ FIX-K
+
+> worklog：`worklogs/2026-06-12_复跑验证-tutor_cli-FIX-K.md`。STATUS「下一步」第 1 项完成。
+
+- **tutor_cli**（`scripts/tutor_cli.py`）：统一 CLI 入口，11 子命令覆盖采集→建图→质检→
+  产物→教学全程，ID 自动链路（`data/cli_state.json`）——任何新科目零脚本零 SQL 跑通。
+  替代 17 个硬编码一次性脚本（acp_*/step*，已归档进 git 历史后删除）。
+- **FIX-K**（web 语料噪声形态 + 重建语义，9 条回归测试）：
+  - K1 噪声标题过滤扩展 12 类（时间戳/文件名路径/dotfile/装饰注释/emoji/批注引导/
+    含逗号整句/尾冒号/代码行/截断标题/GitHub 路径/英文整句注释）
+  - K2 `strip_site_suffix` 站点尾巴剥离（两遍，未剥离不重组）
+  - K3 `_persist_kg` 幂等重建：同 kg_id 整体替换；**同科目重新采集后重建撞概念主键**
+    （concept.id 无 corpus 命名空间）→ 撞 id 旧根版本 KG 自动替换（曾只能手工删库）
+  - K4 deepen 子面重复文章按 (URL, 正文哈希) 去重
+  - K5 study_pack 递归下钻 H3-H6（web 伞形语料不再切出 3 个千分钟大块）
+- **复跑结果**：3 主题 deepen 采集 99,174 行 → 六轮过滤迭代 369→**199** 概念
+  （全量禁类扫描 1/199=0.5%，三禁类=0）→ study_pack 75 份 → 教学 21 步掌握 2 概念，
+  3 次答非所问攻击全判 incorrect，give_exercise 占比 15%，增益回路自发 break_suggestion。
 
 ---
 
@@ -137,7 +156,7 @@
 
 | Tool | 状态 | 说明 |
 |------|------|------|
-| `acquire_subject` | ✅ file / 🟡 web+video | 多源签名已就位，web/video 未实现 |
+| `acquire_subject` | ✅ file+web / 🔴 video | web 经 research-tool（含 deepen 拆面 + 去重）；video 未实现 |
 | `build_knowledge_graph` | ✅ | depth ∈ {toc, concept, full} 全部实现 |
 | `query_knowledge` | ✅ | concept / neighbors / path / subgraph |
 | `review_kg` | ✅ | quick + full + Mermaid |
@@ -246,39 +265,43 @@ ai-tutor/
 
 ---
 
-## 下一步做什么（2026-06-12 更新）
+## 下一步做什么（2026-06-13 更新）
 
-**当前阶段**：22 问题根因修复已落地（FIX-A~J，786 测试全绿），**下一步先用真实科目复跑验证修复，再走 v3.1 review → v2 开发**。
+**当前阶段**：复跑验证完成（FastAPI 新科目端到端通过，挑战清单 5/7 过堂，792 测试全绿，
+FIX-K 落地）。**v2 动工前只剩 v3.1 review 一个阻塞项**。
 
 按顺序做：
 
-1. **真实复跑验证（半天 · 最优先）**：选一个**新科目**（别用 ACP 旧数据），端到端走
-   `uv sync --extra research` → acquire(web, deepen=true) → build_kg(full) → review_kg →
-   digest(study_pack) → 教学 15-20 步。⚠️ 注意：tutor.db 里旧 ACP KG（356 概念）是修复前
-   的噪声版，只能当反面教材，不要拿它演示。
-2. **A1/A2 · v3.1 review + 走向决议（1 小时）**：按 `doc/plan/v3.1-aitutor-design/REVIEW-CHECKLIST.md`
-   走完，A/B/C/D 四选一（推荐 C：v2 主体 + v3.1 增量），写入 worklog。这是 v2 动工的唯一阻塞项。
-3. **B 阶段开发准备（1-2 天）**：pre-commit（ruff/import-linter）、锁版本（sqlite-vec/FastAPI）、
-   pdf2zh AGPL 法务、设计包快照备份。
-4. **C1 第一波动工**：M-001 服务入口 + M-002 API 网关 + M-003 客户端入口。
-   ⚠️ 按根因报告 §三的优先级修正：**M-014 数据管线（整理环节）提前到第一/第二波**——
-   数据质量是教学/可视化/复习一切下游的瓶颈，比前端更紧迫。
+1. **A1/A2 · v3.1 review + 走向决议（1 小时 · 唯一阻塞项）**：按
+   `doc/plan/v3.1-aitutor-design/REVIEW-CHECKLIST.md` 走完（最关键 5 风险：
+   R-16/R1/C2/pdf2zh AGPL/sqlite-vec），A/B/C/D 四选一（推荐 C：v2 主体 + v3.1 增量），
+   写入 `worklogs/YYYY-MM-DD_v3.1-走向决议.md`。
+2. **B 阶段开发准备（1-2 天）**：pre-commit（ruff/import-linter）、锁版本
+   （sqlite-vec/FastAPI）、pdf2zh AGPL 法务、设计包快照备份。
+3. **C1 第一波动工**：M-001 服务入口 + M-002 API 网关 + M-003 客户端入口。
+   ⚠️ 按根因报告 §三优先级修正：**M-014 数据管线（整理环节）提前到第一/第二波**。
+   复跑佐证：枚举式标题过滤六轮才压到 0.5%（每种新语料还会出新形态）、类别失衡 98%
+   method、跨主题重复 24 组、CSDN 侧边栏离题内容混入——都指向内容级抽取/整理是正解。
+4. **演示就绪**：FastAPI 科目（199 概念 KG + 75 份 study_pack + 活跃会话
+   sess-c882f9cba045）可直接用 tutor_cli 向人演示；ACP 旧 KG（356 概念噪声版）仅作反面教材。
 
 ## 接手挑战清单（谁接手谁过堂，过不了别说"做完了"）
 
 > 来源：22 问题根因调查（`doc/reports/根因分析-22问题.md`）。每条都是可证伪的验收，
 > 对应一个曾经真实发生的失败模式。
 
-- [ ] **裸手跑通**：新科目端到端（上面第 1 步）全程**不写一行临时脚本**。写了，#8（需人引导）就没好。
-- [ ] **噪声率过堂**：build_kg 后贴出 quality_report + 随机抽 30 个概念名——噪声率 <5%，
-      文件名/代码注释/整句话概念 = 0（ACP 基线曾是 35%）。
-- [ ] **答非所问攻击**：任取 3 道题，各给一个"内容沾边但不回答题目"的答案——correct 判定必须 0 个。
-- [ ] **死循环回归**：教学 20 步，give_exercise 占比 <50%，且必须出现 explain/讲解类动作穿插
-      （曾经：15 步里 14 步连发练习）。
-- [ ] **休息触发**：连续学习 55 分钟（或 freezegun 模拟），必须收到 break_suggestion——不许靠答错题触发。
+- [x] **裸手跑通** ✅ 2026-06-13：FastAPI 新科目全程 tutor_cli，0 临时脚本。
+- [x] **噪声率过堂** ✅ 2026-06-13：全量扫描 199 概念禁类 1 例边缘（0.5%）<5%，
+      裸文件名/代码注释/整句话 = 0（web 语料起点 ≈60%，经 FIX-K 六轮迭代）。
+- [x] **答非所问攻击** ✅ 2026-06-13：3 题沾边不答题 → 3/3 判 incorrect（诊断
+      reading_error/overgeneralization），correct = 0。
+- [x] **死循环回归** ✅ 2026-06-13：21 步 give_exercise 占比 15% <50%，讲解类 55% 穿插。
+- [x] **休息触发** ✅ 2026-06-13：FIX-F freezegun 测试——6 轮全对回答走表 50 分钟触发
+      `study_streak` 休息建议，非答错驱动；间隔 >15 分钟正确重置。
 - [ ] **v2 第一波过堂**（动工后适用）：build_kg 必须是异步任务+进度可查（单 HTTP 调用超时 = 不及格）；
       同一问题问两遍第二遍命中缓存；进程重启后会话可续。
 - [ ] **终极验收（#21）**：把 Claude Desktop 从流程里完全删掉，让一个不懂代码的人从安装走到
       学完第一课。做不到，"人→AI→ai-tutor"的三层架构就还在。
 
-> 把你的当前目标写在这里，下次回来直接看这行就知道做什么。
+> 当前目标：**做 v3.1 review + 走向决议（上面第 1 项）**——这是 v2 动工的唯一阻塞项。
+> 复跑验证已完成（2026-06-13），FastAPI 演示科目就绪（tutor_cli learn 即可继续教学）。

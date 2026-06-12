@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>ai-tutor 系统图谱</title>
+<script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+<style>
+  /* 深色学术风 · 紧凑布局 */
+  html,body{margin:0;padding:0;height:100%;font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#1e1e2e;color:#cdd6f4;overflow:hidden}
+  #bar{height:46px;display:flex;align-items:center;padding:0 14px;background:#181825;border-bottom:1px solid #313244;gap:10px}
+  #bar .logo{font-weight:600;color:#cba6f7;letter-spacing:1px}
+  .tab{background:#313244;color:#cdd6f4;border:0;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px}
+  .tab.active{background:#89b4fa;color:#1e1e2e;font-weight:600}
+  .tab:hover:not(.active){background:#45475a}
+  #search{flex:1;max-width:300px;background:#1e1e2e;border:1px solid #45475a;color:#cdd6f4;padding:6px 10px;border-radius:6px;outline:none;font-size:13px}
+  #search:focus{border-color:#89b4fa}
+  #legend{font-size:11px;color:#a6adc8;display:flex;gap:14px;align-items:center}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle}
+  .sq{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:middle}
+  #cy{flex:1;height:calc(100% - 46px);background:#1e1e2e}
+  #tip{position:absolute;pointer-events:none;background:#11111b;color:#cdd6f4;border:1px solid #585b70;border-radius:6px;padding:8px 10px;font-size:12px;max-width:280px;box-shadow:0 6px 18px rgba(0,0,0,.5);display:none;z-index:9;line-height:1.5}
+  #tip b{color:#cba6f7}
+  #tip .path{display:block;color:#a6e3a1;font-family:ui-monospace,Consolas,monospace;margin-top:3px;font-size:11px}
+  #stats{margin-left:auto;font-size:11px;color:#7f849c}
+</style>
+</head>
+<body>
+<div id="bar">
+  <span class="logo">ai-tutor · sysgraph</span>
+  <button class="tab active" data-view="0">① 七层 × MCP 矩阵</button>
+  <button class="tab" data-view="1">② 32 tool 图</button>
+  <button class="tab" data-view="2">③ 目录依赖图</button>
+  <input id="search" placeholder="🔍 搜索节点 (例: query, schemas, M-008)">
+  <div id="legend"></div>
+  <div id="stats"></div>
+</div>
+<div id="cy"></div>
+<div id="tip"></div>
+<script>
+/* =========================================================================
+   ai-tutor 系统图谱 · 单文件可视化
+   数据源: 真实目录 + 真实 32 tool 名（按 server.py @mcp.tool 提取）
+   视图: 矩阵 / 工具图 / 依赖图  ·  渲染: cytoscape.js
+   ========================================================================= */
+
+// 配色（按 server）
+const C = {
+  knowledge:"#89b4fa", tutoring:"#a6e3a1", digest:"#fab387",
+  sync:"#cba6f7",      shared:"#9399b2",   doc:"#f9e2af",
+  layer:"#74c7ec",     tool:"#f5c2e7",     data:"#b4befe"
+};
+
+// ---------- 三个视图的节点 / 边数据 ----------
+const views = [];
+
+/* ============== 视图 1：七层架构 × 4 MCP 矩阵 ==============
+   行 = 七层认知架构，列 = 4 个 server；副节点标出 shared/ 5 大基础设施 */
+views.push({
+  name:"七层 × MCP 矩阵",
+  legend:`<span class="dot" style="background:${C.layer}"></span>认知层 <span class="dot" style="background:${C.knowledge}"></span>knowledge <span class="dot" style="background:${C.tutoring}"></span>tutoring <span class="dot" style="background:${C.digest}"></span>digest <span class="dot" style="background:${C.sync}"></span>sync <span class="dot" style="background:${C.shared}"></span>shared`,
+  nodes:[
+    // 7 个认知层
+    {id:"L1",label:"L1 基础设施",shape:"round-rectangle",color:C.layer,info:"路径: shared/\n核心: schemas / models / errors / storage / llm_client",path:"shared/"},
+    {id:"L2",label:"L2 短期记忆",shape:"round-rectangle",color:C.layer,info:"tutoring_mcp 内部状态: session / memory_store",path:"servers/tutoring_mcp/session.py"},
+    {id:"L3",label:"L3 长期记忆",shape:"round-rectangle",color:C.layer,info:"bkt 掌握度 + forgetting_curve 遗忘曲线 + memory_store",path:"servers/tutoring_mcp/bkt.py"},
+    {id:"L4",label:"L4 知识工程",shape:"round-rectangle",color:C.layer,info:"knowledge_mcp: 9 tool, 负责 KG 构建/查询/回滚/冲突解决",path:"servers/knowledge_mcp/"},
+    {id:"L5",label:"L5 学习者建模",shape:"round-rectangle",color:C.layer,info:"BKT 贝叶斯知识追踪 + LLM 评分 + 意图分类",path:"servers/tutoring_mcp/intent_classifier.py"},
+    {id:"L6",label:"L6 教学引擎",shape:"round-rectangle",color:C.layer,info:"8 大策略: socratic/费曼/jiangjie/类比/化归/PBL/间隔重复/精简",path:"servers/tutoring_mcp/strategies/"},
+    {id:"L7",label:"L7 交互层",shape:"round-rectangle",color:C.layer,info:"dashboard 状态面板（v2 将被 Electron 替代）",path:"servers/dashboard/"},
+    // 4 个 server
+    {id:"KM",label:"knowledge_mcp\n9 tool",shape:"ellipse",color:C.knowledge,size:60,info:"L4 知识工程: acquire/build/review/update/diff/rollback/resolve_conflicts/query/health",path:"servers/knowledge_mcp/server.py"},
+    {id:"TM",label:"tutoring_mcp\n13 tool",shape:"ellipse",color:C.tutoring,size:60,info:"L2/L3/L5/L6 教学: cold_start/start/resume/next/advance/respond/insight/...",path:"servers/tutoring_mcp/server.py"},
+    {id:"DM",label:"digest_mcp\n4 tool",shape:"ellipse",color:C.digest,size:50,info:"多模态产物: digest / build_quiz_html / compile_slides / health",path:"servers/digest_mcp/server.py"},
+    {id:"SM",label:"sync_mcp\n6 tool",shape:"ellipse",color:C.sync,size:50,info:"Obsidian + git 同步: push/pull/watch/init/push_artifacts/health",path:"servers/sync_mcp/server.py"},
+    // 共享基础
+    {id:"SC",label:"schemas.py",shape:"rectangle",color:C.shared,info:"60+ Pydantic 模型 (AcquireResult / BuildKGResult / KgEditAction / ...)",path:"shared/schemas.py"},
+    {id:"MO",label:"models.py",shape:"rectangle",color:C.shared,info:"14 个 SQLAlchemy ORM: ConceptRow / KnowledgeGraphRow / RelationRow / Corpus",path:"shared/models.py"},
+    {id:"ER",label:"errors.py",shape:"rectangle",color:C.shared,info:"TutorError 统一异常 + 错误码体系",path:"shared/errors.py"},
+    {id:"ST",label:"storage.py",shape:"rectangle",color:C.shared,info:"FileStore + RelationalStore (SQLite) 持久化",path:"shared/storage.py"},
+    {id:"LC",label:"llm_client.py",shape:"rectangle",color:C.shared,info:"LLMProvider 抽象 + StubLLMProvider + CachedLLMProvider",path:"shared/llm_client.py"}
+  ],
+  edges:[
+    // 层 ↔ server 矩阵
+    {s:"L1",t:"KM",style:"solid",w:2},{s:"L1",t:"TM",style:"solid",w:2},{s:"L1",t:"DM",style:"solid",w:2},{s:"L1",t:"SM",style:"solid",w:2},
+    {s:"L2",t:"TM"},{s:"L3",t:"TM"},{s:"L4",t:"KM"},{s:"L5",t:"TM"},{s:"L6",t:"TM"},{s:"L7",t:"DM"},
+    // server 全部依赖 shared
+    {s:"KM",t:"SC",style:"dashed"},{s:"KM",t:"MO",style:"dashed"},{s:"KM",t:"ER",style:"dashed"},{s:"KM",t:"ST",style:"dashed"},{s:"KM",t:"LC",style:"dashed"},
+    {s:"TM",t:"SC",style:"dashed"},{s:"TM",t:"MO",style:"dashed"},{s:"TM",t:"ER",style:"dashed"},{s:"TM",t:"ST",style:"dashed"},{s:"TM",t:"LC",style:"dashed"},
+    {s:"DM",t:"SC",style:"dashed"},{s:"DM",t:"ER",style:"dashed"},
+    {s:"SM",t:"ER",style:"dashed"},
+    // L1 ↔ shared
+    {s:"L1",t:"SC",style:"dashed"},{s:"L1",t:"MO",style:"dashed"},{s:"L1",t:"ER",style:"dashed"},{s:"L1",t:"ST",style:"dashed"},{s:"L1",t:"LC",style:"dashed"}
+  ]
+});
+
+/* ============== 视图 2：32 tool 按 server 分组 ============== */
+const tools = {
+  knowledge:["acquire_subject","build_knowledge_graph","review_kg","update_kg","diff_kg","rollback_kg","resolve_conflicts","query_knowledge","health"],
+  tutoring:["cold_start_probe","submit_cold_start","start_learning_session","get_learning_progress","resume_learning","next_action","advance","respond","interrupt","checkpoint","learning_insight","generate_review_plan","health"],
+  digest:["digest","build_quiz_html","compile_slides","health"],
+  sync:["push_to_obsidian","pull_homework_from_obsidian","init_subject_repo","push_artifacts","watch_obsidian","health"]
+};
+const tipMap = {
+  acquire_subject:"采集语料 (PDF/web/video) → 落库", build_knowledge_graph:"depth: toc/concept/full 构建 KG",
+  review_kg:"审阅知识图谱", update_kg:"增量更新 KG", diff_kg:"对比 KG 版本", rollback_kg:"回滚 KG 到指定版本",
+  resolve_conflicts:"解决 KG 冲突", query_knowledge:"查询 (concept/neighbors/path/subgraph)", health:"健康检查",
+  cold_start_probe:"冷启动探测 (能力/先验)", submit_cold_start:"提交冷启动结果", start_learning_session:"开启学习会话",
+  get_learning_progress:"获取学习进度", resume_learning:"断点续学", next_action:"推送下一步教学动作", advance:"推进到下一步",
+  respond:"用户作答判定", interrupt:"学习中插入问题", checkpoint:"学习检查点", learning_insight:"学习洞察报告",
+  generate_review_plan:"生成复习计划 (FSRS)",
+  digest:"生成多模态摘要 (笔记/思维导图/测验/PPT/音频)", build_quiz_html:"测验 HTML", compile_slides:"编译幻灯片 PDF/PPTX",
+  push_to_obsidian:"推送 KG 到 Obsidian vault", pull_homework_from_obsidian:"从 Obsidian 拉取作业",
+  init_subject_repo:"初始化学科 git 仓库", push_artifacts:"推送产物到 git", watch_obsidian:"监听 Obsidian 变更"
+};
+
+const toolNodes = [], toolEdges = [];
+// 4 个 server 分组中心
+["knowledge","tutoring","digest","sync"].forEach(s => {
+  const sId = s.toUpperCase();
+  toolNodes.push({id:sId,label:s.replace("_mcp","")+"_mcp",shape:"ellipse",color:C[s],size:55,info:`${s.replace("_mcp","")+"_mcp"} 入口: server.py\n工具数: ${tools[s].length}`});
+  tools[s].forEach((tn,i) => {
+    const id = sId+"_"+tn;
+    toolNodes.push({id,label:tn,shape:"hexagon",color:C.tool,info:tipMap[tn]||"",parent:sId});
+    toolEdges.push({s:sId,t:id,style:"solid",w:1});
+  });
+});
+// server 间协同 (digest 读 KG → knowledge; sync 写 Obsidian → ...)
+toolEdges.push({s:"DIGEST",t:"KNOWLEDGE",style:"dashed",w:1.5});   // digest 读 KG
+toolEdges.push({s:"TUTORING",t:"KNOWLEDGE",style:"dashed",w:1.5});  // tutoring 查概念
+toolEdges.push({s:"SYNC",t:"KNOWLEDGE",style:"dashed",w:1.5});      // sync 同步 KG
+views.push({
+  name:"32 tool 图",
+  legend:`<span class="dot" style="background:${C.tool}"></span>tool (六边形) <span class="dot" style="background:${C.knowledge}"></span>knowledge <span class="dot" style="background:${C.tutoring}"></span>tutoring <span class="dot" style="background:${C.digest}"></span>digest <span class="dot" style="background:${C.sync}"></span>sync`,
+  nodes:toolNodes,
+  edges:toolEdges
+});
+
+/* ============== 视图 3：目录依赖图 ==============
+   shared → 4 server, server 内部主要模块, doc/tests 节点 */
+const modNodes = [
+  // shared 5 个核心
+  {id:"schemas",label:"schemas.py",shape:"rectangle",color:C.shared,size:35,info:"60+ Pydantic 模型\nAcq/Build/Kg* Result",path:"shared/schemas.py"},
+  {id:"models",label:"models.py",shape:"rectangle",color:C.shared,size:35,info:"14 SQLAlchemy ORM",path:"shared/models.py"},
+  {id:"errors",label:"errors.py",shape:"rectangle",color:C.shared,size:35,info:"TutorError + 错误码",path:"shared/errors.py"},
+  {id:"storage",label:"storage.py",shape:"rectangle",color:C.shared,size:35,info:"FileStore + RelationalStore",path:"shared/storage.py"},
+  {id:"llm_client",label:"llm_client.py",shape:"rectangle",color:C.shared,size:35,info:"LLMProvider + Cached + Stub",path:"shared/llm_client.py"},
+  {id:"llm_cache",label:"llm_cache.py",shape:"rectangle",color:C.shared,size:30,info:"L1 内存缓存 (max_size=256)",path:"shared/llm_cache.py"},
+  {id:"config",label:"config.py",shape:"rectangle",color:C.shared,size:30,info:"load_env 配置加载",path:"shared/config.py"},
+  // knowledge_mcp 核心模块
+  {id:"kg_builder",label:"kg_builder",shape:"ellipse",color:C.knowledge,info:"depth: toc/concept/full 三种构建器",path:"servers/knowledge_mcp/kg_builder.py"},
+  {id:"kg_query",label:"kg_query",shape:"ellipse",color:C.knowledge,info:"concept / neighbors / path / subgraph",path:"servers/knowledge_mcp/kg_query.py"},
+  {id:"kg_update",label:"kg_update",shape:"ellipse",color:C.knowledge,info:"增量更新 + 版本管理",path:"servers/knowledge_mcp/kg_update.py"},
+  {id:"kg_diff",label:"kg_diff",shape:"ellipse",color:C.knowledge,info:"KG 版本 diff",path:"servers/knowledge_mcp/kg_diff.py"},
+  {id:"kg_rollback",label:"kg_rollback",shape:"ellipse",color:C.knowledge,info:"回滚到历史版本",path:"servers/knowledge_mcp/kg_rollback.py"},
+  {id:"kg_review",label:"kg_review",shape:"ellipse",color:C.knowledge,info:"KG 审阅 (review_kg)",path:"servers/knowledge_mcp/kg_review.py"},
+  {id:"kg_full",label:"kg_full",shape:"ellipse",color:C.knowledge,info:"full 模式 + embedding",path:"servers/knowledge_mcp/kg_full.py"},
+  {id:"acq_adapter",label:"acquisition_adapter",shape:"ellipse",color:C.knowledge,info:"多源 (file/web/video) 适配",path:"servers/knowledge_mcp/acquisition_adapter.py"},
+  // tutoring_mcp 核心
+  {id:"session",label:"session",shape:"ellipse",color:C.tutoring,info:"会话状态 + 短期记忆",path:"servers/tutoring_mcp/session.py"},
+  {id:"bkt",label:"bkt",shape:"ellipse",color:C.tutoring,info:"贝叶斯知识追踪",path:"servers/tutoring_mcp/bkt.py"},
+  {id:"forgetting",label:"forgetting_curve",shape:"ellipse",color:C.tutoring,info:"遗忘曲线",path:"servers/tutoring_mcp/forgetting_curve.py"},
+  {id:"engine",label:"engine",shape:"ellipse",color:C.tutoring,info:"教学引擎核心",path:"servers/tutoring_mcp/engine.py"},
+  {id:"strategy_sel",label:"strategy_selector",shape:"ellipse",color:C.tutoring,info:"8 策略路由",path:"servers/tutoring_mcp/strategy_selector.py"},
+  {id:"teaching_act",label:"teaching_actions",shape:"ellipse",color:C.tutoring,info:"TeachingAction 数据类",path:"servers/tutoring_mcp/teaching_actions.py"},
+  {id:"intent",label:"intent_classifier",shape:"ellipse",color:C.tutoring,info:"意图分类 (L5)",path:"servers/tutoring_mcp/intent_classifier.py"},
+  {id:"review_sched",label:"review_scheduler",shape:"ellipse",color:C.tutoring,info:"FSRS 复习调度",path:"servers/tutoring_mcp/review_scheduler.py"},
+  {id:"strategies",label:"strategies/* (8)",shape:"ellipse",color:C.tutoring,info:"socratic / feynman / jiangjie / analogy / reduction / pbl / spaced / base",path:"servers/tutoring_mcp/strategies/"},
+  // digest_mcp
+  {id:"orchestrator",label:"orchestrator",shape:"ellipse",color:C.digest,info:"多模态产物调度",path:"servers/digest_mcp/orchestrator.py"},
+  {id:"notes",label:"notes",shape:"ellipse",color:C.digest,info:"手写笔记生成",path:"servers/digest_mcp/notes.py"},
+  {id:"mindmap",label:"mindmap",shape:"ellipse",color:C.digest,info:"思维导图",path:"servers/digest_mcp/mindmap.py"},
+  {id:"quiz",label:"quiz",shape:"ellipse",color:C.digest,info:"极简交互测验",path:"servers/digest_mcp/quiz.py"},
+  {id:"slides",label:"slides",shape:"ellipse",color:C.digest,info:"幻灯片 PDF+PPTX",path:"servers/digest_mcp/slides.py"},
+  {id:"audio",label:"audio",shape:"ellipse",color:C.digest,info:"音频课程 TTS",path:"servers/digest_mcp/audio.py"},
+  {id:"sim",label:"simulation",shape:"ellipse",color:C.digest,info:"端到端模拟",path:"servers/digest_mcp/simulation.py"},
+  // sync_mcp
+  {id:"obsidian",label:"obsidian",shape:"ellipse",color:C.sync,info:"Obsidian vault IO",path:"servers/sync_mcp/obsidian.py"},
+  {id:"obs_watch",label:"obsidian_watch",shape:"ellipse",color:C.sync,info:"文件监听 (watchdog)",path:"servers/sync_mcp/obsidian_watch.py"},
+  {id:"git_sync",label:"git_sync",shape:"ellipse",color:C.sync,info:"git 同步 (push/commit)",path:"servers/sync_mcp/git_sync.py"},
+  // dashboard
+  {id:"dash",label:"dashboard",shape:"ellipse",color:C.doc,info:"v1 状态面板 (v2 被前端替代)",path:"servers/dashboard/server.py"},
+  // doc 节点
+  {id:"v3pkg",label:"V3.1 设计包\n120 文档",shape:"diamond",color:C.doc,info:"17 模块 M-001~M-017\n7 收敛指标全过 0.85",path:"doc/plan/v3.1-aitutor-design/"},
+  {id:"v2plan",label:"v2 重构计划\n10 设计文档",shape:"diamond",color:C.doc,info:"doc/plan/design/ 总体架构/中间件/前端/RAG/数据管线/...",path:"doc/plan/design/"},
+  {id:"bdd",label:"BDD specs\n11 份",shape:"diamond",color:C.doc,info:"doc/specs/01-基础骨架 ~ 11-打包发布",path:"doc/specs/"},
+  {id:"status",label:"STATUS.md",shape:"diamond",color:C.doc,info:"开发状态总览",path:"STATUS.md"},
+  {id:"claudemd",label:"CLAUDE.md",shape:"diamond",color:C.doc,info:"AI Agent 入口认知",path:"CLAUDE.md"}
+];
+// 边：shared → 各 server
+const sharedEdges = ["schemas","models","errors","storage","llm_client","llm_cache","config"].flatMap(s =>
+  ["kg_builder","kg_query","kg_update","kg_diff","kg_rollback","kg_review","kg_full","acq_adapter",
+   "session","bkt","forgetting","engine","strategy_sel","teaching_act","intent","review_sched","strategies",
+   "orchestrator","notes","mindmap","quiz","slides","audio","sim",
+   "obsidian","obs_watch","git_sync","dash"].map(t => ({s,t,style:"dashed",w:0.5}))
+);
+// 知识流
+const depEdges = [
+  {s:"acq_adapter",t:"kg_builder"},{s:"kg_builder",t:"kg_full"},{s:"kg_builder",t:"kg_query"},
+  {s:"kg_update",t:"kg_diff"},{s:"kg_diff",t:"kg_rollback"},{s:"kg_review",t:"kg_update"},
+  {s:"engine",t:"strategy_sel"},{s:"engine",t:"session"},{s:"engine",t:"bkt"},{s:"engine",t:"forgetting"},
+  {s:"strategy_sel",t:"strategies"},{s:"engine",t:"teaching_act"},{s:"engine",t:"intent"},{s:"engine",t:"review_sched"},
+  {s:"review_sched",t:"forgetting"},
+  {s:"orchestrator",t:"notes"},{s:"orchestrator",t:"mindmap"},{s:"orchestrator",t:"quiz"},
+  {s:"orchestrator",t:"slides"},{s:"orchestrator",t:"audio"},{s:"orchestrator",t:"sim"},
+  {s:"obsidian",t:"obs_watch"},{s:"obsidian",t:"git_sync"},
+  // 跨 server
+  {s:"engine",t:"kg_query",style:"dashed"},{s:"orchestrator",t:"kg_query",style:"dashed"},
+  {s:"obsidian",t:"kg_builder",style:"dashed"},
+  // doc 引用
+  {s:"claudemd",t:"v2plan"},{s:"claudemd",t:"v3pkg"},{s:"v2plan",t:"bdd"},{s:"v2plan",t:"v3pkg"},{s:"status",t:"v2plan"}
+];
+views.push({
+  name:"目录依赖图",
+  legend:`<span class="sq" style="background:${C.shared}"></span>shared <span class="dot" style="background:${C.knowledge}"></span>knowledge <span class="dot" style="background:${C.tutoring}"></span>tutoring <span class="dot" style="background:${C.digest}"></span>digest <span class="dot" style="background:${C.sync}"></span>sync <span style="color:#f9e2af">◆</span> 文档`,
+  nodes:modNodes,
+  edges:[...sharedEdges, ...depEdges]
+});
+
+/* =========================== 渲染 =========================== */
+let cy = null, curView = 0;
+
+function shapeStyle(shape,color,size){
+  size = size || 38;
+  const base = {"background-color":color,"border-color":"#1e1e2e","border-width":2,
+    "label":"data(label)","color":"#1e1e2e","font-size":11,"font-weight":600,
+    "text-valign":"center","text-halign":"center","text-wrap":"wrap","width":size,"height":size};
+  if(shape==="hexagon") return {...base,"shape":"hexagon","background-color":C.tool,"color":"#1e1e2e","width":50,"height":42,"font-size":10};
+  if(shape==="rectangle") return {...base,"shape":"round-rectangle","width":70,"height":28,"font-size":11};
+  if(shape==="diamond") return {...base,"shape":"diamond","background-color":C.doc,"color":"#1e1e2e","width":80,"height":60,"font-size":10};
+  if(shape==="round-rectangle") return {...base,"shape":"round-rectangle","width":size+20,"height":size};
+  return {...base,"shape":"ellipse","width":size,"height":size};
+}
+
+function renderView(idx){
+  curView = idx;
+  const v = views[idx];
+  document.querySelectorAll(".tab").forEach((b,i)=>b.classList.toggle("active",i===idx));
+  document.getElementById("legend").innerHTML = v.legend;
+  if(cy) cy.destroy();
+  cy = cytoscape({
+    container:document.getElementById("cy"),
+    elements:[
+      ...v.nodes.map(n=>({data:{id:n.id,label:n.label,...n},classes:n.shape})),
+      ...v.edges.map((e,i)=>({data:{id:"e"+i,source:e.s,target:e.t,style:e.style||"solid",w:e.w||1}}))
+    ],
+    style:[
+      {selector:"node",style:{"background-color":"#585b70","label":"data(label)","color":"#cdd6f4",
+        "font-size":11,"text-valign":"center","text-halign":"center","text-wrap":"wrap",
+        "border-color":"#1e1e2e","border-width":2,"width":38,"height":38}},
+      {selector:'node[shape="hexagon"]',style:{"shape":"hexagon","background-color":C.tool,"color":"#1e1e2e","width":52,"height":42,"font-size":10}},
+      {selector:'node[shape="rectangle"]',style:{"shape":"round-rectangle","width":75,"height":28,"font-size":11,"background-color":"data(color)"}},
+      {selector:'node[shape="diamond"]',style:{"shape":"diamond","background-color":C.doc,"color":"#1e1e2e","width":85,"height":62,"font-size":10}},
+      {selector:'node[shape="round-rectangle"]',style:{"shape":"round-rectangle","background-color":"data(color)","color":"#1e1e2e","font-size":12,"width":"data(size)","height":34}},
+      {selector:'node[shape="ellipse"]',style:{"shape":"ellipse","background-color":"data(color)","color":"#1e1e2e","font-size":11}},
+      {selector:"node:selected",style:{"border-color":"#f9e2af","border-width":3}},
+      {selector:"edge",style:{"width":"data(w)","line-color":"#585b70","curve-style":"bezier","opacity":0.55,
+        "target-arrow-shape":"triangle","target-arrow-color":"#585b70"}},
+      {selector:'edge[style="dashed"]',style:{"line-style":"dashed","line-color":"#45475a","opacity":0.4,"target-arrow-shape":"none"}},
+      {selector:".highlight",style:{"border-color":"#f9e2af","border-width":3,"line-color":"#f9e2af","opacity":1}},
+      {selector:".dim",style:{opacity:0.15}}
+    ],
+    layout:{name:"cose",animate:false,idealEdgeLength:90,nodeRepulsion:4500,gravity:80,numIter:1500,fit:true,padding:40},
+    wheelSensitivity:0.2,
+    minZoom:0.2,maxZoom:3
+  });
+
+  // 节点拖拽
+  cy.nodes().grabify();
+
+  // tooltip
+  const tip = document.getElementById("tip");
+  cy.on("mouseover","node",e=>{
+    const n = e.target, d = n.data();
+    tip.innerHTML = `<b>${d.label.replace(/\n/g," ")}</b>${d.path?`<span class="path">${d.path}</span>`:""}${d.info?`<div style="margin-top:4px;white-space:pre-line">${d.info}</div>`:""}`;
+    tip.style.display="block";
+  });
+  cy.on("mousemove",e=>{tip.style.left=(e.originalEvent.clientX+14)+"px";tip.style.top=(e.originalEvent.clientY+14)+"px"});
+  cy.on("mouseout","node",()=>tip.style.display="none");
+
+  // 悬停高亮邻居
+  cy.on("mouseover","node",e=>{
+    cy.elements().removeClass("highlight dim");
+    const n = e.target;
+    const nb = n.closedNeighborhood();
+    cy.elements().not(nb).addClass("dim");
+    nb.addClass("highlight");
+  });
+  cy.on("mouseout","node",()=>cy.elements().removeClass("highlight dim"));
+
+  // 点击展开/折叠子树 (仅视图 2: 工具图)
+  if(idx===1){
+    let collapsed = new Set();
+    cy.on("tap","node",e=>{
+      const n = e.target, d = n.data();
+      // 仅对 server 中心节点 (id 长度 <= 7) 触发
+      if(d.id.length<=7 && d.id!=="L1" && d.id!=="L2"){
+        if(collapsed.has(d.id)){
+          n.children().forEach(c=>{c.style("display","element")});
+          collapsed.delete(d.id);
+        } else {
+          n.children().forEach(c=>{c.style("display","none")});
+          collapsed.add(d.id);
+        }
+      }
+    });
+  }
+
+  // 统计
+  document.getElementById("stats").textContent = `${v.nodes.length} 节点 · ${v.edges.length} 边`;
+}
+
+/* ---------- 搜索过滤 ---------- */
+document.getElementById("search").addEventListener("input",e=>{
+  const q = e.target.value.trim().toLowerCase();
+  if(!cy) return;
+  cy.elements().removeClass("highlight dim");
+  if(!q){return}
+  cy.nodes().forEach(n=>{
+    const lbl = (n.data("label")||"").toLowerCase();
+    const id = (n.data("id")||"").toLowerCase();
+    if(lbl.includes(q)||id.includes(q)) n.addClass("highlight");
+    else n.addClass("dim");
+  });
+});
+
+/* ---------- Tab 切换 ---------- */
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
+  document.getElementById("search").value="";
+  renderView(+b.dataset.view);
+}));
+
+renderView(0);
+</script>
+</body>
+</html>

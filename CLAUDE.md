@@ -9,7 +9,7 @@
 
 48 小时学完一科的私人 AI 辅导系统。v1 基于 4 个 MCP Server + Claude Desktop；v2 重构为独立 Electron 桌面应用。
 
-**当前阶段**：v1 修复迭代 + v2 计划待 review。INTEGRATED-PLAN 阶段一~三已提交；2026-06-12 完成 22 问题根因调查与 10 项修复（FIX-A~J，根因报告：`doc/reports/根因分析-22问题.md`）。v2 重构计划已编写，待 review 后启动，详见 `doc/plan/`。
+**当前阶段**：v1 修复迭代收束 + v2 计划待 review。2026-06-12 完成 22 问题根因调查与 10 项修复（FIX-A~J，根因报告：`doc/reports/根因分析-22问题.md`）；2026-06-13 新科目复跑验证通过（FastAPI 端到端 + 挑战清单 5/7 过堂 + FIX-K + `scripts/tutor_cli.py` 统一 CLI，worklog：`worklogs/2026-06-12_复跑验证-tutor_cli-FIX-K.md`）。**v2 动工唯一阻塞项 = v3.1 review**，详见 `STATUS.md` 下一步。
 
 ## 目录索引
 
@@ -55,7 +55,7 @@ ai-tutor/
 ├── worklogs/                   # AI 工作日志（07-汇报.md 必做）
 │   └── 2026-06-02_v3.1-设计交付.md
 │
-├── scripts/                    # demo + 工具脚本
+├── scripts/                    # tutor_cli.py 统一 CLI（采集→建图→质检→产物→教学）+ demo
 ├── tests/                      # 跨 server 测试
 ├── data/                       # 运行时数据（SQLite + 文件）
 ├── pyproject.toml
