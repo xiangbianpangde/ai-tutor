@@ -44,7 +44,7 @@ def _run(cmd: list[str], *, what: str) -> None:
 
 
 def convert_to_markdown(
-    pdf: Path, out_dir: Path, *, mineru_cmd: str = "mineru", lang: str = "zh"
+    pdf: Path, out_dir: Path, *, mineru_cmd: str = "mineru", lang: str = "ch"
 ) -> Path:
     """用 mineru 把 PDF 抽成 markdown，返回 .md 路径。缺 CLI → DEPENDENCY_MISSING。"""
     if not _which(mineru_cmd):
@@ -76,7 +76,10 @@ def parse_pdf(
     translate=True ：mineru 按 source_lang 抽源语言 markdown → md_translator 译成中文，
                      写 `<stem>_zh.md` 返回。
     """
-    mineru_lang = source_lang if translate else lang_out
+    # mineru 使用自己的语种代码（如 "ch" 而非 "zh"）
+    _MAP = {"zh": "ch", "ch": "ch", "en": "en"}
+    raw_lang = source_lang if translate else lang_out
+    mineru_lang = _MAP.get(raw_lang, raw_lang)
     md = convert_to_markdown(pdf, out_dir, mineru_cmd=mineru_cmd, lang=mineru_lang)
     if not translate:
         return md

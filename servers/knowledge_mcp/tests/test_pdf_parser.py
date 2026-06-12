@@ -112,3 +112,42 @@ def test_plugin_is_registry_compatible():
     parser = pdf_parser.MinerUPdfParser()
     assert isinstance(parser, Plugin)
     assert parser.category == "pdf_parse"
+
+
+# ----------------------------- 语种映射（#17 回归） ----------------------------- #
+
+
+def _fake_run_capture_cmd(cmds: list[list[str]]):
+    def _run(cmd, capture_output=True, text=True):  # noqa: ANN001, FBT002
+        cmds.append(list(cmd))
+        out_dir = Path(cmd[cmd.index("-o") + 1])
+        src = Path(cmd[cmd.index("-p") + 1])
+        (out_dir / f"{src.stem}.md").write_text("# Title\nbody", encoding="utf-8")
+        return SimpleNamespace(returncode=0, stderr="")
+
+    return _run
+
+
+def test_parse_chinese_maps_zh_to_ch(pdf, tmp_path, monkeypatch):
+    """mineru 的中文语种码是 "ch"——传 "zh" 走错 OCR 模型（中文教材解析差的根因）。"""
+    monkeypatch.setattr(pdf_parser, "_which", lambda _c: True)
+    cmds: list[list[str]] = []
+    monkeypatch.setattr(pdf_parser.subprocess, "run", _fake_run_capture_cmd(cmds))
+
+    pdf_parser.parse_pdf(pdf, tmp_path, translate=False, lang_out="zh")
+
+    assert cmds[0][cmds[0].index("-l") + 1] == "ch"
+
+
+def test_parse_translate_extracts_with_source_lang(pdf, tmp_path, monkeypatch):
+    """translate=True：mineru 按源语言（如 en）抽取，再树内翻译。"""
+    monkeypatch.setattr(pdf_parser, "_which", lambda _c: True)
+    cmds: list[list[str]] = []
+    monkeypatch.setattr(pdf_parser.subprocess, "run", _fake_run_capture_cmd(cmds))
+    from servers.knowledge_mcp import md_translator
+
+    monkeypatch.setattr(md_translator, "translate_markdown", lambda md, **kw: "# 译")
+
+    pdf_parser.parse_pdf(pdf, tmp_path, translate=True, source_lang="en")
+
+    assert cmds[0][cmds[0].index("-l") + 1] == "en"
