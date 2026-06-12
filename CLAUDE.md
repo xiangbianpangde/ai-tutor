@@ -9,7 +9,7 @@
 
 48 小时学完一科的私人 AI 辅导系统。v1 基于 4 个 MCP Server + Claude Desktop；v2 重构为独立 Electron 桌面应用。
 
-**当前阶段**：v1 修复迭代收束 + v2 计划待 review。2026-06-12 完成 22 问题根因调查与 10 项修复（FIX-A~J，根因报告：`doc/reports/根因分析-22问题.md`）；2026-06-13 新科目复跑验证通过（FastAPI 端到端 + 挑战清单 5/7 过堂 + FIX-K + `scripts/tutor_cli.py` 统一 CLI，worklog：`worklogs/2026-06-12_复跑验证-tutor_cli-FIX-K.md`）。**v2 动工唯一阻塞项 = v3.1 review**，详见 `STATUS.md` 下一步。
+**当前阶段**：v2 动工阻塞已全部解除。2026-06-12 完成 22 问题根因调查与修复 FIX-A~J（`doc/reports/根因分析-22问题.md`）；2026-06-13 复跑验证（FIX-K + tutor_cli）+ **v3.1 review 收束（走向 C'：v2 主体 + v3.1 增量 + 6 修正，`worklogs/2026-06-13_v3.1-走向决议.md`）** + 第二批挑战 6/6 过堂（FIX-L 判分回退封顶 partial / FIX-M 论文骨架过滤，`worklogs/2026-06-13_第二批挑战过堂-FIX-L-FIX-M.md`），797 测试全绿。注意：v3.1 设计包 2026-06-13 才真正还原入库（bc82a7c）。下一步 = B 阶段收尾 → C1 第一波，详见 `STATUS.md`。
 
 ## 目录索引
 
