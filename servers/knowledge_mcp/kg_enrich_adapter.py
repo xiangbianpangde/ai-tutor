@@ -126,6 +126,15 @@ _NOISE_CALLOUT_RE = re.compile(
     r"^(正确|错误|注意|提示|警告|示例|例如|举例|说明|备注|详细介绍|tips?|note|warning)\s*[:：]",
     re.IGNORECASE,
 )
+# FIX-M：论文/文档骨架节名（换体裁攻击 2026-06-13 发现——学术论文 PDF 语料里
+# 摘要/致谢/参考文献 占 3/19=15.8% 禁类）。只杀无歧义的纯骨架：引言/结论/相关工作
+# 这类常含实质内容的结构节保留（宁可留弱概念，不误杀内容节）。
+_NOISE_DOC_SKELETON_RE = re.compile(
+    r"^(摘要|abstract|致谢|acknowledg(e)?ments?|参考文献|references?|bibliography"
+    r"|目录|table\s+of\s+contents|附录\s*[A-Za-z一-十]?|appendix(\s+[A-Za-z])?"
+    r"|索引|index|版权声明|copyright|免责声明|disclaimer|作者简介|about\s+the\s+authors?)$",
+    re.IGNORECASE,
+)
 _MAX_TITLE_CHARS = 64
 _SENTENCE_ENDINGS = ("。", "．", "；", ";", "：", ":", "，", ",")
 
@@ -192,6 +201,8 @@ def is_noise_title(title: str) -> bool:
     if _NOISE_SYMBOL_RE.search(t):
         return True
     if _NOISE_CALLOUT_RE.match(t):
+        return True
+    if _NOISE_DOC_SKELETON_RE.match(t):
         return True
     if "，" in t:  # 概念名不该是带逗号的整句（"创建一个线程池，比如最多4个线程"）
         return True

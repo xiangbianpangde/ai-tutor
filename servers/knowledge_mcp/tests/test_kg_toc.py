@@ -212,6 +212,50 @@ def test_build_toc_skips_web_corpus_noise_titles(tmp_path: Path) -> None:
     ]
 
 
+# ------------- FIX-M：论文/文档骨架节名（换体裁攻击 2026-06-13 回归） ------------- #
+# 学术论文 PDF（mineru→翻译）语料的骨架节名在 FIX-K 12 类规则外：
+# AAAI 论文实测 摘要/致谢/参考文献 = 3/19 概念（15.8%）超 5% 红线。
+# 只杀无歧义纯骨架；引言/结论/相关工作 常含实质内容，保留为弱概念（宁留勿误杀）。
+
+
+def test_build_toc_skips_paper_skeleton_titles(tmp_path: Path) -> None:
+    """摘要/致谢/参考文献/目录/附录A/Abstract/References 不再成为概念；
+    引言/结论/相关工作/含实名的附录章保留。"""
+    from servers.knowledge_mcp.kg_enrich_adapter import _build_toc, is_noise_title
+
+    md = tmp_path / "paper.md"
+    md.write_text(
+        "# MemoryART: 多记忆模型增强大语言模型\n"
+        "## 摘要\n"
+        "## 引言\n"
+        "## 相关工作\n"
+        "## 情景记忆\n"
+        "## 实验\n"
+        "## 结论\n"
+        "## 致谢\n"
+        "## 参考文献\n",
+        encoding="utf-8",
+    )
+    concepts, _edges = _build_toc(subject_slug="t", markdown_path=md)
+    names = [c.names[0] for c in concepts]
+    assert names == [
+        "MemoryART: 多记忆模型增强大语言模型",
+        "引言",
+        "相关工作",
+        "情景记忆",
+        "实验",
+        "结论",
+    ]
+
+    # 英文骨架与扩展骨架形态
+    for t in ("Abstract", "References", "Bibliography", "Acknowledgments",
+              "目录", "附录 A", "Appendix B", "索引", "版权声明", "作者简介"):
+        assert is_noise_title(t), f"骨架节名未被过滤: {t!r}"
+    # 含实名的附录章 / 实质内容节 不误杀
+    for t in ("附录A 矩阵代数基础", "Appendix A Matrix Algebra", "引言", "结论"):
+        assert not is_noise_title(t), f"内容节被误杀: {t!r}"
+
+
 def test_strip_site_suffix() -> None:
     """来源页标题剥站点尾巴（命中站点关键词才剥，普通标题不受影响）。"""
     from servers.knowledge_mcp.kg_enrich_adapter import strip_site_suffix

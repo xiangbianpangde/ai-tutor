@@ -399,7 +399,11 @@ def main() -> None:
     try:
         asyncio.run(args.func(args))
     except TutorError as e:
-        sys.exit(f"[错误] {e}")
+        # hint 里通常带外部 CLI 的 stderr 尾巴（如 mineru），吞掉会让诊断只剩盲猜
+        msg = f"[错误] {e}"
+        if e.hint:
+            msg += f"\n[hint] {e.hint}"
+        sys.exit(msg)
 
 
 if __name__ == "__main__":

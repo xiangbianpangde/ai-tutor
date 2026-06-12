@@ -73,7 +73,15 @@ def _ngrams(text: str, n: int = 2) -> set[str]:
 
 
 def _heuristic_score(concept: Concept, answer: str) -> ScoreResult:
-    """spine v2 的 2-gram 启发式作为最终 fallback。"""
+    """spine v2 的 2-gram 启发式作为最终 fallback。
+
+    FIX-L：启发式无法核实语义，正确性封顶 partial——LLM 不可用时不发"掌握"认证。
+    修复前：答案只要与概念名有 2-gram 重叠即判 correct 0.7（"我不知道X是什么"
+    这类含名废话可白拿冷启动 0.88 先验），而切中要害但不含概念名的极简答案
+    反被压到 partial 0.4（压短抬长不对称）。
+    修复后：主题相关性同时看概念名与定义/通俗解释的 2-gram，命中即 partial 0.5，
+    未命中 partial 0.4，空答案 incorrect 不变。
+    """
     a = answer.strip()
     if not a:
         return ScoreResult(
@@ -82,19 +90,21 @@ def _heuristic_score(concept: Concept, answer: str) -> ScoreResult:
             evidence="空答案",
             suggested_remediation="请尝试用一句话回应",
         )
-    name_grams = _ngrams(concept.names[0])
-    overlap = name_grams & _ngrams(a)
-    if overlap:
+    a_grams = _ngrams(a)
+    name_hit = bool(_ngrams(concept.names[0]) & a_grams)
+    content_grams = _ngrams(concept.definition) | _ngrams(concept.informal_description or "")
+    content_hits = len(a_grams & content_grams)
+    if name_hit or content_hits >= 3:
         return ScoreResult(
-            correctness="correct",
-            raw_score=0.7,
-            evidence=f"启发式：答案与概念名 '{concept.names[0]}' 有 {len(overlap)} 个 2-gram 重叠",
-            suggested_remediation="",
+            correctness="partial",
+            raw_score=0.5,
+            evidence="启发式（LLM 不可用）：答案主题相关，但无法核实语义正确性，封顶 partial",
+            suggested_remediation="判分服务恢复后建议重答一次以确认掌握",
         )
     return ScoreResult(
         correctness="partial",
         raw_score=0.4,
-        evidence="启发式：答案不空但未命中概念名",
+        evidence="启发式：答案不空但未命中概念主题",
         suggested_remediation=f"想想 {concept.names[0]} 的核心特征",
     )
 

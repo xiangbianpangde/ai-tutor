@@ -84,6 +84,14 @@ def _read_uri(uri: str) -> str:
     return Path(uri.replace("file:///", "")).read_text(encoding="utf-8")
 
 
+def _score_json(correctness: str, raw: float) -> str:
+    """Mock 判分器响应（FIX-L 后启发式封顶 partial，correct 须由判分器显式给出）。"""
+    return json.dumps(
+        {"correctness": correctness, "raw_score": raw, "evidence": "BDD canned 判分"},
+        ensure_ascii=False,
+    )
+
+
 # --- resolve_conflicts 造数据用（copy 自 servers/.../test_resolve_conflicts.py）---
 def _concept(kg_id: str, cid: str, name: str | None = None) -> ConceptRow:
     return ConceptRow(
@@ -680,13 +688,20 @@ class TestTutoringRespond:
         assert na.content
         assert na.estimated_duration_min >= 1
 
-    def test_respond_correct_answer_increases_mastery(self, started: SimpleNamespace):
+    def test_respond_correct_answer_increases_mastery(
+        self, started: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+    ):
         """
         Scenario: 正确回答提升掌握度
         Given 当前概念的练习环节
-        When 提交含概念名的答案（启发式判 correct）
+        When 提交被判分器判 correct 的答案（Mock LLM；FIX-L 后启发式封顶 partial，
+             不能再靠"答案含概念名"白拿 correct）
         Then correctness == "correct" 且 mastery change > 0
         """
+        from shared.llm_client import MockLLMProvider
+
+        monkeypatch.setattr(tserver, "_llm", lambda: MockLLMProvider(
+            canned_responses=[_score_json("correct", 0.9)] * 4))
         with started.store.session() as s:
             row = s.get(SessionRow, started.session_id)
             cid = row.context_json["current_concept_id"]
@@ -727,15 +742,20 @@ class TestTutoringRespond:
         assert r.correctness == "partial"
         assert r.feedback
 
-    def test_bkt_convergence(self, started: SimpleNamespace):
+    def test_bkt_convergence(
+        self, started: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+    ):
         """
         Scenario: BKT 模型收敛
         Given 某概念初始 p_mastery ≈ 0.05
-        When 连续 10 次正确回答（不调 next_action，停在同一概念）
+        When 连续 10 次正确回答（Mock LLM 判 correct；不调 next_action，停在同一概念）
         Then p_mastery > 0.9 且 n_observations == 10
         """
         from servers.tutoring_mcp.bkt_store import BKTStore
+        from shared.llm_client import MockLLMProvider
 
+        monkeypatch.setattr(tserver, "_llm", lambda: MockLLMProvider(
+            canned_responses=[_score_json("correct", 0.9)] * 24))
         with started.store.session() as s:
             row = s.get(SessionRow, started.session_id)
             cid = row.context_json["current_concept_id"]

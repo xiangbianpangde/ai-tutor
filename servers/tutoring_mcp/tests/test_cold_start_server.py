@@ -82,14 +82,26 @@ async def test_probe_returns_questions(env) -> None:
     assert all(p.concept_id in concept_ids for p in probe_set.probes)
 
 
+def _judge_correct() -> str:
+    """冷启动判分 LLM 的 canned 响应（FIX-L 后启发式封顶 partial，
+    种"已掌握"必须经真实判分器判 correct，测试里用 Mock LLM 显式给出）。"""
+    return json.dumps(
+        {"correctness": "correct", "raw_score": 0.9, "evidence": "测试 canned 判分"},
+        ensure_ascii=False,
+    )
+
+
 @pytest.mark.asyncio
-async def test_submit_seeds_bkt_and_profile(env) -> None:
+async def test_submit_seeds_bkt_and_profile(env, monkeypatch: pytest.MonkeyPatch) -> None:
     store, subject_id, _concept_ids, names = env
+    monkeypatch.setattr(
+        srv, "_llm", lambda: MockLLMProvider(canned_responses=[_judge_correct()] * 12)
+    )
     probe_fn = _unwrap(srv.cold_start_probe)
     submit_fn = _unwrap(srv.submit_cold_start)
 
     probe_set = await probe_fn(user_id="yhn", subject_id=subject_id, num_questions=6)
-    # 用概念名作答 → 启发式判 correct → 种为已掌握
+    # 判分器判 correct → 种为已掌握
     answers = [
         {"concept_id": p.concept_id, "answer": names[p.concept_id], "self_report": "sure"}
         for p in probe_set.probes
@@ -112,8 +124,11 @@ async def test_submit_seeds_bkt_and_profile(env) -> None:
 
 
 @pytest.mark.asyncio
-async def test_probe_already_assessed_after_submit(env) -> None:
+async def test_probe_already_assessed_after_submit(env, monkeypatch: pytest.MonkeyPatch) -> None:
     _store, subject_id, _concept_ids, names = env
+    monkeypatch.setattr(
+        srv, "_llm", lambda: MockLLMProvider(canned_responses=[_judge_correct()] * 12)
+    )
     probe_fn = _unwrap(srv.cold_start_probe)
     submit_fn = _unwrap(srv.submit_cold_start)
 
@@ -130,8 +145,37 @@ async def test_probe_already_assessed_after_submit(env) -> None:
 
 
 @pytest.mark.asyncio
-async def test_start_session_skips_mastered_after_cold_start(env) -> None:
+async def test_no_llm_name_parrot_seeds_nothing_mastered(env) -> None:
+    """FIX-L 回归：LLM 不可用（默认 Stub→启发式）时，用概念名复读作答
+    不得再种出"已掌握"先验——启发式封顶 partial（先验 ≤ 0.575 < 0.8）。
+    修复前：含名作答 → 启发式 correct 0.7 → 白拿 0.88 先验。"""
+    store, subject_id, _concept_ids, names = env
+    probe_fn = _unwrap(srv.cold_start_probe)
+    submit_fn = _unwrap(srv.submit_cold_start)
+
+    probe_set = await probe_fn(user_id="yhn", subject_id=subject_id, num_questions=6)
+    answers = [
+        {"concept_id": p.concept_id, "answer": names[p.concept_id], "self_report": "sure"}
+        for p in probe_set.probes
+    ]
+    result = await submit_fn(user_id="yhn", subject_id=subject_id, answers=answers)
+
+    assert result.probes_graded == len(probe_set.probes)  # 判分流程本身不受影响
+    assert result.seeded_mastered == []  # 无 LLM 不发掌握认证
+    with store.session() as s:
+        rows = s.query(BKTParamRow).filter_by(user_id="yhn").all()
+        assert rows  # 先验仍落库（partial 档）
+        assert all(r.p_mastery < 0.8 for r in rows)
+
+
+@pytest.mark.asyncio
+async def test_start_session_skips_mastered_after_cold_start(
+    env, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _store, subject_id, _concept_ids, names = env
+    monkeypatch.setattr(
+        srv, "_llm", lambda: MockLLMProvider(canned_responses=[_judge_correct()] * 12)
+    )
     probe_fn = _unwrap(srv.cold_start_probe)
     submit_fn = _unwrap(srv.submit_cold_start)
     start_fn = _unwrap(srv.start_learning_session)
