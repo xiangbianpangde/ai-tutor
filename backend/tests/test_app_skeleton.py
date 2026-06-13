@@ -45,6 +45,15 @@ def test_cache_stats_endpoint(client):
         assert field in body["data"]
 
 
+def test_events_endpoint_has_startup_event(client):
+    """GET /api/meta/events → 启动时 publish 的 backend.started 已被 recorder 捕获（M-006）。"""
+    r = client.get("/api/meta/events")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    assert any(e["type"] == "backend.started" for e in body["data"])
+
+
 def test_list_sessions_endpoint(client):
     """GET /api/tutoring/sessions?user_id= → 统一信封 + 会话列表（M-004）。"""
     # 空库先返回空列表

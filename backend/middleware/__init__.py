@@ -6,7 +6,16 @@
 from __future__ import annotations
 
 from .cache_layer import CacheLayer
+from .event_bus import Event, EventBus, EventRecorder
 from .session_manager import SessionManager
 from .task_manager import ProgressReporter, TaskManager
 
-__all__ = ["CacheLayer", "ProgressReporter", "SessionManager", "TaskManager"]
+__all__ = [
+    "CacheLayer",
+    "Event",
+    "EventBus",
+    "EventRecorder",
+    "ProgressReporter",
+    "SessionManager",
+    "TaskManager",
+]
