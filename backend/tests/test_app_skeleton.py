@@ -35,6 +35,16 @@ def test_root_banner_lists_engines(client):
     assert set(body["data"]["engines"]) == set(ENGINES)
 
 
+def test_cache_stats_endpoint(client):
+    """GET /api/meta/cache/stats → 统一信封 + 缓存统计字段。"""
+    r = client.get("/api/meta/cache/stats")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    for field in ("hits", "misses", "hit_rate", "saved_tokens", "entries"):
+        assert field in body["data"]
+
+
 def test_db_auto_init_creates_tables(client, config):
     """BDD 01 场景3：data/tutor.db 自动创建，14 张表全部存在。"""
     assert config.db_path.exists()

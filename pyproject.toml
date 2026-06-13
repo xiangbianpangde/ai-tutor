@@ -139,6 +139,12 @@ type = "forbidden"
 source_modules = ["backend.core"]
 forbidden_modules = ["backend.routers", "backend.app", "backend.main", "servers"]
 
+[[tool.importlinter.contracts]]
+name = "backend.middleware 是横切层，不反向依赖上层（routers/app/main）"
+type = "forbidden"
+source_modules = ["backend.middleware"]
+forbidden_modules = ["backend.routers", "backend.app", "backend.main"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests", "servers", "BDD", "backend"]

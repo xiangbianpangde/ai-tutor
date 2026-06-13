@@ -1,6 +1,6 @@
 # AI-Tutor 开发状态
 
-> 更新: 2026-06-13（C1 第一波完成：backend/ FastAPI 骨架 :18501 + API 网关 + Electron 客户端入口，810 测试全绿 / 阶段 B 收尾 / 走向 C'）
+> 更新: 2026-06-13（C2 起步：M-005 SQLite 缓存层跨重启 + pdf2zh 文档去 sys.path，817 测试全绿 / C1 完成 + D1 已签核 / 走向 C'）
 > 流程档位: 标准
 > 收束节点: 功能点3后 / 功能点7后 / 功能点11后
 
@@ -78,7 +78,7 @@ pyclipper + transformers<5）；③ tutor_cli 不再吞 TutorError.hint（外部
 |--------|---------|------|---------|
 | 1 后端骨架：FastAPI 统一应用 | specs/01-基础骨架.md | ✅ C1 完成（backend/ 跑通 :18501）| 2026-06-13 |
 | 2 API 迁移：MCP → REST | specs/02-API迁移.md | ◐ 网关+信封+health 就位；32 tool 迁移随引擎 C2-C4 | - |
-| 3 中间件层：Session/File/Cache/Monitor | specs/03-中间件层.md | ⏳ 待开始（C2）| - |
+| 3 中间件层：Session/File/Cache/Monitor | specs/03-中间件层.md | ◐ C2：M-005 缓存层就位（SQLite 跨重启）；Session/File/Monitor 待续 | - |
 | 4 Electron 前端骨架 | specs/04-前端应用.md | ◐ 客户端入口骨架（spawn+health-gate）；5 页面/向导/WS 待后续波次 | - |
 | 5 可视化：KG图/遗忘曲线/掌握度 | specs/05-可视化.md | ⏳ 待开始 | - |
 | 6 数据管线：采集→清洗→结构化 | specs/06-数据管线.md | ⏳ 待开始 | - |
@@ -92,7 +92,7 @@ pyclipper + transformers<5）；③ tutor_cli 不再吞 TutorError.hint（外部
 
 | 节点 | 触发条件 | 执行日期 | 状态 | 报告 |
 |------|---------|---------|:---:|------|
-| D1 | C1 完成（后端骨架+API+前端入口）| 2026-06-13 | ◐ 四阶段执行完毕·**待人签核** | [收束报告-D1-C1](doc/reports/收束报告-D1-C1.md) |
+| D1 | C1 完成（后端骨架+API+前端入口）| 2026-06-13 | ✅ 已审计（人签核，"继续"授权进 C2）| [收束报告-D1-C1](doc/reports/收束报告-D1-C1.md) |
 | D2 | C3 完成（核心引擎就位）| — | ⬜ 待执行 | — |
 | D3 | C5 完成（11 功能点全过）| — | ⬜ 待执行 | — |
 
@@ -155,8 +155,12 @@ pyclipper + transformers<5）；③ tutor_cli 不再吞 TutorError.hint（外部
 
 ### 阶段 C · 开发启动（5 波推进，按 V3.1↔V2 桥接 §四）
 - ✅ **C1 第一波**（2026-06-13）M-001 服务入口 + M-002 API 网关 + M-003 客户端入口（对应 v2 #1+#2[网关]+#4[入口]）
-  → `worklogs/2026-06-13_C1第一波-后端骨架-API网关-客户端入口.md`。`backend/` 跑通 :18501，810 测试全绿。
-  目录名定 `backend/`；ruff-format 全仓暂不开。**下一步 = D1 收束节点**（后端骨架+API+前端入口齐备）。
+  → `worklogs/2026-06-13_C1第一波-后端骨架-API网关-客户端入口.md`。`backend/` 跑通 :18501。D1 已签核。
+- ◐ **C2 第二波**（进行中）M-004 Session + M-005 Cache + M-006 事件总线 + M-007 Pipeline + M-014 数据管线（对应 v2 #3+#6+#7+#8）
+  - ✅ 波前文档去 sys.path 化（pdf2zh 集成，走向决议 §五-6）
+  - ✅ **M-005 CacheLayer**（SQLite L1 缓存，跨重启存活 + `/api/meta/cache/stats`，817 测试全绿）
+    → `worklogs/2026-06-13_C2-pdf2zh文档去syspath-M005缓存层.md`
+  - ☐ M-004 Session / M-006 事件总线 / M-007 Pipeline（含 build_kg 异步+进度）/ M-014 数据管线 / M-017 FileManager
 - ☐ **C2 第二波** M-004 Session + M-005 Cache + M-006 事件总线 + M-007 Pipeline 调度 + M-014 数据管线（对应 v2 #3+#6+#7+#8）
 - ☐ **C3 第三波** M-008 RAG 引擎 + M-009 教学编排（对应 v2 #9+#10 部分）
 - ☐ **C4 第四波** M-010 费曼 + M-011 FSRS + M-012 阶段校准 + M-013 长期记忆 + M-016 红线编排（对应 v2 #10 拆分）
@@ -307,9 +311,10 @@ ai-tutor/
 1. ~~**B 阶段收尾**~~ ✅ 2026-06-13（B1-B5 全过）。
 2. ~~**C1 第一波**~~ ✅ 2026-06-13（M-001/M-002/M-003，`backend/` :18501 跑通，810 测试全绿，
    目录名定 backend/，ruff-format 暂不开）。
-3. **D1 收束节点**（当前下一步）：C1 完成 → 走四阶段收束（03-第一步 1.6 + 06-第三步_收束节点）。
-   收束后进 **C2 第二波**：M-004 Session + M-005 Cache + M-006 事件总线 + M-007 Pipeline + M-014 数据管线。
-   ⚠️ C2 波前先把 pdf2zh集成/数据管线文档去 sys.path 化（走向决议 §五-6）。
+3. ~~**D1 收束节点**~~ ✅ 2026-06-13 已审计签核（6 依赖漏洞修复，`收束报告-D1-C1.md`）。
+4. **C2 第二波**（进行中）：✅ 波前文档去 sys.path 化 + ✅ M-005 CacheLayer（SQLite 跨重启）。
+   **下一步** = M-004 SessionManager（包 v1 SessionStore：list/switch/摘要/过期/token）→ 再 M-007 Pipeline
+   （build_kg 异步任务+进度可查，正面打"v2 第一波过堂"挑战）。
    **首日决断**：目录名 backend/ vs src/aitutor/（走向决议 §四-5，建议 backend/
    保持与 PRD 验收命令一致）。
    ⚠️ M-014 数据管线（整理环节）仍提前到第一/第二波——换体裁攻击再添铁证：

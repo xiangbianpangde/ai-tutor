@@ -1,7 +1,12 @@
 # 设计文档：pdf2zh 深度集成
 
 > 涉及模块：`backend/pipeline/collector.py`、`backend/engines/knowledge/pdf_parser.py`
-> 外部依赖：`C:/Users/yhn/pdf2zh/`（MinerU + 翻译管线）
+> 外部依赖：**mineru CLI**（PDF→Markdown，子进程隔离，上游 AGPL-3.0，**不入 pyproject 依赖 / M-015 不捆绑**）
+> 树内能力：`servers/knowledge_mcp/md_translator.py`（并发翻译，**MIT**，源自 `pdf2zh/translate_md.py` 的树内化副本）
+>
+> ⚠️ **2026-06-13 现实校准**（走向决议 §五-6 / §二-4）：本文档原写"直接调用 pdf2zh 完整管线 + `sys.path` 注入"，
+> 与 v1 现实不符——上游 AGPL 的 pdf2zh 包**已移出依赖**。现实是：PDF 解析走 **mineru 子进程**，翻译走**树内 MIT
+> `md_translator`（普通 import，禁用 sys.path）**。§1/§3 已按现实重写。
 
 ## 背景
 
@@ -22,15 +27,17 @@
 
 ## 方案
 
-### 1. 直接复用 pdf2zh 的完整管线
+### 1. mineru 子进程解析 + 树内 MIT 翻译（现实形态）
 
-不复制代码，而是直接调用 pdf2zh 的核心函数：
+PDF 解析走 mineru CLI 子进程（进程隔离、不污染本环境、规避上游 AGPL）；翻译走树内
+`servers/knowledge_mcp/md_translator.py`（MIT，普通 import，**无 sys.path 注入**）：
 
 ```python
 # backend/pipeline/collector.py
+from servers.knowledge_mcp.md_translator import chunk_markdown, translate_chunks_concurrent
 
-class Pdf2ZhAdapter:
-    """pdf2zh 适配器。直接调用 pdf2zh 的翻译管线，而非复制代码。"""
+class PdfCollector:
+    """PDF 采集器：mineru 子进程解析 + 树内 md_translator 并发翻译。"""
 
     def __init__(self, mineru_cmd: str = "mineru"):
         self.mineru_cmd = mineru_cmd
@@ -91,14 +98,15 @@ def _pdf2zh_convert(pdf: Path, out_dir: Path, translate: bool, workers: int) -> 
     ...
 ```
 
-#### 方式 B：Python import（深度集成，需要 pdf2zh 在 PYTHONPATH）
+#### 方式 B：树内 MIT 翻译模块（普通 import，**禁用 sys.path 注入**）
+
+翻译核心已树内化为 `servers/knowledge_mcp/md_translator.py`（MIT），作为本仓普通模块直接 import——
+**不再 `sys.path.insert` 上游 pdf2zh，也不依赖其 `.venv`**：
 
 ```python
-# 将 pdf2zh 目录加入 sys.path
-sys.path.insert(0, str(PDF2ZH_DIR))
-from translate_md import chunk_markdown, translate_chunks_concurrent
+from servers.knowledge_mcp.md_translator import chunk_markdown, translate_chunks_concurrent
 
-def _pdf2zh_translate(md_path: Path, workers: int, client: OpenAI) -> Path:
+def _translate_md(md_path: Path, workers: int, client: OpenAI) -> Path:
     md = md_path.read_text(encoding="utf-8")
     chunks = chunk_markdown(md, chunk_size=3000)
     translated = translate_chunks_concurrent(client, chunks, workers=workers)
@@ -107,7 +115,8 @@ def _pdf2zh_translate(md_path: Path, workers: int, client: OpenAI) -> Path:
     return zh_path
 ```
 
-**推荐方式 A**：subprocess 隔离，不污染 AI-Tutor 的 Python 环境。pdf2zh 已自带 `.venv`，可通过 `PDF2ZH_PYTHON` 环境变量指定。
+**分工**：PDF→Markdown 用 **方式 A（mineru 子进程，进程隔离 + 规避 AGPL）**；Markdown→中文用
+**方式 B（树内 MIT md_translator，普通 import）**。二者组合即"PDF→中文 MD 一键完成"，**全程无 sys.path 注入、无上游 pdf2zh 包依赖**。
 
 ### 4. 多后端支持
 
