@@ -80,9 +80,9 @@ def test_cache_implements_llm_provider() -> None:
 
 def test_cache_propagates_underlying_exception() -> None:
     """底层抛 TutorError → 不缓存，照样上抛。"""
+    from shared.errors import TutorError
     from shared.llm_cache import CachedLLMProvider
     from shared.llm_client import StubLLMProvider
-    from shared.errors import TutorError
 
     cached = CachedLLMProvider(inner=StubLLMProvider())
     with pytest.raises(TutorError):

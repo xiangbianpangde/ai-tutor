@@ -12,7 +12,6 @@ import asyncio
 import json
 import random
 import sys
-from datetime import datetime
 from pathlib import Path
 
 try:
@@ -149,7 +148,7 @@ def main(md_path: Path, use_mock: bool) -> None:
         print(f"  content  = {final_action.content}")
         print(f"  metadata = {final_action.metadata}")
     else:
-        print(f"  未触发；可能 withdrawal 信号不够强")
+        print("  未触发；可能 withdrawal 信号不够强")
 
     print(f"\n[OK] Slice T3 demo 完成。provider = {label}")
 

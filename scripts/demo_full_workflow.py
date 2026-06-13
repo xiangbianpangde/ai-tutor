@@ -27,7 +27,6 @@ import asyncio
 import json
 import random
 import sys
-from datetime import datetime
 from pathlib import Path
 
 try:
@@ -43,7 +42,6 @@ from shared.llm_client import LLMProvider, MockLLMProvider
 from shared.logging_config import configure_logging
 from shared.providers.deepseek import DeepSeekProvider
 from shared.storage import RelationalStore
-
 
 DEFAULT_VAULT = Path(r"C:\Users\yhn\Documents\GitHub\xbpd_obsidian")
 DEFAULT_MD = DEFAULT_VAULT / "07.学习笔记/大一下/机器学习/机器学习笔记/4月24日-星期四-聚类.md"
@@ -124,7 +122,7 @@ async def main(md_path: Path, vault: Path, use_mock: bool, dry_push: bool) -> No
         for h in found:
             print(f"  · {h.modified_at.strftime('%Y-%m-%d')}  {h.relative_path}")
     else:
-        print(f"  (vault 不存在，跳过；继续用 --md 指定的笔记)")
+        print("  (vault 不存在，跳过；继续用 --md 指定的笔记)")
 
     # ────────────────────────────────────────────────────── #
     # STEP 2: knowledge.acquire_subject
@@ -204,7 +202,7 @@ async def main(md_path: Path, vault: Path, use_mock: bool, dry_push: bool) -> No
     # ────────────────────────────────────────────────────── #
     section(7, "sync.push_to_obsidian  ←  产物回到 Obsidian vault")
     if dry_push:
-        print(f"  (dry_push=True) 跳过真实写入")
+        print("  (dry_push=True) 跳过真实写入")
     elif vault.exists():
         from servers.sync_mcp.obsidian import push_to_obsidian
         push = push_to_obsidian(

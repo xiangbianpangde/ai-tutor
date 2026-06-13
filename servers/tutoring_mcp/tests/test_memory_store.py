@@ -45,8 +45,8 @@ def test_record_review_writes_history(db_setup) -> None:
 
 
 def test_load_curve_default_when_missing(db_setup) -> None:
-    from servers.tutoring_mcp.memory_store import MemoryStore
     from servers.tutoring_mcp.forgetting_curve import DEFAULT_LAMBDA
+    from servers.tutoring_mcp.memory_store import MemoryStore
 
     store = MemoryStore(db_setup)
     curve = store.load_curve(user_id="yhn", concept_id="ml:1:bow")

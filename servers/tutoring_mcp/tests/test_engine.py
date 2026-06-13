@@ -21,8 +21,8 @@ from pathlib import Path
 
 import pytest
 
-from shared.models import KnowledgeGraphRow, Subject, User
 from shared.models import ConceptRow as ConceptRowORM
+from shared.models import Subject, User
 from shared.schemas import ResponseResult, TeachingAction
 from shared.storage import RelationalStore
 
@@ -162,9 +162,9 @@ def test_respond_strips_firewall_violations_from_feedback(db_with_kg) -> None:
 
 
 def test_next_action_without_current_concept_raises(db_with_kg) -> None:
-    from shared.errors import TutorError
     from servers.tutoring_mcp.engine import TeachingEngine
     from servers.tutoring_mcp.session import SessionStore
+    from shared.errors import TutorError
 
     db, subject_id, _first_concept = db_with_kg
     sessions = SessionStore(db)

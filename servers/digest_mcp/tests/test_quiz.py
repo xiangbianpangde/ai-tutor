@@ -17,7 +17,6 @@ from shared.llm_client import MockLLMProvider
 from shared.models import User
 from shared.storage import RelationalStore
 
-
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 
 
@@ -142,8 +141,8 @@ def test_quiz_seed_makes_reproducible(kg_ready, tmp_path: Path) -> None:
 
 
 def test_quiz_unknown_kg_raises(tmp_db: RelationalStore, tmp_path: Path) -> None:
-    from shared.errors import TutorError
     from servers.digest_mcp.quiz import generate_quiz
+    from shared.errors import TutorError
 
     with pytest.raises(TutorError) as exc:
         generate_quiz(db=tmp_db, kg_id="no-such", out_dir=tmp_path, count=5)

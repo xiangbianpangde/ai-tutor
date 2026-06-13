@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from shared.errors import TutorError
 from shared.logging_config import get_logger
-from shared.models import KnowledgeGraphRow, RelationRow, ConceptRow
+from shared.models import ConceptRow, KnowledgeGraphRow, RelationRow
 from shared.schemas import (
     KgEditAction,
     LowConfidenceConcept,

@@ -9,7 +9,6 @@
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import random
 import sys
@@ -128,13 +127,13 @@ def main(md_path: Path, use_mock: bool) -> None:
         path = Path(a.uri.replace("file:///", ""))
         if a.mime_type == "text/vnd.mermaid":
             text = path.read_text(encoding="utf-8")
-            print(f"\nMermaid (前 8 行):")
+            print("\nMermaid (前 8 行):")
             for line in text.splitlines()[:8]:
                 print(f"  {line}")
             print(f"  ... (+{max(0, len(text.splitlines()) - 8)} more)")
         elif a.mime_type == "text/markdown":
             text = path.read_text(encoding="utf-8")
-            print(f"\nNotes (前 15 行):")
+            print("\nNotes (前 15 行):")
             for line in text.splitlines()[:15]:
                 print(f"  {line}")
         elif a.mime_type == "application/json":
@@ -149,9 +148,9 @@ def main(md_path: Path, use_mock: bool) -> None:
             if len(qs) > 3:
                 print(f"  ... 还有 {len(qs) - 3} 题")
 
-    print(f"\n[OK] Slice D demo 完成。")
+    print("\n[OK] Slice D demo 完成。")
     print(f"     产物目录: {out_dir.resolve()}")
-    print(f"     用浏览器打开 quiz HTML 可立即做题；mindmap.mmd 可粘到 mermaid.live。")
+    print("     用浏览器打开 quiz HTML 可立即做题；mindmap.mmd 可粘到 mermaid.live。")
 
 
 if __name__ == "__main__":

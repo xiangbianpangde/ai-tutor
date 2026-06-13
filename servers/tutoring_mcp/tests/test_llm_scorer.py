@@ -10,8 +10,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from shared.llm_client import MockLLMProvider, StubLLMProvider
 from shared.schemas import (
     Concept,

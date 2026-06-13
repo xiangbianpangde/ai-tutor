@@ -22,11 +22,10 @@ from pathlib import Path
 import pytest
 
 from shared.llm_client import MockLLMProvider
-from shared.models import KnowledgeGraphRow, Subject, User
 from shared.models import ConceptRow as ConceptRowORM
+from shared.models import Subject, User
 from shared.schemas import InterruptResult
 from shared.storage import RelationalStore
-
 
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 
@@ -84,7 +83,6 @@ def _start_session(db, subject_id: str, concept_id: str):
 
 def test_interrupt_concept_question(engine_env) -> None:
     from servers.tutoring_mcp.engine import TeachingEngine
-    from servers.tutoring_mcp.session import SessionStore
 
     db, subject_id, concept_id = engine_env
     sessions, ctx = _start_session(db, subject_id, concept_id)
@@ -105,7 +103,6 @@ def test_interrupt_concept_question(engine_env) -> None:
 
 def test_interrupt_prereq_gap(engine_env) -> None:
     from servers.tutoring_mcp.engine import TeachingEngine
-    from servers.tutoring_mcp.session import SessionStore
 
     db, subject_id, concept_id = engine_env
     sessions, ctx = _start_session(db, subject_id, concept_id)
@@ -164,7 +161,6 @@ def test_interrupt_distraction_gentle_redirect(engine_env) -> None:
 def test_interrupt_saves_checkpoint_to_session(engine_env) -> None:
     """interrupt 应把当前 strategy state + concept 写入 session.interrupt_checkpoint。"""
     from servers.tutoring_mcp.engine import TeachingEngine
-    from servers.tutoring_mcp.session import SessionStore
 
     db, subject_id, concept_id = engine_env
     sessions, ctx = _start_session(db, subject_id, concept_id)

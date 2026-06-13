@@ -26,7 +26,6 @@ from shared.models import (
 )
 from shared.storage import RelationalStore
 
-
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "mini_subject.md"
 
 

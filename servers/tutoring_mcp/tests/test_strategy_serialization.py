@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import pytest
 
+from servers.tutoring_mcp.strategies import get_strategy
 from shared.schemas import (
     Concept,
     ConceptClassification,
     ConceptDifficulty,
 )
-from servers.tutoring_mcp.strategies import get_strategy, list_strategies
 
 
 def _concept() -> Concept:

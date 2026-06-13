@@ -19,7 +19,6 @@ from shared.llm_client import MockLLMProvider, StubLLMProvider
 from shared.models import User
 from shared.storage import RelationalStore
 
-
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 
 

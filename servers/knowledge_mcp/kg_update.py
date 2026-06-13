@@ -26,6 +26,8 @@ from shared.schemas import (
     KgUpdateFailure,
     KgUpdateResult,
     QualityReport,
+)
+from shared.schemas import (
     Relation as RelationSchema,
 )
 from shared.storage import RelationalStore

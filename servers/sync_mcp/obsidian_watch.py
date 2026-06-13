@@ -10,9 +10,10 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from shared.errors import TutorError
 from shared.logging_config import get_logger

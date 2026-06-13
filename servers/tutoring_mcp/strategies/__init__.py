@@ -21,7 +21,6 @@ from .reduction import ReductionStrategy, ReductionStub
 from .socratic import SocraticStrategy
 from .spaced_repetition import SpacedRepetitionStrategy
 
-
 _REGISTRY: dict[str, type[Strategy]] = {
     "reduction": ReductionStrategy,
     "jiangjie": JiangjieStrategy,

@@ -89,9 +89,10 @@ def test_pull_ignores_obsidian_meta_dirs(tmp_path: Path) -> None:
 
 def test_pull_sorts_by_modified_desc(tmp_path: Path) -> None:
     """结果按修改时间倒序。"""
-    from servers.sync_mcp.obsidian import pull_homework_from_obsidian
-    import time
     import os
+    import time
+
+    from servers.sync_mcp.obsidian import pull_homework_from_obsidian
 
     vault = tmp_path / "vault"
     vault.mkdir()

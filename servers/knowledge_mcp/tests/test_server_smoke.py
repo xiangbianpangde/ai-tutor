@@ -13,7 +13,6 @@ from servers.knowledge_mcp import server as srv
 from shared.models import User
 from shared.storage import RelationalStore
 
-
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 
 
@@ -107,7 +106,6 @@ async def test_query_path_and_subgraph(db_env: RelationalStore) -> None:
     b = await build_fn(corpus_id=a.corpus_id, depth="toc")
 
     # 取两个真实 concept_id（章节 1 下的父子）做 path/subgraph
-    import os
     os.environ["DATABASE_URL"] = db_env.url
     from shared.models import ConceptRow as CR
     with db_env.session() as s:

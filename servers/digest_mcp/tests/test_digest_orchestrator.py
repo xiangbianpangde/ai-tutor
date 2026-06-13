@@ -19,9 +19,8 @@ from pathlib import Path
 import pytest
 
 from shared.llm_client import MockLLMProvider
-from shared.models import Subject, User
+from shared.models import User
 from shared.storage import RelationalStore
-
 
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 
@@ -109,8 +108,8 @@ def test_digest_unknown_format_warning(kg_and_corpus, tmp_path: Path) -> None:
 
 
 def test_digest_unknown_kg_raises(tmp_db: RelationalStore, tmp_path: Path) -> None:
-    from shared.errors import TutorError
     from servers.digest_mcp.orchestrator import digest
+    from shared.errors import TutorError
 
     with pytest.raises(TutorError) as exc:
         digest(db=tmp_db, kg_id="no-such", out_dir=tmp_path, formats=["mindmap"])
@@ -135,7 +134,6 @@ async def test_digest_tool_registered() -> None:
 async def test_digest_tool_calls_orchestrator(kg_and_corpus, tmp_path: Path, monkeypatch) -> None:
     """server.digest 应该 dispatch 到 orchestrator.digest。"""
     from servers.digest_mcp import server as srv
-    from shared.storage import RelationalStore
 
     db, _, kg_id = kg_and_corpus
     monkeypatch.setenv("DATABASE_URL", db.url)

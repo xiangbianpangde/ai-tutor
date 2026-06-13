@@ -13,13 +13,12 @@ from pathlib import Path
 import pytest
 
 from shared.llm_client import MockLLMProvider
+from shared.models import ConceptRow as ConceptRowORM
 from shared.models import (
-    KnowledgeGraphRow,
     LearnerProfileRow,
     Subject,
     User,
 )
-from shared.models import ConceptRow as ConceptRowORM
 from shared.schemas import BehavioralProfile, FlowLevel, LearnerProfile
 from shared.storage import RelationalStore
 
@@ -157,6 +156,7 @@ def test_silent_flow_pace_is_gentle(engine_env):
 def test_cognitive_load_updates_and_reflects_struggle(engine_env):
     """答错的认知负荷 > 答对；且不再恒为 0。"""
     import json
+
     from servers.tutoring_mcp.engine import TeachingEngine
     from servers.tutoring_mcp.session import SessionStore
 

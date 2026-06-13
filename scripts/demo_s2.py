@@ -31,7 +31,6 @@ from shared.logging_config import configure_logging
 from shared.providers.deepseek import DeepSeekProvider
 from shared.storage import RelationalStore
 
-
 DEFAULT_VAULT = Path(r"C:\Users\yhn\Documents\GitHub\xbpd_obsidian")
 DEFAULT_MD = DEFAULT_VAULT / "07.学习笔记/大一下/机器学习/机器学习笔记/4月24日-星期四-聚类.md"
 
@@ -74,10 +73,10 @@ def main(md_path: Path, use_mock: bool) -> None:
 
     # ① 建 KG + digest 产物
     section("① 建 KG + 生成 digest 产物")
+    from servers.digest_mcp.orchestrator import digest
     from servers.knowledge_mcp.acquisition_adapter import AcquireSource, acquire
     from servers.knowledge_mcp.kg_builder import ConceptKGBuilder
     from servers.knowledge_mcp.kg_enrich_adapter import _build_toc
-    from servers.digest_mcp.orchestrator import digest
     from shared.storage import FileStore
 
     fs = FileStore(Path("data"))
@@ -143,7 +142,7 @@ def main(md_path: Path, use_mock: bool) -> None:
         ["git", "log", "--oneline"], cwd=repo_path,
         capture_output=True, text=True, encoding="utf-8", errors="replace",
     ).stdout or ""
-    print(f"\n  git log:")
+    print("\n  git log:")
     for line in log.strip().splitlines():
         print(f"    {line}")
 
@@ -160,7 +159,7 @@ def main(md_path: Path, use_mock: bool) -> None:
         print(f"  (vault 不存在: {vault})")
 
     print(f"\n[OK] Slice S2 demo 完成。本地 git 仓库 = {repo['repo_path']}")
-    print(f"     学习产物现在有完整版本历史，可 git diff / git checkout 任意版本")
+    print("     学习产物现在有完整版本历史，可 git diff / git checkout 任意版本")
 
 
 if __name__ == "__main__":

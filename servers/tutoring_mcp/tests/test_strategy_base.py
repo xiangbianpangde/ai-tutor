@@ -16,7 +16,6 @@ from shared.schemas import (
     ConceptClassification,
     ConceptDifficulty,
     TeachingAction,
-    TeachingContext,
 )
 
 

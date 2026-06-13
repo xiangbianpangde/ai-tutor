@@ -10,8 +10,6 @@
 """
 from __future__ import annotations
 
-import pytest
-
 
 def test_negation_pattern_caught() -> None:
     from servers.tutoring_mcp.non_judgment_firewall import NonJudgmentFirewall

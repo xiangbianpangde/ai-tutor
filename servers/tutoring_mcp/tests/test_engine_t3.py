@@ -13,11 +13,10 @@ from pathlib import Path
 import pytest
 
 from shared.llm_client import MockLLMProvider
-from shared.models import Subject, User
 from shared.models import ConceptRow as ConceptRowORM
+from shared.models import Subject, User
 from shared.schemas import FlowLevel
 from shared.storage import RelationalStore
-
 
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 
@@ -30,7 +29,6 @@ def _enrich() -> str:
 def engine_env(tmp_db: RelationalStore, tmp_filestore):
     from servers.knowledge_mcp.acquisition_adapter import AcquireSource, acquire
     from servers.knowledge_mcp.kg_builder import ConceptKGBuilder
-    from servers.tutoring_mcp.engine import TeachingEngine
     from servers.tutoring_mcp.session import SessionStore
 
     with tmp_db.session() as s:

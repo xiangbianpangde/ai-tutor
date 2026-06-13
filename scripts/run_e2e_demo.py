@@ -24,7 +24,6 @@ from shared.logging_config import configure_logging
 from shared.models import Subject, User
 from shared.storage import RelationalStore
 
-
 HEADER = "─" * 60
 
 

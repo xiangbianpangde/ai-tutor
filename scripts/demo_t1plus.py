@@ -138,7 +138,7 @@ async def main(md_path: Path, use_mock: bool) -> None:
     print(f"  self_score             = {res['self_score']}")
     print(f"  actual_mastery_avg     = {res['actual_mastery_avg']}")
     print(f"  self_assessment_accuracy = {res['self_assessment_accuracy']}")
-    print(f"  suggestions:")
+    print("  suggestions:")
     for s in res["suggestions"]:
         print(f"    - {s}")
     print(f"  current_mastery_map: {len(res['current_mastery_map'])} concepts")

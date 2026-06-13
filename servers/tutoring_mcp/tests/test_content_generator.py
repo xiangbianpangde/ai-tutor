@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import pytest
 
+from servers.tutoring_mcp.content_generator import ContentGenerator
 from shared.llm_client import MockLLMProvider, StubLLMProvider
 from shared.schemas import (
     Concept,
@@ -14,7 +15,6 @@ from shared.schemas import (
     ConceptDifficulty,
     TeachingAction,
 )
-from servers.tutoring_mcp.content_generator import ContentGenerator
 
 
 def _concept() -> Concept:

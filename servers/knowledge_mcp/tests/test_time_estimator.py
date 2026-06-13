@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import pytest
 
-from shared.schemas import Concept, ConceptClassification, ConceptDifficulty
 from servers.knowledge_mcp.time_estimator import calibrate_time, estimate_time_min
+from shared.schemas import Concept, ConceptClassification, ConceptDifficulty
 
 
 def _c(*, load=0.3, formula=0.2, abstract=0.3, prereq=1, depth=1) -> Concept:

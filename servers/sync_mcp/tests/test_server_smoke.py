@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 from servers.sync_mcp import server as srv
-from shared.errors import TutorError
 
 
 def _unwrap(tool):

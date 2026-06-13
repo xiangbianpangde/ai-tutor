@@ -18,9 +18,8 @@ import pytest
 from shared.errors import TutorError
 from shared.llm_client import MockLLMProvider
 from shared.models import ConceptRow, KnowledgeGraphRow, RelationRow, User
-from shared.schemas import KgEditAction, Relation
+from shared.schemas import KgEditAction
 from shared.storage import RelationalStore
-
 
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 

@@ -16,8 +16,6 @@
 """
 from __future__ import annotations
 
-import pytest
-
 from shared.schemas import FlowSignals, TeachingAction
 
 
@@ -82,7 +80,7 @@ def test_no_break_when_no_signals_no_skips() -> None:
 
 
 def test_repair_withdrawal_offers_safety() -> None:
-    from servers.tutoring_mcp.gain_loop_monitor import repair, GainLoopBreakType
+    from servers.tutoring_mcp.gain_loop_monitor import repair
 
     act = repair(break_type="student_withdrawal")
     assert isinstance(act, TeachingAction)

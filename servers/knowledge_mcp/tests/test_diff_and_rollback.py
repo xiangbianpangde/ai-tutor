@@ -29,7 +29,6 @@ from shared.models import (
 from shared.schemas import KgEditAction
 from shared.storage import RelationalStore
 
-
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 
 

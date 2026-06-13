@@ -19,7 +19,6 @@ from shared.llm_client import MockLLMProvider
 from shared.models import User
 from shared.storage import RelationalStore
 
-
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 
 
@@ -98,8 +97,8 @@ def test_mindmap_only_low_confidence(kg_ready, tmp_path: Path) -> None:
 
 
 def test_mindmap_unknown_kg_raises(tmp_db, tmp_path: Path) -> None:
-    from shared.errors import TutorError
     from servers.digest_mcp.mindmap import generate_mindmap
+    from shared.errors import TutorError
 
     with pytest.raises(TutorError) as exc:
         generate_mindmap(db=tmp_db, kg_id="no-such", out_dir=tmp_path)

@@ -9,7 +9,6 @@
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import random
 import sys
@@ -137,7 +136,7 @@ def main(md_path: Path, use_mock: bool) -> None:
     print(f"低置信概念 ({len(rv.low_confidence_concepts)}):")
     for c in rv.low_confidence_concepts:
         print(f"  [{c.confidence:.2f}] {c.name}  — {c.definition_preview[:50]}")
-    print(f"\nsuggested_actions:")
+    print("\nsuggested_actions:")
     for a in rv.suggested_actions:
         print(f"  - op={a.op}  note={a.note}")
 
@@ -170,7 +169,7 @@ def main(md_path: Path, use_mock: bool) -> None:
 
     print(f"\n[OK] K2 demo 完成。LLM provider = {provider_label}")
     print(f"     KG = {result.kg_id}")
-    print(f"     接下来可跑 scripts/run_e2e_demo.py 接续学习会话。")
+    print("     接下来可跑 scripts/run_e2e_demo.py 接续学习会话。")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # AI-Tutor 开发状态
 
-> 更新: 2026-06-13（第二批挑战 6/6 过堂 + v3.1 review 收束·走向 C' + FIX-L/M）
+> 更新: 2026-06-13（阶段 B 收尾全完成：pre-commit 门禁 + 版本锁定 + 快照 / 第二批挑战 6/6 + 走向 C' + FIX-L/M）
 > 流程档位: 标准
 > 收束节点: 功能点3后 / 功能点7后 / 功能点11后
 
@@ -129,15 +129,21 @@ pyclipper + transformers<5）；③ tutor_cli 不再吞 TutorError.hint（外部
 - ☐ **A3** 写 v3.1 收束报告（按 07-汇报.md 二档）→ 落盘 `doc/reports/收束报告-v3.1.md`
 - ☐ **A4** v2 现有 10 份 `doc/plan/design/` 与 v3.1 17 模块交叉引用，输出冲突/重复/补充清单
 
-### 阶段 B · 开发准备（预计 1-2 天）
-- ☐ **B1** Git 仓库状态检查（`git status` + 确认 `main` 干净）
-- ☐ **B2** 配置 pre-commit：import-linter / ruff / pre-commit / spectral（按 `开发规范/02-coding_代码编写规范.md §二`）
-- ☐ **B3** 锁版本：`uv.lock` 检查 / sqlite-vec 0.1.x / pdf2zh / FastAPI 0.115
-- ☐ **B4** 启动 `ai-tutor/ai-tutor-system-design/` → 备份为 `v3.1-aitutor-design/历史快照/`（DEVELOPMENT-NORM §一 不轻易加新文件原则）
-- ☐ **B5** 风险处置预案：
-  - pdf2zh AGPL 法务审查（联系法务）
-  - sqlite-vec 0.1.x 锁定 + 上游监控
-  - M-008 内聚度细化（DD-M 阶段补）
+### 阶段 B · 开发准备 ✅ 全完成（2026-06-13）
+
+> 执行记录：`worklogs/2026-06-13_B阶段收尾-precommit-版本锁定.md`。797 测试保持全绿。
+
+- ✅ **B1** Git 仓库状态检查（main 干净）
+- ✅ **B2** pre-commit 门禁落地：`.pre-commit-config.yaml`（全 local/system hook，规避死代理）
+  = ruff lint（红线 T20/T100/B）+ import-linter（**2 契约 KEPT**：shared⊥servers / 四 server 独立）
+  + gitleaks + redocly（无 spec 休眠，C1 激活，**替代休眠的 spectral**）。
+  关键：`exclude doc/` 后 ruff 真实基线 787→246，清零（205 自动修 + 手工修 E402/B007/F821/UP038），
+  `ruff check` All passed。**ruff-format 暂关**（188/203 文件待全仓格式化，C1 首日决定，见 worklog §四）
+- ✅ **B3** 版本锁定 → `doc/reports/依赖版本锁定.md`；`uv lock` 折入 import-linter/pre-commit（0 漂移）；
+  **锁定对象 pdf2zh→mineru 3.2.0**（上游 AGPL pdf2zh 包已移出依赖）；fastapi 0.115/sqlite-vec 0.1.x 留 C 波
+- ✅ **B4** 历史快照 → git tag `v3.0-design-snapshot` + `v3.1-aitutor-design/历史快照/README.md`
+  （遵 DEVELOPMENT-NORM 不物理复制 59 文件，git tag 冻结 C 波前设计状态）
+- ✅ **B5** 风险处置成文（= 走向决议 §二 5 风险逐个处置，含本日 R-16 实测）
 
 ### 阶段 C · 开发启动（5 波推进，按 V3.1↔V2 桥接 §四）
 - ☐ **C1 第一波** M-001 服务入口 + M-002 API 网关 + M-003 客户端入口（对应 v2 #1+#2+#4）
@@ -282,16 +288,17 @@ ai-tutor/
 
 ## 下一步做什么（2026-06-13 晚更新）
 
-**当前阶段**：v3.1 review 收束（走向 C'）+ 第二批挑战 6/6 过堂 + FIX-L/M 落地，
-797 测试全绿。**v2 动工阻塞已全部解除**，进入 B 阶段收尾 → C1 第一波。
+**当前阶段**：v3.1 review 收束（走向 C'）+ 第二批挑战 6/6 过堂 + FIX-L/M + **阶段 B 收尾全完成**
+（B2 pre-commit 门禁 / B3 版本锁定 / B4 快照），797 测试全绿。**v2 动工阻塞已全部解除，B 阶段已收尾**，
+下一步直接进 C1 第一波。
 
 按顺序做：
 
-1. **B 阶段收尾（半天-1 天）**：B2 pre-commit（ruff / import-linter / **Redocly CLI**，
-   不用 spectral）；B3 锁版本（FastAPI 0.115 / sqlite-vec 0.1.x 动工时加 /
-   mineru 版本与许可证记录）；B4 `ai-tutor-system-design/` 快照备份。
-   B1 ✓（main 干净）/ B5 ✓（处置成文 = 走向决议 §二）。
+1. ~~**B 阶段收尾**~~ ✅ 2026-06-13 完成（B1-B5 全过，见 `worklogs/2026-06-13_B阶段收尾-precommit-版本锁定.md`）。
+   pre-commit 已 install；`ruff check` All passed + import-linter 2 契约 KEPT + 797 测试全绿。
 2. **C1 第一波动工**：M-001 服务入口 + M-002 API 网关 + M-003 客户端入口。
+   **首日两决断**：① 目录名 backend/ vs src/aitutor/（建议 backend/）；
+   ② 是否开 ruff-format 全仓格式化（188 文件大 diff，建议单独"一次性格式化"提交 + .git-blame-ignore-revs）。
    **首日决断**：目录名 backend/ vs src/aitutor/（走向决议 §四-5，建议 backend/
    保持与 PRD 验收命令一致）。
    ⚠️ M-014 数据管线（整理环节）仍提前到第一/第二波——换体裁攻击再添铁证：

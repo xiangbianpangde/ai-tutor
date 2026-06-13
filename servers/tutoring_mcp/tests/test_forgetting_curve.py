@@ -76,7 +76,7 @@ def test_fit_lambda_recovers_true_lambda() -> None:
     true_lam = 0.4
     days = [0.5, 1.0, 2.0, 3.5, 7.0, 14.0]  # 6 点 → 纯拟合，不混合
     accuracies = [math.exp(-true_lam * t) for t in days]
-    lam, r2 = fit_lambda(data_points=list(zip(days, accuracies)))
+    lam, r2 = fit_lambda(data_points=list(zip(days, accuracies, strict=False)))
     assert lam == pytest.approx(true_lam, abs=0.05)
     assert r2 is not None
     assert r2 > 0.95  # 几乎完美拟合
@@ -96,7 +96,7 @@ def test_fit_lambda_blends_toward_default_in_transition_zone(
     all_days = [0.5, 1.0, 2.0, 3.5, 7.0]
     days = all_days[:n_points]
     accuracies = [math.exp(-true_lam * t) for t in days]
-    lam, _ = fit_lambda(data_points=list(zip(days, accuracies)))
+    lam, _ = fit_lambda(data_points=list(zip(days, accuracies, strict=False)))
 
     # 干净合成数据下 λ_fitted≈true_lam，故混合后应落在 default 与 true 之间，
     # 且约等于 w·true + (1-w)·default。
@@ -113,7 +113,7 @@ def test_fit_lambda_six_points_no_blend() -> None:
     true_lam = 1.0
     days = [0.5, 1.0, 2.0, 3.5, 7.0, 14.0]
     accuracies = [math.exp(-true_lam * t) for t in days]
-    lam, _ = fit_lambda(data_points=list(zip(days, accuracies)))
+    lam, _ = fit_lambda(data_points=list(zip(days, accuracies, strict=False)))
     assert lam == pytest.approx(true_lam, abs=0.05)
     assert lam > DEFAULT_LAMBDA + 0.3  # 明显未被拉向 0.3
 

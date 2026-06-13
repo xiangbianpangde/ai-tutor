@@ -16,7 +16,6 @@ from typing import Literal
 
 from shared.schemas import FlowSignals, GainLoopBreak, TeachingAction
 
-
 GainLoopBreakType = Literal[
     "student_withdrawal", "emotional_flattening",
     "surface_responses", "avoidance_pattern",

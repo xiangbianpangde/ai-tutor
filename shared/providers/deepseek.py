@@ -41,7 +41,7 @@ class DeepSeekProvider:
         )
 
     @classmethod
-    def from_env(cls) -> "DeepSeekProvider | None":
+    def from_env(cls) -> DeepSeekProvider | None:
         cfg = get_deepseek_config()
         if cfg is None:
             return None

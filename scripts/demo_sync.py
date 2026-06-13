@@ -7,7 +7,6 @@
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import random
 import sys
@@ -26,7 +25,6 @@ from shared.llm_client import LLMProvider, MockLLMProvider
 from shared.logging_config import configure_logging
 from shared.providers.deepseek import DeepSeekProvider
 from shared.storage import RelationalStore
-
 
 DEFAULT_VAULT = r"C:\Users\yhn\Documents\GitHub\xbpd_obsidian"
 DEFAULT_NOTE = r"C:\Users\yhn\Documents\GitHub\xbpd_obsidian\07.学习笔记\大一下\机器学习\机器学习笔记\4月24日-星期四-聚类.md"
@@ -71,8 +69,8 @@ def main(md_path: Path, vault_path: Path, use_mock: bool, dry_run: bool) -> None
     from servers.knowledge_mcp.acquisition_adapter import AcquireSource, acquire
     from servers.knowledge_mcp.kg_builder import ConceptKGBuilder
     from servers.knowledge_mcp.kg_enrich_adapter import _build_toc
-    from shared.storage import FileStore
     from shared.models import Subject, User
+    from shared.storage import FileStore
 
     with db.session() as s:
         if s.get(User, "yhn") is None:

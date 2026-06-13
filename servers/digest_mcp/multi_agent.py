@@ -43,7 +43,7 @@ def _template_dialogue(card: dict) -> list[dict]:
     if card["examples"]:
         turns.append({"role": "teacher", "content": f"比如：{card['examples'][0]}"})
     else:
-        turns.append({"role": "teacher", "content": f"它是后续很多内容的基础，先把定义吃透。"})
+        turns.append({"role": "teacher", "content": "它是后续很多内容的基础，先把定义吃透。"})
     if card["misconceptions"]:
         turns.append({"role": "skeptic", "content": f"我一直以为：{card['misconceptions'][0]}，不对吗？"})
         turns.append({"role": "teacher", "content": "这是个常见误解——回到定义就能分辨，别被直觉带偏。"})

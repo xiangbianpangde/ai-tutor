@@ -100,10 +100,10 @@ def main(md_path: Path, use_mock: bool) -> None:
 
     # ---- ② 模拟多日学习记录 ----
     section("② 模拟 14 天学习历史（注入 review_history）")
-    from servers.tutoring_mcp.memory_store import MemoryStore
     from servers.tutoring_mcp.bkt_store import BKTStore
-    from shared.schemas import BKTParams
+    from servers.tutoring_mcp.memory_store import MemoryStore
     from shared.models import ConceptRow
+    from shared.schemas import BKTParams
 
     with db.session() as s:
         concepts = (
@@ -182,7 +182,7 @@ def main(md_path: Path, use_mock: bool) -> None:
               f"{sec.estimated_minutes:2d}min  {sec.review_mode}")
         print(f"           {sec.urgency_context}")
     if plan.tips:
-        print(f"\ntips:")
+        print("\ntips:")
         for t in plan.tips:
             print(f"  - {t}")
 

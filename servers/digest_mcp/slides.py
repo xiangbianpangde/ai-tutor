@@ -107,7 +107,6 @@ def _write_html(kg, rows, out_dir: Path, kg_id: str) -> Path:
 
 def _write_pptx(kg, rows, out_dir: Path, kg_id: str) -> Path:
     from pptx import Presentation
-    from pptx.util import Pt
 
     prs = Presentation()
     # 封面

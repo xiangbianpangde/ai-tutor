@@ -18,7 +18,6 @@ from shared.llm_client import MockLLMProvider
 from shared.models import User
 from shared.storage import RelationalStore
 
-
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 
 
@@ -98,9 +97,8 @@ def test_review_kg_full_returns_full_mermaid(kg_with_varied_confidence) -> None:
 
 
 def test_review_kg_unknown_kg_raises(tmp_db: RelationalStore) -> None:
-    from shared.errors import TutorError
-
     from servers.knowledge_mcp.kg_review import review_kg
+    from shared.errors import TutorError
 
     with pytest.raises(TutorError) as exc:
         review_kg(db=tmp_db, kg_id="no-such-kg", mode="quick")

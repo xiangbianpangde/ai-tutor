@@ -72,7 +72,7 @@ def _render_question_html(q: dict, idx: int) -> str:
     qtype = q["type"]
     prompt_esc = html_lib.escape(q["prompt"]).replace("\n", "<br>")
     if qtype == "fill_blank":
-        body = f'<input type="text" placeholder="在此填写答案">'
+        body = '<input type="text" placeholder="在此填写答案">'
     else:
         opts = "\n".join(
             f'<label><input type="radio" name="q{idx}" value="{html_lib.escape(o)}"> {html_lib.escape(o)}</label>'

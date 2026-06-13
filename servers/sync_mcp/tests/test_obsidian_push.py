@@ -9,7 +9,6 @@ push_to_obsidian(vault_path, subject_id, artifacts, subdir="AI-Tutor")
 """
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 
 import pytest

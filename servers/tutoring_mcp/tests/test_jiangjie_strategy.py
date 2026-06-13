@@ -12,16 +12,14 @@
 """
 from __future__ import annotations
 
-import pytest
-
+from servers.tutoring_mcp.strategies import get_strategy, list_strategies
+from servers.tutoring_mcp.strategies.jiangjie import JiangjieStrategy
 from shared.schemas import (
     Concept,
     ConceptClassification,
     ConceptDifficulty,
     TeachingAction,
 )
-from servers.tutoring_mcp.strategies import get_strategy, list_strategies
-from servers.tutoring_mcp.strategies.jiangjie import JiangjieStrategy
 
 
 def _concept(name: str = "偏导数") -> Concept:
@@ -94,14 +92,14 @@ def test_full_happy_path():
     assert s._atom_index == 0
 
     # 3 个原子问题全答对 → COMPLEMENT
-    for i in range(3):
+    for _ in range(3):
         assert s.state == "REDUCE"
         s.transition(event="answered", payload={"correctness": "correct"})
     assert s.state == "COMPLEMENT"
     assert s._error_index == 0
 
     # 4 个补集错误逐一排除 → RECONSTRUCT
-    for i in range(4):
+    for _ in range(4):
         assert s.state == "COMPLEMENT"
         s.transition(event="answered", payload={"correctness": "correct"})
     assert s.state == "RECONSTRUCT"

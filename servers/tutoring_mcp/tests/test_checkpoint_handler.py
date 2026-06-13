@@ -17,15 +17,13 @@ from pathlib import Path
 import pytest
 
 from shared.llm_client import MockLLMProvider, StubLLMProvider
+from shared.models import ConceptRow as ConceptRowORM
 from shared.models import (
-    BKTParamRow,
     LearnerProfileRow,
     Subject,
     User,
 )
-from shared.models import ConceptRow as ConceptRowORM
 from shared.storage import RelationalStore
-
 
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 
@@ -60,8 +58,8 @@ def env(tmp_db: RelationalStore, tmp_filestore):
     )
 
     # 拿前 3 个 concept 写 BKT
-    from shared.schemas import BKTParams
     from servers.tutoring_mcp.bkt_store import BKTStore
+    from shared.schemas import BKTParams
     bkt = BKTStore(tmp_db)
     with tmp_db.session() as s:
         rows = (

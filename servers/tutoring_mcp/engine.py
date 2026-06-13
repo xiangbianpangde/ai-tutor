@@ -23,16 +23,18 @@ from shared.llm_client import LLMProvider, StubLLMProvider
 from shared.logging_config import get_logger
 from shared.models import (
     BKTParamRow,
-    ConceptRow as ConceptRowORM,
-    KnowledgeGraphRow,
     LearnerProfileRow,
+)
+from shared.models import (
+    ConceptRow as ConceptRowORM,
+)
+from shared.models import (
     RelationRow as RelationRowORM,
 )
 from shared.schemas import (
     Concept,
     ErrorAnalysis,
     FlowLevel,
-    FocusState,
     InterruptCheckpoint,
     InterruptResult,
     LearnerProfile,
@@ -55,10 +57,10 @@ from .intent_classifier import IntentClassifier
 from .llm_scorer import LLMScorer
 from .memory_store import MemoryStore
 from .non_judgment_firewall import NonJudgmentFirewall
+from .pace_controller import PaceController
 from .session import SessionStore
 from .strategies import Strategy, get_strategy
 from .strategies.reduction import ReductionStrategy
-from .pace_controller import PaceController
 from .strategy_selector import select_strategy
 from .teaching_actions import (
     COUNTER_EXAMPLE_ERROR_TYPES,
@@ -809,7 +811,7 @@ class TeachingEngine:
         if self.firewall.scan(result.content) is not None:
             result = InterruptResult(
                 type=result.type,
-                content=f"我看到你的想法。我们一起再梳理一下。",
+                content="我看到你的想法。我们一起再梳理一下。",
                 checkpoint_saved=True,
                 resume_prompt=result.resume_prompt,
                 suggested_action=result.suggested_action,

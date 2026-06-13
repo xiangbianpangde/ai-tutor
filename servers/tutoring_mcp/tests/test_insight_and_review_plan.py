@@ -19,15 +19,12 @@ from pathlib import Path
 
 import pytest
 
-from shared.errors import TutorError
 from shared.llm_client import MockLLMProvider
 from shared.models import (
-    BKTParamRow,
     Subject,
     User,
 )
 from shared.storage import RelationalStore
-
 
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 
@@ -78,8 +75,8 @@ def kg_and_records(tmp_db: RelationalStore, tmp_filestore):
         first_subsub = next((c for c in rows if c.id.split(":")[1].count(".") >= 2), rows[2])
 
     # 写 BKT
-    from shared.schemas import BKTParams
     from servers.tutoring_mcp.bkt_store import BKTStore
+    from shared.schemas import BKTParams
     bkt = BKTStore(tmp_db)
     bkt.save("yhn", BKTParams(concept_id=first_root.id, p_mastery=0.92, n_observations=10))
     bkt.save("yhn", BKTParams(concept_id=first_sub.id, p_mastery=0.75, n_observations=5))

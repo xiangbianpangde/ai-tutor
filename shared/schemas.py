@@ -128,7 +128,7 @@ class Relation(BaseModel):
     deprecated: bool = False
 
     @model_validator(mode="after")
-    def _no_self_loop(self) -> "Relation":
+    def _no_self_loop(self) -> Relation:
         if self.from_id == self.to_id:
             raise ValueError(f"Relation 不能自环: {self.from_id} -> {self.to_id}")
         return self

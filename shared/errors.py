@@ -8,7 +8,6 @@ from typing import Any
 
 from pydantic import BaseModel
 
-
 ERROR_CODES: dict[str, str] = {
     "PLUGIN_NOT_AVAILABLE": "插件不可用，请检查配置",
     "DEPENDENCY_MISSING": "缺少依赖",

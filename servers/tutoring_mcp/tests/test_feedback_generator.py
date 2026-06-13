@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import pytest
 
+from servers.tutoring_mcp.feedback_generator import FeedbackGenerator
 from shared.llm_client import MockLLMProvider, StubLLMProvider
 from shared.schemas import Concept, ConceptClassification, ConceptDifficulty
-from servers.tutoring_mcp.feedback_generator import FeedbackGenerator
 
 
 def _concept() -> Concept:

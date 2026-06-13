@@ -6,8 +6,6 @@
 """
 from __future__ import annotations
 
-import pytest
-
 from servers.tutoring_mcp.server import _chapter_key, _topological_order
 from shared.storage import RelationalStore
 
@@ -34,8 +32,8 @@ def test_topological_order_puts_parent_before_child_when_indegree_zero(tmp_db: R
 
     期望：父节排在前。
     """
-    from shared.models import KnowledgeGraphRow
     from shared.models import ConceptRow as ConceptRowORM
+    from shared.models import KnowledgeGraphRow
     from shared.models import RelationRow as RelationRowORM
 
     kg_id = "test-kg"
@@ -104,8 +102,8 @@ def test_topological_order_puts_parent_before_child_when_indegree_zero(tmp_db: R
 
 def test_topological_handles_multi_chapter(tmp_db: RelationalStore) -> None:
     """两章 + 各 2 子节，确保章节内顺序正确。"""
-    from shared.models import KnowledgeGraphRow
     from shared.models import ConceptRow as ConceptRowORM
+    from shared.models import KnowledgeGraphRow
 
     kg_id = "multi-kg"
     with tmp_db.session() as s:

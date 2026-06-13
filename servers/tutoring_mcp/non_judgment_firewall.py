@@ -15,7 +15,6 @@ from typing import Literal
 
 from shared.schemas import FirewallViolation
 
-
 # (category, pattern, suggested_fallback)
 _RULES: list[tuple[str, str, str]] = [
     # 否定性判断

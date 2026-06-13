@@ -18,16 +18,21 @@ from typing import Any
 
 from fastmcp import FastMCP
 
-from shared.errors import TutorError
 from shared.logging_config import configure_logging, get_logger
 
 from .git_sync import (
     commit_artifacts as commit_impl,
+)
+from .git_sync import (
     init_repo as init_repo_impl,
+)
+from .git_sync import (
     push_to_remote as push_remote_impl,
 )
 from .obsidian import (
     pull_homework_from_obsidian as pull_impl,
+)
+from .obsidian import (
     push_to_obsidian as push_impl,
 )
 from .obsidian_watch import poll_changes as poll_impl

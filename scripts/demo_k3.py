@@ -14,7 +14,6 @@
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import random
 import sys
@@ -98,8 +97,8 @@ def main(md_path: Path, use_mock: bool) -> None:
     # ───────────── ② 模拟学习几个 concept ─────────────
     section("② 学几个 concept（BKT 累积）")
     from servers.tutoring_mcp.bkt_store import BKTStore
-    from shared.schemas import BKTParams
     from shared.models import ConceptRow
+    from shared.schemas import BKTParams
 
     with db.session() as s:
         rows = (
@@ -116,7 +115,7 @@ def main(md_path: Path, use_mock: bool) -> None:
     bkt.save(USER_ID, BKTParams(concept_id=ids[0], p_mastery=0.85, n_observations=5))
     bkt.save(USER_ID, BKTParams(concept_id=ids[1], p_mastery=0.65, n_observations=4))
     bkt.save(USER_ID, BKTParams(concept_id=ids[2], p_mastery=0.45, n_observations=3))
-    print(f"  BKT 记录前 3 个 concept：")
+    print("  BKT 记录前 3 个 concept：")
     for cid in ids:
         m = bkt.load(USER_ID, cid)
         print(f"    [{m.p_mastery:.2f}] {names[cid]} ({cid})")
@@ -147,13 +146,13 @@ def main(md_path: Path, use_mock: bool) -> None:
     d = diff_kg(db=db, kg_id_a=kg_v1.kg_id, kg_id_b=kg_v2)
     print(f"  summary: {d.summary}")
     if d.definition_changed:
-        print(f"  definition_changed:")
+        print("  definition_changed:")
         for c in d.definition_changed:
             print(f"    · {c['name']}  (base={c['base_id']})")
             print(f"        from: {c['from'][:50]}")
             print(f"        to:   {c['to'][:50]}")
     if d.removed:
-        print(f"  removed:")
+        print("  removed:")
         for c in d.removed:
             print(f"    · {c['name']}  (base={c['base_id']})")
 
@@ -171,12 +170,12 @@ def main(md_path: Path, use_mock: bool) -> None:
             .filter_by(kg_id=kg_v2, base_id=edit_target)
             .first()
         )
-        print(f"  edited concept in v2:")
+        print("  edited concept in v2:")
         print(f"    id        = {v2_first.id}")
         print(f"    base_id   = {v2_first.base_id}")
         print(f"    definition= {v2_first.definition[:60]}")
         print(f"    BKT (via base_id) mastery = {bkt.load(USER_ID, edit_target).p_mastery}")
-        print(f"  注：BKT 用 base_id 作 PK，所以同一 concept 跨 v1/v2 共享 mastery")
+        print("  注：BKT 用 base_id 作 PK，所以同一 concept 跨 v1/v2 共享 mastery")
 
     # ───────────── ⑥ rollback ─────────────
     section("⑥ rollback_kg → v1")
@@ -198,7 +197,7 @@ def main(md_path: Path, use_mock: bool) -> None:
         print(f"    [{m.p_mastery:.2f}] {names.get(cid, cid)}  (n_obs={m.n_observations})")
 
     print(f"\n[OK] Slice K3 demo 完成。provider = {label}")
-    print(f"     版本树：v1 ←—— v2  (subject 当前指向 v1)")
+    print("     版本树：v1 ←—— v2  (subject 当前指向 v1)")
 
 
 if __name__ == "__main__":

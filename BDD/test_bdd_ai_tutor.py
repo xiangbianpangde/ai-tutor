@@ -38,13 +38,15 @@ import math
 import shutil
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
 
 import pytest
 
+from servers.digest_mcp import server as dserver
+from servers.knowledge_mcp import server as kserver
+from servers.sync_mcp import server as sserver
+from servers.tutoring_mcp import server as tserver
 from shared.errors import ERROR_CODES, TutorError
 from shared.models import (
-    BKTParamRow,
     ConceptRow,
     Corpus,
     KnowledgeGraphRow,
@@ -55,11 +57,6 @@ from shared.models import (
 )
 from shared.schemas import CONCEPT_ID_PATTERN
 from shared.storage import RelationalStore
-
-from servers.knowledge_mcp import server as kserver
-from servers.tutoring_mcp import server as tserver
-from servers.digest_mcp import server as dserver
-from servers.sync_mcp import server as sserver
 
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURE = ROOT / "tests" / "fixtures" / "mini_subject.md"

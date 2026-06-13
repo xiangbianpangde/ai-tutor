@@ -8,16 +8,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from shared.models import BKTParamRow, ConceptRow, SessionRow, Subject
-from shared.schemas import Concept, SessionContext
-from shared.storage import RelationalStore
-
 from servers.tutoring_mcp.cold_start import MASTERY_SKIP_THRESHOLD
 from servers.tutoring_mcp.learning_plan import (
     LearningPlanStore,
     build_plan,
     compute_progress,
 )
+from shared.models import BKTParamRow, ConceptRow, SessionRow, Subject
+from shared.schemas import Concept, SessionContext
+from shared.storage import RelationalStore
 
 _MASTERED = MASTERY_SKIP_THRESHOLD  # 0.8
 _LEARNING = 0.4

@@ -12,7 +12,6 @@ import re
 
 from pypinyin import Style, lazy_pinyin
 
-
 _NON_SAFE = re.compile(r"[^a-z0-9_]+")
 
 

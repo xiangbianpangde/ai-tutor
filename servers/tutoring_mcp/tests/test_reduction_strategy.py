@@ -20,8 +20,6 @@
 """
 from __future__ import annotations
 
-import pytest
-
 from shared.schemas import (
     Concept,
     ConceptClassification,
@@ -156,7 +154,7 @@ def test_actions_differ_per_state() -> None:
 
 def test_state_alias_stub_for_back_compat() -> None:
     """保留 ReductionStub 别名让旧测试不破。"""
-    from servers.tutoring_mcp.strategies.reduction import ReductionStub, ReductionStrategy
+    from servers.tutoring_mcp.strategies.reduction import ReductionStrategy, ReductionStub
 
     assert ReductionStub is ReductionStrategy or issubclass(ReductionStub, ReductionStrategy)
 

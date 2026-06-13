@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import pytest
 
+from servers.tutoring_mcp import learning_plan as lp
 from shared.schemas import (
     Concept,
     ConceptClassification,
@@ -14,7 +15,6 @@ from shared.schemas import (
     LearningPlan,
     LearningProgress,
 )
-from servers.tutoring_mcp import learning_plan as lp
 
 
 def _c(cid: str, name: str, time_min: int = 30) -> Concept:

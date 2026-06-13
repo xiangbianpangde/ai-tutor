@@ -1,0 +1,58 @@
+# pre-commit 质量门禁 —— 红线不靠自觉，靠提交前自动拦截（开发规范 02-coding §二 / 01-architecture）
+#
+#   首次启用：  uv sync --extra dev   &&   pre-commit install
+#   手动全跑：  pre-commit run --all-files
+#
+# 设计选择：全部用 local / system hook，复用 .venv 已装工具，**不联网 clone 任何 hook 仓库**
+#   —— 规避系统代理(127.0.0.1:7897)死亡导致的 pre-commit 装钩失败（见持久记忆 dead-system-proxy）。
+#   代价：工具须先随 `[dev]` 装进 .venv（ruff / import-linter / gitleaks / @redocly/cli 经 npx）。
+#
+# 不纳入门禁：doc/（291 份 v3.1 设计桩，计划产物非生产代码）/ 设计历史快照 / alembic 自动生成迁移。
+exclude: '^(doc/|ai-tutor-system-design/|migrations/)'
+
+repos:
+  - repo: local
+    hooks:
+      # ── 代码红线（02-coding §一）：T20=禁 print 入库 / T100=禁调试断点 / B=bugbear ──
+      - id: ruff
+        name: ruff lint（红线 T20/T100/B + E/F/I/N/UP）
+        entry: ruff check --force-exclude --fix
+        language: system
+        types_or: [python, pyi]
+        require_serial: false
+
+      # ── ruff-format（格式化）：默认关闭 ──
+      # 启用前须先对全仓跑一次 `ruff format`（当前 188/203 文件未格式化，会产生大 diff）。
+      # 决策点见 STATUS.md B2：建议在 C1 动工首日随 backend/ 新代码一并开启，老代码单独一个
+      # “一次性格式化”提交 + 写进 .git-blame-ignore-revs，避免 format 与逻辑 diff 混在一起。
+      # - id: ruff-format
+      #   name: ruff format
+      #   entry: ruff format --force-exclude
+      #   language: system
+      #   types_or: [python, pyi]
+
+      # ── 架构契约（01-architecture）：shared 不依赖 servers / 四引擎 server 相互独立 ──
+      # 契约定义在 pyproject.toml [tool.importlinter]；改动任一 .py 都全图复核。
+      - id: import-linter
+        name: import-linter（架构契约 shared⊥servers / 四 server 独立）
+        entry: lint-imports
+        language: system
+        pass_filenames: false
+        files: \.py$
+
+      # ── 密钥扫描（02-coding 红线 3）：阻止 Token / 密码入库 ──
+      - id: gitleaks
+        name: gitleaks（密钥/Token 入库拦截）
+        entry: gitleaks git --pre-commit --staged --redact
+        language: system
+        pass_filenames: false
+
+      # ── OpenAPI 契约 lint（04-api，替代休眠的 Spectral —— v3.1 R-06）──
+      # 当前仓库无 OpenAPI spec → files 模式不匹配 → 此 hook 休眠；
+      # C1 后端落地 openapi.(yaml|json) 后自动激活。需 Node/npx（首跑联网取 @redocly/cli）。
+      - id: redocly-openapi
+        name: redocly lint（OpenAPI 契约，spec 落地后激活）
+        entry: npx --yes @redocly/cli@latest lint
+        language: system
+        pass_filenames: true
+        files: '(^|/)openapi\.(ya?ml|json)$'

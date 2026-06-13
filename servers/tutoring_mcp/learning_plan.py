@@ -13,8 +13,8 @@
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
-from typing import Callable
 
 from shared.models import LearningPlanRow
 from shared.schemas import (

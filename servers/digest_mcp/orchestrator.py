@@ -15,15 +15,23 @@
 """
 from __future__ import annotations
 
-from pathlib import Path
-
 from dataclasses import dataclass
+from pathlib import Path
 
 from shared.errors import TutorError
 from shared.logging_config import get_logger
 from shared.models import KnowledgeGraphRow
 from shared.schemas import ArtifactURI, DigestResult
 from shared.storage import RelationalStore
+
+from .audio import generate_audio
+from .mindmap import generate_mindmap
+from .multi_agent import generate_multi_agent
+from .notes import generate_notes
+from .quiz import generate_quiz
+from .simulation import generate_simulation
+from .slides import generate_slides
+from .study_pack import generate_study_pack
 
 
 @dataclass
@@ -40,14 +48,6 @@ class DigestRunResult:
     def to_schema(self) -> DigestResult:
         return DigestResult(artifacts=self.artifacts)
 
-from .audio import generate_audio
-from .mindmap import generate_mindmap
-from .multi_agent import generate_multi_agent
-from .notes import generate_notes
-from .quiz import generate_quiz
-from .simulation import generate_simulation
-from .slides import generate_slides
-from .study_pack import generate_study_pack
 
 logger = get_logger("digest_mcp.orchestrator")
 
@@ -70,7 +70,7 @@ def digest(
     quiz_seed: int | None = None,
     grade: str = "college",
     llm=None,
-) -> "DigestRunResult":
+) -> DigestRunResult:
     """对给定 KG 生成多种产物，返回 DigestRunResult（带 warnings）。
 
     用法对照 spec DigestResult 时，调 `.to_schema` 拿 spec 型对象。

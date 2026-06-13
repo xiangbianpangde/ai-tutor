@@ -9,16 +9,15 @@ Redis / VectorStore 后续切片补。
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from .models import Base
-
 
 # --------------------------------------------------------------------------- #
 # FileStore
@@ -77,7 +76,7 @@ class RelationalStore:
         self._session_maker = sessionmaker(self.engine, expire_on_commit=False)
 
     @classmethod
-    def from_env(cls, *, default: str = "sqlite:///data/tutor.db") -> "RelationalStore":
+    def from_env(cls, *, default: str = "sqlite:///data/tutor.db") -> RelationalStore:
         url = os.environ.get("DATABASE_URL", default)
         return cls(url)
 

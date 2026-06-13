@@ -12,7 +12,6 @@ from typing import Any
 
 from shared.schemas import FlowSignals
 
-
 _CAUSAL_WORDS = ("因为", "所以", "原因是", "导致", "因此", "对比", "区别是")
 _INITIATIVE_WORDS = ("我能", "我想", "能不能让我", "可不可以", "我来试")
 _HESITATION_WORDS = ("嗯...", "嗯…", "可能是", "也许", "不确定", "我猜")

@@ -9,11 +9,11 @@ from pathlib import Path
 
 import pytest
 
+from servers.knowledge_mcp.batch_enrich import EnrichCheckpoint, batch_enrich
+from servers.knowledge_mcp.concept_enricher import ConceptEnricher
 from shared.errors import TutorError
 from shared.llm_client import MockLLMProvider, StubLLMProvider
 from shared.schemas import Concept, ConceptClassification, ConceptDifficulty
-from servers.knowledge_mcp.batch_enrich import EnrichCheckpoint, batch_enrich
-from servers.knowledge_mcp.concept_enricher import ConceptEnricher
 
 
 def _toc_concept(i: int) -> Concept:

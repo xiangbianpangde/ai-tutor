@@ -261,7 +261,7 @@ def acquire(
     # file_paths["markdown"]，不合并的话除第一个源外全部被丢弃。
     primary_md = md_paths[0]
     if len(md_paths) > 1:
-        entries = [(_source_label(cs), p) for cs, p in zip(corpus_sources, md_paths)]
+        entries = [(_source_label(cs), p) for cs, p in zip(corpus_sources, md_paths, strict=False)]
         primary_md = _merge_sources_markdown(
             subject=subject, entries=entries, out_path=corpus_dir / "00_corpus.md"
         )

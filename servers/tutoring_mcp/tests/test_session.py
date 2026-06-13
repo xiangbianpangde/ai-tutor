@@ -8,13 +8,10 @@ SessionStore 职责:
 """
 from __future__ import annotations
 
-from datetime import datetime
-
 import pytest
 
 from shared.errors import TutorError
 from shared.models import Subject, User
-from shared.schemas import SessionMeta, SessionStats
 from shared.storage import RelationalStore
 
 

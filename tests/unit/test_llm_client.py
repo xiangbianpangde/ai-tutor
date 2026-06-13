@@ -55,7 +55,7 @@ def test_count_tokens_rough_estimate() -> None:
 
 
 def test_provider_health_status() -> None:
-    from shared.llm_client import StubLLMProvider, MockLLMProvider
+    from shared.llm_client import MockLLMProvider, StubLLMProvider
 
     assert StubLLMProvider().health().ok is False
     assert MockLLMProvider(canned_responses=["x"]).health().ok is True

@@ -215,8 +215,8 @@ def test_mid_high_load_band_picks_jiangjie() -> None:
 
 
 def test_silent_flow_picks_jiangjie() -> None:
-    from shared.schemas import FlowLevel
     from servers.tutoring_mcp.strategy_selector import select_strategy
+    from shared.schemas import FlowLevel
 
     name = select_strategy(
         concept=_concept(abstract_level=0.3),

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import pytest
 
+from servers.dashboard.state import get_dashboard_state
 from shared.models import (
     BKTParamRow,
     ConceptRow,
@@ -16,7 +17,6 @@ from shared.models import (
 )
 from shared.schemas import FlowLevel
 from shared.storage import RelationalStore
-from servers.dashboard.state import get_dashboard_state
 
 
 def _concept_json(cid: str, name: str, time_min: int = 20) -> dict:
@@ -49,7 +49,8 @@ def seeded(tmp_db: RelationalStore) -> RelationalStore:
         ("gs:2:ch2", "第二章"), ("gs:2.1:c", "概念C"),
     ]
     with tmp_db.session() as s:
-        s.add(User(id="yhn")); s.add(Subject(id="gaoshu", user_id="yhn", display_name="高数", kg_id="kg1"))
+        s.add(User(id="yhn"))
+        s.add(Subject(id="gaoshu", user_id="yhn", display_name="高数", kg_id="kg1"))
         s.add(KnowledgeGraphRow(kg_id="kg1", subject_id="gaoshu", corpus_id="c1",
                                 version="concept-v1", node_count=5, edge_count=4, manifest_json={}))
         for cid, name in concepts:

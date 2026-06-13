@@ -20,7 +20,7 @@ from typing import Literal, Protocol, runtime_checkable
 from shared.errors import TutorError
 from shared.llm_client import LLMProvider
 from shared.logging_config import get_logger
-from shared.schemas import BuildKGResult, QualityReport
+from shared.schemas import BuildKGResult
 from shared.storage import RelationalStore
 
 from .concept_enricher import ConceptEnricher
@@ -30,6 +30,8 @@ from .kg_enrich_adapter import (
     _persist_kg,
     _split_sections,
     _to_mermaid,
+)
+from .kg_enrich_adapter import (
     build_kg_toc as _build_kg_toc_impl,
 )
 

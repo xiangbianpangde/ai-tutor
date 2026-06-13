@@ -14,7 +14,6 @@ Stub（占位，待后续切片）:
 """
 from __future__ import annotations
 
-import os
 from datetime import datetime
 from typing import Any, Literal
 

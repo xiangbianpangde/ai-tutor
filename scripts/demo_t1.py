@@ -130,9 +130,9 @@ def main(md_path: Path, use_mock: bool) -> None:
 
     # ---- ② 开学习会话 ----
     section("② start_learning_session")
+    from servers.tutoring_mcp import server as tserver
     from servers.tutoring_mcp.engine import TeachingEngine
     from servers.tutoring_mcp.session import SessionStore
-    from servers.tutoring_mcp import server as tserver
 
     start_fn = getattr(tserver.start_learning_session, "fn", tserver.start_learning_session)
     started = asyncio.run(start_fn(user_id=USER_ID, subject_id=SUBJECT_ID, goal="48h_sprint"))

@@ -29,7 +29,6 @@ import math
 import numpy as np
 from scipy.optimize import curve_fit
 
-
 DEFAULT_LAMBDA: float = 0.3
 _MIN_FIT_POINTS: int = 3
 _FULL_TRUST_POINTS: int = 6   # ≥ 此点数用纯拟合；[3, 6) 与群体均值加权混合

@@ -21,7 +21,6 @@ from shared.models import SessionRow
 from shared.schemas import SessionContext, SessionMeta
 from shared.storage import RelationalStore
 
-
 _TERMINAL_STATUSES = {"completed", "expired"}
 
 

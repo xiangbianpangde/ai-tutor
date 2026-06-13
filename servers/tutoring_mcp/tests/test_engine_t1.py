@@ -14,11 +14,10 @@ from pathlib import Path
 import pytest
 
 from shared.llm_client import MockLLMProvider
-from shared.models import KnowledgeGraphRow, Subject, User
 from shared.models import ConceptRow as ConceptRowORM
-from shared.schemas import ResponseResult, TeachingAction
+from shared.models import Subject, User
+from shared.schemas import ResponseResult
 from shared.storage import RelationalStore
-
 
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 

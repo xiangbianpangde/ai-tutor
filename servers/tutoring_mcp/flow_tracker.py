@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from shared.schemas import FlowLevel, FlowSignals
 
-
 _POSITIVE_FIELDS = (
     "answer_length_growth",
     "depth_increasing",

@@ -219,9 +219,9 @@ class RelationExtractor:
                     from_id=from_id,
                     to_id=to_id,
                     type=rtype,  # type: ignore[arg-type]  已对照 _VALID_RELATIONS
-                    weight=_clamp(float(weight)) if isinstance(weight, (int, float)) else 0.6,
+                    weight=_clamp(float(weight)) if isinstance(weight, int | float) else 0.6,
                     explanation=explanation.strip(),
-                    confidence=_clamp(float(conf)) if isinstance(conf, (int, float)) else 0.6,
+                    confidence=_clamp(float(conf)) if isinstance(conf, int | float) else 0.6,
                 )
             except (ValidationError, ValueError, TypeError) as exc:
                 warnings.append(f"丢弃非法关系 {from_id}->{to_id} ({rtype}): {exc}")

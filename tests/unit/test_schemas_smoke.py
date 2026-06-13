@@ -14,20 +14,14 @@ from shared.schemas import (
     Concept,
     ConceptClassification,
     ConceptDifficulty,
-    DailyReviewPlan,
-    DailyReviewSection,
     FlowLevel,
     FlowSignals,
-    InterruptCheckpoint,
     KgEditAction,
     Relation,
-    ResponseResult,
     SessionContext,
     SessionMeta,
-    SourceRef,
     TeachingAction,
 )
-
 
 # --------------------------------------------------------------------------- #
 # Concept.id 格式校验（adopted-fixes 修正 3）

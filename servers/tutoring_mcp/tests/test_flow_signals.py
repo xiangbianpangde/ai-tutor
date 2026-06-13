@@ -21,8 +21,6 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-import pytest
-
 
 def _turn(answer="x", correctness="correct", at=None,
           was_self_corrected=False, has_initiative_marker=False):

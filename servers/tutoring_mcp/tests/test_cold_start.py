@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from servers.tutoring_mcp import cold_start
+from servers.tutoring_mcp.llm_scorer import ScoreResult
 from shared.schemas import (
     ColdStartAnswer,
     ColdStartProbe,
@@ -20,8 +22,6 @@ from shared.schemas import (
     ConceptClassification,
     ConceptDifficulty,
 )
-from servers.tutoring_mcp import cold_start
-from servers.tutoring_mcp.llm_scorer import ScoreResult
 
 
 def _concept(idx: str, abstract: float, name: str | None = None) -> Concept:

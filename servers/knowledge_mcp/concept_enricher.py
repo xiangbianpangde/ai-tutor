@@ -184,7 +184,7 @@ class ConceptEnricher:
                 class_updates["bloom_level"] = bl
             else:
                 warnings.append(f"bloom_level={bl!r} 不在合法枚举内，已忽略")
-        if isinstance(data.get("abstract_level"), (int, float)):
+        if isinstance(data.get("abstract_level"), int | float):
             class_updates["abstract_level"] = _clamp(float(data["abstract_level"]))
         if class_updates:
             updates["classification"] = concept.classification.model_copy(update=class_updates)
@@ -192,14 +192,14 @@ class ConceptEnricher:
         # difficulty 内容信号（P2 #11）：formula_density / cognitive_load_estimate
         diff_updates: dict[str, Any] = {}
         for key in ("formula_density", "cognitive_load_estimate"):
-            if isinstance(data.get(key), (int, float)):
+            if isinstance(data.get(key), int | float):
                 diff_updates[key] = _clamp(float(data[key]))
         if diff_updates:
             updates["difficulty"] = concept.difficulty.model_copy(update=diff_updates)
 
         if "confidence" in data:
             conf = data["confidence"]
-            if isinstance(conf, (int, float)):
+            if isinstance(conf, int | float):
                 updates["confidence"] = _clamp(float(conf))
 
         enriched = concept.model_copy(update=updates) if updates else concept

@@ -14,7 +14,6 @@ from datetime import datetime, timedelta
 import pytest
 
 from shared.models import (
-    BKTParamRow,
     ConceptRow,
     KnowledgeGraphRow,
     Subject,
@@ -139,9 +138,9 @@ def test_schedule_review_plan_respects_time_budget(db_with_kg) -> None:
 
 def test_priority_orders_higher_urgency_first(tmp_db: RelationalStore) -> None:
     """难度相同时，更久未复习的概念排前面（隔离 overdue 单一因子）。"""
-    from shared.models import Corpus
     from servers.tutoring_mcp.memory_store import MemoryStore
     from servers.tutoring_mcp.review_scheduler import schedule_review_plan
+    from shared.models import Corpus
 
     kg_id = "kg-iso"
     with tmp_db.session() as s:
@@ -206,6 +205,6 @@ def test_section_review_mode_reflects_bkt_mastery(db_with_kg) -> None:
         assert by_id["ml:1:b"].review_mode == "teach_back"
 
 
-def _bkt_with_mastery(concept_id: str, mastery: float) -> "BKTParams":
+def _bkt_with_mastery(concept_id: str, mastery: float) -> BKTParams:  # noqa: F821 — 函数体内局部 import 的前置引用
     from shared.schemas import BKTParams
     return BKTParams(concept_id=concept_id, p_mastery=mastery, n_observations=5)

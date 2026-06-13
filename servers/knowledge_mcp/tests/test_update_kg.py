@@ -32,7 +32,6 @@ from shared.models import (
 )
 from shared.schemas import KgEditAction, Relation
 
-
 FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "mini_subject.md"
 
 

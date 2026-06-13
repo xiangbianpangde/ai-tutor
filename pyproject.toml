@@ -44,7 +44,7 @@ dependencies = [
 research = ["research-tool[search]"]
 # L3 长期记忆 / 向量索引
 vector = ["chromadb>=0.5", "sentence-transformers>=3.0"]
-# 测试
+# 测试 + 质量门禁（pre-commit / 架构契约）
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
@@ -52,6 +52,8 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.5",
     "freezegun>=1.5",
+    "pre-commit>=3.5",
+    "import-linter>=2.0",
 ]
 
 [[tool.uv.index]]
@@ -68,10 +70,61 @@ packages = ["shared", "servers"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# doc/ 下的 v3.1 设计骨架是计划产物（291 份 src/ 桩文件），非生产代码——不纳入 lint
+exclude = [
+    "doc",
+    "ai-tutor-system-design",
+    "migrations",
+    ".venv",
+]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP"]
-ignore = ["E501"]  # 长行交给格式化
+# 原 E/F/I/N/W/UP 基础上加 02-coding §一红线可自动抓的规则：
+# T20=禁 print 入库 / T100=禁调试断点 / B=bugbear 常见 bug 形态
+select = ["E", "F", "I", "N", "W", "UP", "T20", "T100", "B"]
+ignore = [
+    "E501",  # 长行交给格式化
+    "E741",  # 单字母 l/I/O 局部循环变量（study_pack/research_adapter 少量惯用）
+    "N806",  # 项目惯用 UPPER_SNAKE 局部常量（SUBJECT_ID/USER_ID）+ 数学单字母变量
+    "N817",  # 领域缩写导入
+]
+
+[tool.ruff.lint.per-file-ignores]
+# CLI / demo / 一次性脚本：合法 print 到 stdout + sys.path 后置 import + 容忍中间变量
+"scripts/**" = ["T201", "E402", "F841"]
+"data/**" = ["T201", "E402", "F841"]
+"examples/**" = ["T201", "E402", "F841"]
+# 测试：assert 惯用 / print 调试 / F841 容忍读值中间变量（少量可能是漏掉的断言，见 worklog 待审）
+"tests/**" = ["T201", "E402", "F841"]
+"**/tests/**" = ["T201", "E402", "F841"]
+"BDD/**" = ["T201", "E402", "F841"]
+"conftest.py" = ["E402"]
+
+# ── 架构契约（import-linter）：把 01-architecture 红线变成可拦截规则 ──
+# 运行：python -m importlinter lint（已挂进 .pre-commit-config.yaml）
+[tool.importlinter]
+root_packages = ["shared", "servers"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "基础设施层 shared 不依赖上层 servers（领域层不依赖框架/禁向上调用）"
+type = "forbidden"
+source_modules = ["shared"]
+forbidden_modules = ["servers"]
+
+[[tool.importlinter.contracts]]
+name = "四引擎 server 相互独立（禁跨 server 调用 / 禁循环依赖）"
+type = "independence"
+modules = [
+    "servers.knowledge_mcp",
+    "servers.tutoring_mcp",
+    "servers.digest_mcp",
+    "servers.sync_mcp",
+]
+# 集成测试合法跨 server（端到端跑教学全链需引别的 server）——契约只管生产代码
+ignore_imports = [
+    "servers.*.tests.** -> servers.**",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

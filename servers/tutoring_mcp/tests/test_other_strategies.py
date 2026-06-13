@@ -112,9 +112,8 @@ def test_strategy_registry_lists_all_six():
 
 
 def test_strategy_registry_unknown_raises():
-    from shared.errors import TutorError
-
     from servers.tutoring_mcp.strategies import get_strategy
+    from shared.errors import TutorError
 
     with pytest.raises(TutorError) as exc:
         get_strategy("alien_strategy")
