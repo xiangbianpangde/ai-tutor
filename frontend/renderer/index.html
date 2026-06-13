@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src http://127.0.0.1:18501; style-src 'unsafe-inline'" />
+    <title>AI-Tutor 2.0</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font-family: system-ui, "Segoe UI", sans-serif; margin: 0; padding: 48px; }
+      h1 { font-size: 22px; margin: 0 0 8px; }
+      .sub { color: #888; margin: 0 0 28px; }
+      #status { font-size: 15px; padding: 10px 14px; border-radius: 8px; background: #f0f0f0; display: inline-block; }
+      #status.ok { background: #e6f6ec; color: #137333; }
+      #status.err { background: #fde8e6; color: #c5221f; }
+      ul { list-style: none; padding: 0; margin: 22px 0 0; max-width: 360px; }
+      li { display: flex; justify-content: space-between; padding: 9px 4px; border-bottom: 1px solid #eee; }
+      .tag { font-variant-numeric: tabular-nums; color: #137333; }
+      .tag.bad { color: #c5221f; }
+    </style>
+  </head>
+  <body>
+    <h1>AI-Tutor 2.0</h1>
+    <p class="sub">私人 AI 辅导系统 · 桌面客户端（C1 入口骨架）</p>
+    <span id="status">正在启动后端…</span>
+    <ul id="engines"></ul>
+
+    <script>
+      const ENGINES = ['knowledge', 'tutoring', 'digest', 'sync'];
+
+      async function probeEngines(baseUrl) {
+        const list = document.getElementById('engines');
+        for (const name of ENGINES) {
+          const li = document.createElement('li');
+          const label = document.createElement('span');
+          label.textContent = name;
+          const tag = document.createElement('span');
+          tag.className = 'tag';
+          try {
+            const res = await fetch(`${baseUrl}/api/${name}/health`);
+            const data = await res.json();
+            tag.textContent = data.ok ? `OK · v${data.version}` : '异常';
+            if (!data.ok) tag.classList.add('bad');
+          } catch (_err) {
+            tag.textContent = '不可达';
+            tag.classList.add('bad');
+          }
+          li.append(label, tag);
+          list.appendChild(li);
+        }
+      }
+
+      window.aitutor.onBackendStatus((status) => {
+        const el = document.getElementById('status');
+        if (!status.ready) {
+          el.textContent = status.error;
+          el.className = 'err';
+          return;
+        }
+        el.textContent = `后端已连接 · ${status.url}`;
+        el.className = 'ok';
+        probeEngines(status.url);
+      });
+    </script>
+  </body>
+</html>

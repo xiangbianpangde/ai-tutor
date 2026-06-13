@@ -1,6 +1,6 @@
 # AI-Tutor 开发状态
 
-> 更新: 2026-06-13（阶段 B 收尾全完成：pre-commit 门禁 + 版本锁定 + 快照 / 第二批挑战 6/6 + 走向 C' + FIX-L/M）
+> 更新: 2026-06-13（C1 第一波完成：backend/ FastAPI 骨架 :18501 + API 网关 + Electron 客户端入口，810 测试全绿 / 阶段 B 收尾 / 走向 C'）
 > 流程档位: 标准
 > 收束节点: 功能点3后 / 功能点7后 / 功能点11后
 
@@ -76,10 +76,10 @@ pyclipper + transformers<5）；③ tutor_cli 不再吞 TutorError.hint（外部
 
 | 功能点 | BDD 规格 | 状态 | 完成日期 |
 |--------|---------|------|---------|
-| 1 后端骨架：FastAPI 统一应用 | specs/01-基础骨架.md | ⏳ 待开始 | - |
-| 2 API 迁移：MCP → REST | specs/02-API迁移.md | ⏳ 待开始 | - |
-| 3 中间件层：Session/File/Cache/Monitor | specs/03-中间件层.md | ⏳ 待开始 | - |
-| 4 Electron 前端骨架 | specs/04-前端应用.md | ⏳ 待开始 | - |
+| 1 后端骨架：FastAPI 统一应用 | specs/01-基础骨架.md | ✅ C1 完成（backend/ 跑通 :18501）| 2026-06-13 |
+| 2 API 迁移：MCP → REST | specs/02-API迁移.md | ◐ 网关+信封+health 就位；32 tool 迁移随引擎 C2-C4 | - |
+| 3 中间件层：Session/File/Cache/Monitor | specs/03-中间件层.md | ⏳ 待开始（C2）| - |
+| 4 Electron 前端骨架 | specs/04-前端应用.md | ◐ 客户端入口骨架（spawn+health-gate）；5 页面/向导/WS 待后续波次 | - |
 | 5 可视化：KG图/遗忘曲线/掌握度 | specs/05-可视化.md | ⏳ 待开始 | - |
 | 6 数据管线：采集→清洗→结构化 | specs/06-数据管线.md | ⏳ 待开始 | - |
 | 7 research-tool 深度集成 | specs/07-research-tool集成.md | ⏳ 待开始 | - |
@@ -146,7 +146,9 @@ pyclipper + transformers<5）；③ tutor_cli 不再吞 TutorError.hint（外部
 - ✅ **B5** 风险处置成文（= 走向决议 §二 5 风险逐个处置，含本日 R-16 实测）
 
 ### 阶段 C · 开发启动（5 波推进，按 V3.1↔V2 桥接 §四）
-- ☐ **C1 第一波** M-001 服务入口 + M-002 API 网关 + M-003 客户端入口（对应 v2 #1+#2+#4）
+- ✅ **C1 第一波**（2026-06-13）M-001 服务入口 + M-002 API 网关 + M-003 客户端入口（对应 v2 #1+#2[网关]+#4[入口]）
+  → `worklogs/2026-06-13_C1第一波-后端骨架-API网关-客户端入口.md`。`backend/` 跑通 :18501，810 测试全绿。
+  目录名定 `backend/`；ruff-format 全仓暂不开。**下一步 = D1 收束节点**（后端骨架+API+前端入口齐备）。
 - ☐ **C2 第二波** M-004 Session + M-005 Cache + M-006 事件总线 + M-007 Pipeline 调度 + M-014 数据管线（对应 v2 #3+#6+#7+#8）
 - ☐ **C3 第三波** M-008 RAG 引擎 + M-009 教学编排（对应 v2 #9+#10 部分）
 - ☐ **C4 第四波** M-010 费曼 + M-011 FSRS + M-012 阶段校准 + M-013 长期记忆 + M-016 红线编排（对应 v2 #10 拆分）
@@ -288,17 +290,18 @@ ai-tutor/
 
 ## 下一步做什么（2026-06-13 晚更新）
 
-**当前阶段**：v3.1 review 收束（走向 C'）+ 第二批挑战 6/6 过堂 + FIX-L/M + **阶段 B 收尾全完成**
-（B2 pre-commit 门禁 / B3 版本锁定 / B4 快照），797 测试全绿。**v2 动工阻塞已全部解除，B 阶段已收尾**，
-下一步直接进 C1 第一波。
+**当前阶段**：**C1 第一波完成**——`backend/` FastAPI 骨架跑通 :18501（M-001 服务入口 + M-002 API 网关
++ M-003 Electron 客户端入口），810 测试全绿。此前：阶段 B 收尾全完成 + v3.1 走向 C' + 第二批挑战 6/6。
+**下一步 = D1 收束节点**（C1 完成触发）→ C2 第二波。
 
 按顺序做：
 
-1. ~~**B 阶段收尾**~~ ✅ 2026-06-13 完成（B1-B5 全过，见 `worklogs/2026-06-13_B阶段收尾-precommit-版本锁定.md`）。
-   pre-commit 已 install；`ruff check` All passed + import-linter 2 契约 KEPT + 797 测试全绿。
-2. **C1 第一波动工**：M-001 服务入口 + M-002 API 网关 + M-003 客户端入口。
-   **首日两决断**：① 目录名 backend/ vs src/aitutor/（建议 backend/）；
-   ② 是否开 ruff-format 全仓格式化（188 文件大 diff，建议单独"一次性格式化"提交 + .git-blame-ignore-revs）。
+1. ~~**B 阶段收尾**~~ ✅ 2026-06-13（B1-B5 全过）。
+2. ~~**C1 第一波**~~ ✅ 2026-06-13（M-001/M-002/M-003，`backend/` :18501 跑通，810 测试全绿，
+   目录名定 backend/，ruff-format 暂不开）。
+3. **D1 收束节点**（当前下一步）：C1 完成 → 走四阶段收束（03-第一步 1.6 + 06-第三步_收束节点）。
+   收束后进 **C2 第二波**：M-004 Session + M-005 Cache + M-006 事件总线 + M-007 Pipeline + M-014 数据管线。
+   ⚠️ C2 波前先把 pdf2zh集成/数据管线文档去 sys.path 化（走向决议 §五-6）。
    **首日决断**：目录名 backend/ vs src/aitutor/（走向决议 §四-5，建议 backend/
    保持与 PRD 验收命令一致）。
    ⚠️ M-014 数据管线（整理环节）仍提前到第一/第二波——换体裁攻击再添铁证：

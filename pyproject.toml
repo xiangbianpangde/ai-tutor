@@ -35,6 +35,9 @@ dependencies = [
     # 中文 slug（concept.id 必须 ASCII，需要拼音转写）
     "pypinyin>=0.51",
     "pymupdf>=1.27.2.3",
+    "fastapi>=0.136.3",
+    "uvicorn[standard]>=0.47.0",
+    "pydantic-settings>=2.14.1",
 ]
 
 [project.optional-dependencies]
@@ -65,7 +68,7 @@ default = true
 research-tool = { path = "../调研/research-tool", editable = true }
 
 [tool.hatch.build.targets.wheel]
-packages = ["shared", "servers"]
+packages = ["shared", "servers", "backend"]
 
 [tool.ruff]
 line-length = 100
@@ -103,7 +106,7 @@ ignore = [
 # ── 架构契约（import-linter）：把 01-architecture 红线变成可拦截规则 ──
 # 运行：python -m importlinter lint（已挂进 .pre-commit-config.yaml）
 [tool.importlinter]
-root_packages = ["shared", "servers"]
+root_packages = ["shared", "servers", "backend"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
@@ -126,9 +129,15 @@ ignore_imports = [
     "servers.*.tests.** -> servers.**",
 ]
 
+[[tool.importlinter.contracts]]
+name = "backend.core 是基础设施桥接层，不依赖上层（routers/app/main）与 servers"
+type = "forbidden"
+source_modules = ["backend.core"]
+forbidden_modules = ["backend.routers", "backend.app", "backend.main", "servers"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests", "servers", "BDD"]
+testpaths = ["tests", "servers", "BDD", "backend"]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
