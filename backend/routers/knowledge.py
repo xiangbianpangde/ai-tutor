@@ -11,10 +11,18 @@ from typing import Any
 from fastapi import Body, Request
 
 from ..middleware import ProgressReporter
+from ..pipeline import NoiseGate
 from ..responses import ok
 from ._common import engine_router
 
 router = engine_router("knowledge")
+
+
+@router.get("/graphs/{kg_id}/noise", summary="KG 噪声红线审计（M-014，噪声<5%）")
+async def kg_noise(kg_id: str, request: Request, threshold: float = 0.05) -> dict:
+    """只读审计：禁类概念占比 + 是否过线。不改任何数据。"""
+    store = request.app.state.store
+    return ok(NoiseGate(threshold=threshold).audit_kg(store, kg_id))
 
 
 def default_build_runner(
