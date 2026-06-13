@@ -27,6 +27,7 @@ class AppConfig(BaseSettings):
     host: str = "127.0.0.1"
     port: int = Field(default=18501, ge=1, le=65535)
     db_path: Path = Path("data/tutor.db")
+    files_root: Path = Path("data")  # FileManager 根（{user}/{subject}/{kind}/）
     log_level: str = "INFO"
     debug: bool = False
     cors_origins: list[str] = Field(default_factory=lambda: ["*"])

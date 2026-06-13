@@ -15,7 +15,15 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from .config import AppConfig, get_config
 from .core import RelationalStore, TutorError, get_logger
-from .middleware import CacheLayer, Event, EventBus, EventRecorder, SessionManager, TaskManager
+from .middleware import (
+    CacheLayer,
+    Event,
+    EventBus,
+    EventRecorder,
+    FileManager,
+    SessionManager,
+    TaskManager,
+)
 from .responses import error_payload, ok, status_for
 from .routers import ENGINE_ROUTERS, meta, tasks
 
@@ -34,10 +42,11 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
     config: AppConfig = app.state.config
     config.db_path.parent.mkdir(parents=True, exist_ok=True)
-    # 事件总线不依赖 DB——先建好，DB 失败也能用（status 推送/监控埋点共用）
+    # 事件总线 + 文件管理器不依赖 DB——先建好，DB 失败也能用
     app.state.events = EventBus(logger=logger)
     app.state.event_recorder = EventRecorder()
     app.state.event_recorder.attach(app.state.events)
+    app.state.files = FileManager(config.files_root)
     try:
         store = RelationalStore(config.db_url)
         store.init_schema()  # 建 14 表（开发期一键；生产走 alembic）

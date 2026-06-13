@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from .cache_layer import CacheLayer
 from .event_bus import Event, EventBus, EventRecorder
+from .file_manager import FileManager
 from .session_manager import SessionManager
 from .task_manager import ProgressReporter, TaskManager
 
@@ -15,6 +16,7 @@ __all__ = [
     "Event",
     "EventBus",
     "EventRecorder",
+    "FileManager",
     "ProgressReporter",
     "SessionManager",
     "TaskManager",
