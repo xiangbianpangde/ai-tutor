@@ -15,9 +15,9 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from .config import AppConfig, get_config
 from .core import RelationalStore, TutorError, get_logger
-from .middleware import CacheLayer, SessionManager
+from .middleware import CacheLayer, SessionManager, TaskManager
 from .responses import error_payload, ok, status_for
-from .routers import ENGINE_ROUTERS, meta
+from .routers import ENGINE_ROUTERS, meta, tasks
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -40,6 +40,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.store = store
         app.state.cache = CacheLayer(config.db_url)  # 落同库 cache_entries 表
         app.state.sessions = SessionManager(store)  # 落同库 session_summaries 表
+        app.state.tasks = TaskManager(store.engine)  # 落同库 tasks 表 + 线程池
         app.state.db_error = None
         logger.info(
             "backend.startup",
@@ -51,9 +52,12 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.store = None
         app.state.cache = None
         app.state.sessions = None
+        app.state.tasks = None
         app.state.db_error = str(exc)
         logger.error("backend.db_init_failed", error=str(exc))
     yield
+    if getattr(app.state, "tasks", None) is not None:
+        app.state.tasks.shutdown()
     logger.info("backend.shutdown")
 
 
@@ -87,6 +91,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     for name, router in ENGINE_ROUTERS:
         app.include_router(router, prefix=f"/api/{name}")
     app.include_router(meta.router, prefix="/api/meta")
+    app.include_router(tasks.router, prefix="/api/tasks")
 
     return app
 

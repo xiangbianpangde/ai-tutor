@@ -1,6 +1,6 @@
 # AI-Tutor 开发状态
 
-> 更新: 2026-06-13（C2 进行中：M-005 缓存层 + M-004 会话管理器，824 测试全绿 / C1 完成 + D1 已签核 / 走向 C'）
+> 更新: 2026-06-13（C2 进行中：M-005 缓存 + M-004 会话 + M-007 异步任务层（build_kg 异步），831 测试全绿 / v2 第一波过堂三机制结构性通过 / C1+D1 已签核）
 > 流程档位: 标准
 > 收束节点: 功能点3后 / 功能点7后 / 功能点11后
 
@@ -160,9 +160,11 @@ pyclipper + transformers<5）；③ tutor_cli 不再吞 TutorError.hint（外部
   - ✅ 波前文档去 sys.path 化（pdf2zh 集成，走向决议 §五-6）
   - ✅ **M-005 CacheLayer**（SQLite L1 缓存，跨重启存活 + `/api/meta/cache/stats`）
     → `worklogs/2026-06-13_C2-pdf2zh文档去syspath-M005缓存层.md`
-  - ✅ **M-004 SessionManager**（包 v1 SessionStore + session_summaries 表：列表/切换/摘要/token/过期 + `GET /api/tutoring/sessions`，824 测试全绿）
+  - ✅ **M-004 SessionManager**（包 v1 SessionStore + session_summaries 表：列表/切换/摘要/token/过期 + `GET /api/tutoring/sessions`）
     → `worklogs/2026-06-13_C2-M004-会话管理器.md`
-  - ☐ M-006 事件总线 / M-007 Pipeline（含 build_kg 异步+进度）/ M-014 数据管线 / M-017 FileManager
+  - ✅ **M-007 TaskManager**（线程池后台任务 + tasks 表 + build_kg 异步：`POST /subjects/{id}/graphs`→202 task_id，`GET /api/tasks/{id}` 轮询进度，831 测试全绿）
+    → `worklogs/2026-06-13_C2-M007-异步任务层-build_kg异步.md`
+  - ☐ M-006 事件总线 / M-014 数据管线（内容级抽取/噪声<5%）/ M-017 FileManager
 - ☐ **C2 第二波** M-004 Session + M-005 Cache + M-006 事件总线 + M-007 Pipeline 调度 + M-014 数据管线（对应 v2 #3+#6+#7+#8）
 - ☐ **C3 第三波** M-008 RAG 引擎 + M-009 教学编排（对应 v2 #9+#10 部分）
 - ☐ **C4 第四波** M-010 费曼 + M-011 FSRS + M-012 阶段校准 + M-013 长期记忆 + M-016 红线编排（对应 v2 #10 拆分）
@@ -314,8 +316,9 @@ ai-tutor/
 2. ~~**C1 第一波**~~ ✅ 2026-06-13（M-001/M-002/M-003，`backend/` :18501 跑通，810 测试全绿，
    目录名定 backend/，ruff-format 暂不开）。
 3. ~~**D1 收束节点**~~ ✅ 2026-06-13 已审计签核（6 依赖漏洞修复，`收束报告-D1-C1.md`）。
-4. **C2 第二波**（进行中）：✅ 波前文档去 sys.path 化 + ✅ M-005 CacheLayer + ✅ M-004 SessionManager。
-   **下一步** = M-007 Pipeline（build_kg 异步任务+进度可查，正面打"v2 第一波过堂"挑战）→ M-006 事件总线 / M-014 / M-017。
+4. **C2 第二波**（进行中）：✅ 文档去 sys.path + ✅ M-005 Cache + ✅ M-004 Session + ✅ M-007 异步任务层（build_kg 异步）。
+   **下一步** = M-006 事件总线（status 推送/监控埋点统一事件层）或 M-017 FileManager（人类可读目录），再 M-014 数据管线。
+   ⚠️ "v2 第一波过堂"三机制已结构性通过（见挑战清单）。
    **首日决断**：目录名 backend/ vs src/aitutor/（走向决议 §四-5，建议 backend/
    保持与 PRD 验收命令一致）。
    ⚠️ M-014 数据管线（整理环节）仍提前到第一/第二波——换体裁攻击再添铁证：
@@ -341,8 +344,11 @@ ai-tutor/
 - [x] **死循环回归** ✅ 2026-06-13：21 步 give_exercise 占比 15% <50%，讲解类 55% 穿插。
 - [x] **休息触发** ✅ 2026-06-13：FIX-F freezegun 测试——6 轮全对回答走表 50 分钟触发
       `study_streak` 休息建议，非答错驱动；间隔 >15 分钟正确重置。
-- [ ] **v2 第一波过堂**（动工后适用）：build_kg 必须是异步任务+进度可查（单 HTTP 调用超时 = 不及格）；
-      同一问题问两遍第二遍命中缓存；进程重启后会话可续。
+- ◐ **v2 第一波过堂**（2026-06-13 结构性通过，端到端 demo 待牺牲品语料）：
+      ✅ build_kg 异步任务+进度可查（M-007：POST→202 task_id + GET /api/tasks 轮询，真机实证）；
+      ✅ 同一问题问两遍命中缓存（M-005 SQLite 缓存，跨重启）；
+      ✅ 进程重启后会话可续（M-004 session_summaries + v1 SessionStore 落库）。
+      三机制齐备且各有测试；真建图端到端过堂需牺牲品语料（不碰 fastapi-houduankaifa 演示库）。
 - [ ] **终极验收（#21）**：把 Claude Desktop 从流程里完全删掉，让一个不懂代码的人从安装走到
       学完第一课。做不到，"人→AI→ai-tutor"的三层架构就还在。
 
