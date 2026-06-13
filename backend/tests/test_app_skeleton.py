@@ -45,6 +45,22 @@ def test_cache_stats_endpoint(client):
         assert field in body["data"]
 
 
+def test_list_sessions_endpoint(client):
+    """GET /api/tutoring/sessions?user_id= → 统一信封 + 会话列表（M-004）。"""
+    # 空库先返回空列表
+    r = client.get("/api/tutoring/sessions", params={"user_id": "yhn"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True and body["data"] == []
+    # 建一个会话后能列出
+    client.app.state.sessions.store.create(user_id="yhn", subject_id="gaoshu")
+    r2 = client.get("/api/tutoring/sessions", params={"user_id": "yhn"})
+    data = r2.json()["data"]
+    assert len(data) == 1 and data[0]["subject_id"] == "gaoshu"
+    # user_id 必填
+    assert client.get("/api/tutoring/sessions").status_code == 422
+
+
 def test_db_auto_init_creates_tables(client, config):
     """BDD 01 场景3：data/tutor.db 自动创建，14 张表全部存在。"""
     assert config.db_path.exists()

@@ -6,5 +6,6 @@
 from __future__ import annotations
 
 from .cache_layer import CacheLayer
+from .session_manager import SessionManager
 
-__all__ = ["CacheLayer"]
+__all__ = ["CacheLayer", "SessionManager"]
