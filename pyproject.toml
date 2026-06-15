@@ -170,6 +170,12 @@ type = "forbidden"
 source_modules = ["backend.teaching"]
 forbidden_modules = ["backend.routers", "backend.app", "backend.main"]
 
+[[tool.importlinter.contracts]]
+name = "backend.strategy/memory/redline 是引擎层，不反向依赖上层（routers/app/main）"
+type = "forbidden"
+source_modules = ["backend.strategy", "backend.memory", "backend.redline"]
+forbidden_modules = ["backend.routers", "backend.app", "backend.main"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests", "servers", "BDD", "backend"]
