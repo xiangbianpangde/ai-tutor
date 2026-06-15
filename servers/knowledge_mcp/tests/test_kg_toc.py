@@ -328,3 +328,29 @@ def test_rebuild_subject_with_new_corpus_replaces_old_root_kg(
         assert s.get(KnowledgeGraphRow, kg_id_1) is None  # 旧根版本被替换
         assert s.query(ConceptRow).filter_by(kg_id=kg_id_1).count() == 0
         assert s.query(ConceptRow).filter_by(kg_id=kg_id_2).count() == len(concepts_2)
+
+
+def test_toc_concept_carries_body_not_source_leak(tmp_db, tmp_filestore) -> None:
+    """独立验收发现：toc 概念应带标题下正文(真讲解)，不外露"来自 xxx 行 N 的章节标题"。"""
+    from servers.knowledge_mcp.acquisition_adapter import AcquireSource, acquire
+    from shared.models import User
+
+    with tmp_db.session() as s:
+        s.add(User(id="yhn", display_name="T"))
+        s.commit()
+    md = tmp_filestore.path("biolab.md")
+    md.parent.mkdir(parents=True, exist_ok=True)
+    md.write_text("# 光合作用\n绿色植物利用光能合成有机物并释放氧气的过程。", encoding="utf-8")
+    manifest, corpus_id = acquire(
+        subject="生物", version="v1",
+        sources=[AcquireSource(type="file", uri=str(md))],
+        user_id="yhn", file_store=tmp_filestore, db=tmp_db,
+    )
+    _kg, concepts, *_ = build_kg_toc(
+        corpus_id=corpus_id, subject_slug="bio",
+        markdown_path=Path(manifest.file_paths["markdown"]), db=tmp_db,
+    )
+    c = concepts[0]
+    assert "光能" in c.definition  # 带真正文
+    assert c.definition != c.names[0]  # 不再只是标题
+    assert "章节标题" not in c.informal_description  # 不外露源行号脚注

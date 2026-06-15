@@ -234,19 +234,36 @@ def is_noise_title(title: str) -> bool:
     return t.endswith(_SENTENCE_ENDINGS)
 
 
-def _iter_headings(markdown: str) -> Iterator[tuple[int, str, int]]:
-    """逐行扫 markdown，yield (level, title, line_no)。跳过代码围栏内的行与噪声标题。"""
-    for line_no, line, in_code in iter_markdown_lines(markdown):
+def _iter_headings(markdown: str) -> Iterator[tuple[int, str, int, str]]:
+    """逐行扫 markdown，yield (level, title, line_no, body)。
+
+    body = 该标题到下一个标题之间的正文（学生看到的真讲解内容）；跳过代码围栏内的行
+    与噪声标题。toc 概念据此带上真实正文，而非只重复标题（独立验收发现：举例空、源行号外露）。
+    """
+    pending: tuple[int, str, int, list[str]] | None = None
+
+    def _body(lines: list[str]) -> str:
+        text = " ".join(ln.strip() for ln in lines if ln.strip())
+        return text[:400].strip()
+
+    for _line_no, line, in_code in iter_markdown_lines(markdown):
         if in_code:
+            if pending is not None:
+                pending[3].append(line)
             continue
         m = _HEADING_RE.match(line)
-        if not m:
-            continue
-        title = m.group("title").strip().strip("*_`~").strip()
-        title = strip_site_suffix(title)
-        if is_noise_title(title):
-            continue
-        yield len(m.group("hashes")), title, line_no
+        if m:
+            title = m.group("title").strip().strip("*_`~").strip()
+            title = strip_site_suffix(title)
+            if is_noise_title(title):
+                continue
+            if pending is not None:
+                yield pending[0], pending[1], pending[2], _body(pending[3])
+            pending = (len(m.group("hashes")), title, _line_no, [])
+        elif pending is not None:
+            pending[3].append(line)
+    if pending is not None:
+        yield pending[0], pending[1], pending[2], _body(pending[3])
 
 
 def _bloom(level: int) -> str:
@@ -262,17 +279,22 @@ def _build_concept(
     level: int,
     source_file: str,
     line_no: int,
+    body: str = "",
 ) -> Concept:
     chapter_id = ".".join(str(n) for n in chapter_counters)
     cid = f"{subject_slug}:{chapter_id}:{_slug(title)}"
+
+    # 真讲解内容用标题下的正文（body）；无正文才退回标题。**不再外露"来自 xxx 行 N"**
+    # 这类技术脚注（独立验收发现：学生不关心源文件行号，反而出戏）。
+    real = (body or "").strip()
 
     # toc 模式：所有难度字段用启发式默认值（标注 confidence=0.4 留给后续增强）
     return Concept(
         id=cid,
         names=[title],
         category="definition" if level <= 2 else "method",
-        definition=title,
-        informal_description=f"来自 {Path(source_file).name} 行 {line_no} 的章节标题",
+        definition=real or title,
+        informal_description=real or title,
         classification=ConceptClassification(
             bloom_level=_bloom(level),
             abstract_level=min(0.3 + 0.15 * (level - 1), 0.85),
@@ -307,7 +329,7 @@ def _build_toc(
     # prev_sibling_at_level[i] = level-(i+1) 的同级前一个 concept id
     prev_sibling_at_level: list[str | None] = []
 
-    for level, title, line_no in _iter_headings(text):
+    for level, title, line_no, body in _iter_headings(text):
         # ---- 1) 更新 counters 到 level 长度 ----
         if len(counters) >= level:
             counters = counters[: level - 1] + [counters[level - 1] + 1]
@@ -333,6 +355,7 @@ def _build_toc(
             level=level,
             source_file=str(markdown_path),
             line_no=line_no,
+            body=body,
         )
         concepts.append(concept)
 
