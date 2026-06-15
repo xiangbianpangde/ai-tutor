@@ -105,6 +105,29 @@ async def kg_noise(kg_id: str, request: Request, threshold: float = 0.05) -> dic
     return ok(NoiseGate(threshold=threshold).audit_kg(store, kg_id))
 
 
+@router.get("/subjects", summary="列出用户的科目（供学习中心选择，免手填不透明 ID）")
+async def list_subjects(request: Request, user_id: str) -> dict:
+    """返回该用户已建好图谱（可学）的科目，供前端做"我的科目"选择列表。
+
+    独立验收发现：让新用户手填不透明科目 ID（slug）很懵——改成从列表点选。
+    """
+    from shared.models import ConceptRow, Subject
+
+    store = request.app.state.store
+    if store is None:
+        return ok([])
+    with store.session() as s:
+        rows = s.query(Subject).filter_by(user_id=user_id).all()
+        out = []
+        for r in rows:
+            if not r.kg_id:
+                continue
+            n = s.query(ConceptRow).filter_by(kg_id=r.kg_id).count()
+            out.append({"subject_id": r.id, "display_name": r.display_name,
+                        "kg_id": r.kg_id, "concepts": n})
+    return ok(out)
+
+
 @router.post("/subjects/import", status_code=202,
              summary="导入资料一键建科目（采集→建图→建科目，#21 零门槛入口）")
 async def import_subject(

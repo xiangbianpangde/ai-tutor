@@ -67,3 +67,18 @@ def test_import_empty_rejected(client):
         "user_id": "newbie", "subject_name": "空", "markdown": "   ",
     })
     assert r.status_code >= 400
+
+
+def test_subjects_list_after_import(client):
+    """独立验收驱动：导入后科目进"我的科目"列表（免手填不透明 ID）。"""
+    before = client.get("/api/knowledge/subjects", params={"user_id": "picker"}).json()["data"]
+    assert before == []
+    r = client.post("/api/knowledge/subjects/import", json={
+        "user_id": "picker", "subject_name": "线性代数入门", "markdown": _MD,
+    })
+    client.app.state.tasks.wait(r.json()["data"]["task_id"], timeout=30)
+    after = client.get("/api/knowledge/subjects", params={"user_id": "picker"}).json()["data"]
+    assert len(after) == 1
+    assert after[0]["display_name"] == "线性代数入门"
+    assert after[0]["concepts"] >= 6
+    assert after[0]["subject_id"]

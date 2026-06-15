@@ -36,6 +36,7 @@ export const api = {
   respond: (sid, answer) => request('POST', `/api/tutoring/sessions/${sid}/respond`, { answer }),
   advanceStep: (sid) => request('POST', `/api/tutoring/sessions/${sid}/advance`),
 
+  listSubjects: (userId) => request('GET', `/api/knowledge/subjects?user_id=${encodeURIComponent(userId)}`),
   importSubject: (userId, subjectName, markdown) =>
     request('POST', '/api/knowledge/subjects/import', { user_id: userId, subject_name: subjectName, markdown }),
   getTask: (taskId) => request('GET', `/api/tasks/${taskId}`),

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../api.js';
 
 // 把后端技术错误码翻成给非技术用户看的人话（多轮点击测试 R2 发现：原始 TutorError 太技术）。
@@ -30,6 +30,13 @@ export default function LearnCenter() {
   const [err, setErr] = useState(null);
   const [current, setCurrent] = useState(null); // 当前教学动作 {type, content, interactive, completed}
   const [done, setDone] = useState(false); // 本科目是否学完
+  const [subjects, setSubjects] = useState([]); // 我的科目（独立验收：免手填不透明 ID）
+
+  // 拉用户已有科目供点选
+  useEffect(() => {
+    if (session) return;
+    api.listSubjects(form.userId).then(setSubjects).catch(() => setSubjects([]));
+  }, [session, form.userId]);
   // 导入资料一键建科目（#21 零门槛入口）
   const [imp, setImp] = useState({ open: false, name: '', md: '', status: null });
 
@@ -117,8 +124,22 @@ export default function LearnCenter() {
         <div className="card" style={{ maxWidth: 440 }}>
           <label>用户 ID</label>
           <input value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })} />
-          <label>科目 ID</label>
-          <input value={form.subjectId} placeholder="如 fastapi-houduankaifa"
+          {subjects.length > 0 && (
+            <>
+              <label>我的科目（点一个开始学）</label>
+              <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
+                {subjects.map((s) => (
+                  <button key={s.subject_id}
+                    className={form.subjectId === s.subject_id ? '' : 'ghost'}
+                    onClick={() => setForm({ ...form, subjectId: s.subject_id, kgId: '' })}>
+                    {s.display_name}（{s.concepts} 概念）
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          <label>{subjects.length > 0 ? '或手填科目 ID' : '科目 ID'}</label>
+          <input value={form.subjectId} placeholder="点上面的科目，或导入新建"
             onChange={(e) => setForm({ ...form, subjectId: e.target.value })} />
           <label>KG ID（可选，留空从科目解析）</label>
           <input value={form.kgId} onChange={(e) => setForm({ ...form, kgId: e.target.value })} />
