@@ -9,7 +9,15 @@
 
 48 小时学完一科的私人 AI 辅导系统。v1 基于 4 个 MCP Server + Claude Desktop；v2 重构为独立 Electron 桌面应用。
 
-**当前阶段**：v2 动工阻塞已全部解除。2026-06-12 完成 22 问题根因调查与修复 FIX-A~J（`doc/reports/根因分析-22问题.md`）；2026-06-13 复跑验证（FIX-K + tutor_cli）+ **v3.1 review 收束（走向 C'：v2 主体 + v3.1 增量 + 6 修正，`worklogs/2026-06-13_v3.1-走向决议.md`）** + 第二批挑战 6/6 过堂（FIX-L 判分回退封顶 partial / FIX-M 论文骨架过滤，`worklogs/2026-06-13_第二批挑战过堂-FIX-L-FIX-M.md`），797 测试全绿。注意：v3.1 设计包 2026-06-13 才真正还原入库（bc82a7c）。下一步 = B 阶段收尾 → C1 第一波，详见 `STATUS.md`。
+**当前阶段**：**v2 11 功能点全部就位（2026-06-15）**。C1（后端骨架/网关/客户端入口）→ C2
+（Session/Cache/EventBus/Pipeline/File/数据管线）→ C3（M-008 RAG + M-009 教学编排）→ C4
+（M-010 费曼/M-011 FSRS/M-012 阶段校准/M-013 长期记忆/M-016 红线编排）→ C5（M-015 Nuitka
+onedir 打包 + M-001 收尾）逐波落地；D1 已签核，D2/D3 收束四阶段已执行待人签核。#7 WebSocket +
+React 前端（5 页面/向导/3 可视化）补全，Vite build + Playwright 真浏览器验证全栈打通；
+`test_e2e_pipeline` 端到端真建图过堂（牺牲品语料）。**939 测试全绿**。务实替代记 ADR-0003
+（RAG 不引 ChromaDB/NLI）/ ADR-0004（FSRS 纯 Python、Nuitka onedir）。**剩余**：真机端到端
+demo（牺牲品语料）+ Electron 运行时真跑 + 真 Nuitka 编译 + 终极验收 #21（均环境/人工受限）。
+详见 `STATUS.md`。早期历史：22 问题根因 FIX-A~M（797 测试）+ v3.1 走向 C' + 两批挑战过堂。
 
 ## 目录索引
 
