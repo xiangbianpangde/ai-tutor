@@ -24,7 +24,7 @@
     ],
     "extraResources": [
       {
-        "from": "../build_out2/run_aitutor.dist",
+        "from": "../build_rel/run_aitutor.dist",
         "to": "backend"
       }
     ],
