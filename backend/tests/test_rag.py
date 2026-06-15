@@ -251,3 +251,23 @@ def test_rest_rag_validate_no_sources(client):
                   json={"answer": "随便说点什么", "sources": []})
     assert resp.status_code == 200
     assert resp.json()["data"]["is_supported"] is False
+
+
+def test_rest_graph_view(client):
+    """#5 可视化数据端点：返回概念节点 + 边。"""
+    c, app = client
+    kg_id = _seed_kg(app)
+    # 加一条边
+    from shared.models import RelationRow
+
+    with app.state.store.session() as s:
+        s.add(RelationRow(kg_id=kg_id, from_id="k1", to_id="k2",
+                          type="prerequisite_strong", weight=1.0,
+                          explanation="k1 是 k2 前置", confidence=0.9, deprecated=False))
+        s.commit()
+    resp = c.get(f"/api/knowledge/graphs/{kg_id}/view")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["node_count"] == 2
+    assert data["edge_count"] == 1
+    assert {n["name"] for n in data["nodes"]} == {"梯度下降", "反向传播"}

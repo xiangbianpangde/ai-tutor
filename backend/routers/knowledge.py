@@ -20,6 +20,32 @@ from ._common import engine_router
 router = engine_router("knowledge")
 
 
+@router.get("/graphs/{kg_id}/view", summary="KG 可视化数据：概念 + 边（#5 力导向图）")
+async def graph_view(kg_id: str, request: Request, limit: int = 500) -> dict:
+    """只读返回 KG 的节点（概念）+ 边（关系），供前端力导向图渲染。"""
+    from shared.errors import TutorError
+    from shared.models import ConceptRow, RelationRow
+
+    store = request.app.state.store
+    if store is None:
+        raise TutorError("DATABASE_ERROR", hint="DB 未就绪")
+    with store.session() as s:
+        concepts = s.query(ConceptRow).filter_by(kg_id=kg_id).limit(limit).all()
+        nodes = [
+            {"id": c.id, "name": c.name_primary, "category": c.category,
+             "abstract_level": c.abstract_level, "load": c.cognitive_load_estimate}
+            for c in concepts
+        ]
+        ids = {c.id for c in concepts}
+        edges = [
+            {"from": e.from_id, "to": e.to_id, "type": e.type}
+            for e in s.query(RelationRow).filter_by(kg_id=kg_id).all()
+            if not e.deprecated and e.from_id in ids and e.to_id in ids
+        ]
+    return ok({"kg_id": kg_id, "nodes": nodes, "edges": edges,
+               "node_count": len(nodes), "edge_count": len(edges)})
+
+
 def _get_rag_engine(request: Request, kg_id: str) -> RAGEngine:
     """按 kg_id 取/建 RAG 引擎（每 kg_id 缓存——避免每次请求重扫概念建索引）。
 

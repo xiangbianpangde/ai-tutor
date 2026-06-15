@@ -60,7 +60,16 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  // 优先加载 Vite 构建产物（renderer/dist）；未构建时回退到源 index.html 提示。
+  // 开发期可设 AITUTOR_RENDERER_URL=http://localhost:5173 用 Vite dev server（热更新）。
+  const devUrl = process.env.AITUTOR_RENDERER_URL;
+  if (devUrl) {
+    mainWindow.loadURL(devUrl);
+  } else {
+    const built = path.join(__dirname, 'renderer', 'dist', 'index.html');
+    const fallback = path.join(__dirname, 'renderer', 'index.html');
+    mainWindow.loadFile(require('node:fs').existsSync(built) ? built : fallback);
+  }
 }
 
 app.whenReady().then(async () => {
