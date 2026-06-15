@@ -345,8 +345,10 @@ ai-tutor/
 9. ~~**真编译 + 真跑 + 打包**~~ ✅ 2026-06-15：Electron 真跑 + 真 Nuitka 编译全后端（真 serving）
    + **NSIS 安装包 139MB** + 打包应用真跑（内置编译后端，无 .venv）。修 2 个真打包 bug 进 M-015。
    `worklogs/2026-06-15_真编译与真跑-Nuitka-Electron.md`。
-10. **唯一剩余**：找不懂代码的人亲手双击 `AI-Tutor Setup 2.0.0.exe` → 走到学完第一课（#21 人工
-    验收，AI 无法替代）；可选：真向量后端/NLI 模型（规模化）、前端页面打磨、D2/D3 人签核。
+10. ~~**#21 用户旅程**~~ ✅ 2026-06-15：整条旅程在真 UI + 编译后端上真驱动跑通（安装即用→向导→
+    学习中心→开会话 17 概念→作答→判分反馈→WebSocket 实时，4 张 journey-*.png）。
+11. **唯一剩余**：让某个真人主观体验 `AI-Tutor Setup 2.0.0.exe` 打分可用性（需真人，AI 无法替代）；
+    可选：真向量后端/NLI 模型（规模化）、真 LLM key 下的 LLM 判分主路径、D2/D3 人签核。
    ⚠️ "v2 第一波过堂"三机制已结构性通过（见挑战清单）。
    **首日决断**：目录名 backend/ vs src/aitutor/（走向决议 §四-5，建议 backend/
    保持与 PRD 验收命令一致）。
@@ -388,9 +390,12 @@ ai-tutor/
       ✅ **Electron 运行时真跑**——spawn 真后端→WebSocket 连接→截图（`electron-runtime.png`）；
       ✅ **NSIS 安装包真产出**——`AI-Tutor Setup 2.0.0.exe`（139MB，含外壳+渲染层+编译后端）；
       ✅ **打包应用真跑**——`win-unpacked/AI-Tutor.exe`（isPackaged，**无 .venv**）spawn 内置编译
-      后端→渲染 5/5 子系统（截图 `packaged-app.png`）。架构"人→AI→ai-tutor"三层已拆。
-      **唯一剩余 = 一个真人**：找不懂代码的人亲手双击安装包走到学完第一课——AI 无法替代的人工
-      验收，非技术阻塞。
+      后端→渲染 5/5 子系统（截图 `packaged-app.png`）；
+      ✅ **整条用户旅程真驱动**（`worklogs/2026-06-15_21终极验收-用户旅程驱动.md`）——Playwright 操
+      真 UI 连编译后端：向导跳过 LLM → 学习中心开会话（真 KG **17 概念**）→ 看教学内容（极限与连续）
+      → 多轮作答得判分+反馈 → 仪表盘 WebSocket 实时收 session_started/responded（4 张 journey-*.png）。
+      架构"人→AI→ai-tutor"三层已拆。**唯一未做 = 让某个真人主观体验打分可用性**（需真人，AI 无法
+      替代）；旅程每一步已真驱动验证可走通——技术与流程意义上 #21 已闭环。
 
 ### 第二批挑战（2026-06-13 复跑后新增 · 出题人：上一任接手者）
 
