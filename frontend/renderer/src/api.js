@@ -34,6 +34,7 @@ export const api = {
     request('POST', '/api/tutoring/sessions/start', { user_id: userId, subject_id: subjectId, kg_id: kgId }),
   nextAction: (sid) => request('GET', `/api/tutoring/sessions/${sid}/next-action`),
   respond: (sid, answer) => request('POST', `/api/tutoring/sessions/${sid}/respond`, { answer }),
+  advanceStep: (sid) => request('POST', `/api/tutoring/sessions/${sid}/advance`),
 
   importSubject: (userId, subjectName, markdown) =>
     request('POST', '/api/knowledge/subjects/import', { user_id: userId, subject_name: subjectName, markdown }),

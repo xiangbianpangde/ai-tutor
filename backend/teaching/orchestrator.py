@@ -52,8 +52,23 @@ class TeachingOrchestrator:
                 from servers.tutoring_mcp.engine import TeachingEngine
                 from servers.tutoring_mcp.session import SessionStore
 
+                # LLM 选择：注入的 > MiniMax（配了 key 的真 LLM）> 本地判分器（基础模式）。
+                # 无真 LLM 时若仍用 FIX-L 回退启发式（永不授 correct）→ CHECK 死循环、科目学不完。
+                llm = self._llm
+                if llm is None:
+                    from .minimax_provider import MiniMaxProvider
+
+                    if MiniMaxProvider.available():
+                        try:
+                            llm = MiniMaxProvider()
+                        except Exception:
+                            llm = None
+                    if llm is None:
+                        from .local_judge import LocalJudgeProvider
+
+                        llm = LocalJudgeProvider()
                 self._engine = TeachingEngine(
-                    db=self._store, sessions=SessionStore(self._store), llm=self._llm
+                    db=self._store, sessions=SessionStore(self._store), llm=llm
                 )
         return self._engine
 
@@ -104,6 +119,31 @@ class TeachingOrchestrator:
             return model.model_dump(mode="json")
         return model
 
+    # 问答态：这些 action.type 需要学生作答（respond）；其余是展示态（advance 继续）。
+    _QUESTION_ACTIONS = frozenset({"ask_question", "give_exercise"})
+
+    def _session_meta(self, session_id: str) -> dict[str, Any]:
+        """会话进度元信息：是否学完 + 当前位置，供 UI 决定"继续/作答/已学完"。"""
+        try:
+            ctx = self._session_store().load(session_id)
+            return {
+                "completed": ctx.status == "completed",
+                "status": ctx.status,
+                "position": ctx.position_in_plan,
+            }
+        except Exception:
+            return {"completed": False, "status": "active", "position": 0}
+
+    def _annotate(self, session_id: str, action: Any) -> dict[str, Any]:
+        """把动作 + 是否需作答 + 会话进度打包给 UI。"""
+        a = self._dump(action)
+        atype = a.get("type") if isinstance(a, dict) else getattr(action, "type", None)
+        return {
+            "action": a,
+            "interactive": atype in self._QUESTION_ACTIONS,
+            **self._session_meta(session_id),
+        }
+
     # ------------------------------------------------------------------ #
     # 编排动作
     # ------------------------------------------------------------------ #
@@ -136,6 +176,7 @@ class TeachingOrchestrator:
             "kg_id": kg_id,
             "total_concepts": len(order),
             "current_action": self._dump(first_action),
+            **self._annotate(ctx.session_id, first_action),
         }
 
     async def next_action(self, session_id: str) -> dict[str, Any]:
@@ -144,22 +185,27 @@ class TeachingOrchestrator:
         await self._emit("teaching.action", {
             "session_id": session_id, "type": getattr(action, "type", None),
         })
-        return {"session_id": session_id, "action": self._dump(action)}
+        return {"session_id": session_id, **self._annotate(session_id, action)}
 
     async def respond(self, session_id: str, answer: str) -> dict[str, Any]:
-        """学生作答 → 判分/诊断/反馈/策略推进（engine.respond）+ 刷新会话摘要。"""
+        """学生作答 → 判分/诊断/反馈/策略推进 → 取下一个动作（含是否学完）。"""
         result = self._engine_().respond(session_id, answer)
         await self._emit("teaching.responded", {
             "session_id": session_id,
             "correctness": getattr(result, "correctness", None),
         })
         self._refresh_summary(session_id)
-        return {"session_id": session_id, "result": self._dump(result)}
+        nxt = self._engine_().next_action(session_id)  # 作答后推进到下一个教学动作
+        return {
+            "session_id": session_id,
+            "result": self._dump(result),
+            "next": self._annotate(session_id, nxt),
+        }
 
     async def advance(self, session_id: str) -> dict[str, Any]:
         """讲解/展示步骤后"继续"：推进纯展示态到下一步（问答步骤应改用 respond）。"""
         action = self._engine_().advance(session_id)
-        return {"session_id": session_id, "action": self._dump(action)}
+        return {"session_id": session_id, **self._annotate(session_id, action)}
 
     async def transition(
         self, session_id: str, *, event: str, payload: dict[str, Any] | None = None

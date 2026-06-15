@@ -28,6 +28,8 @@ export default function LearnCenter() {
   const [answer, setAnswer] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const [current, setCurrent] = useState(null); // 当前教学动作 {type, content, interactive, completed}
+  const [done, setDone] = useState(false); // 本科目是否学完
   // 导入资料一键建科目（#21 零门槛入口）
   const [imp, setImp] = useState({ open: false, name: '', md: '', status: null });
 
@@ -64,16 +66,34 @@ export default function LearnCenter() {
     setChat((c) => [...c, { who: 'tutor', text: action.content || `[${action.type}]`, type: action.type }]);
   };
 
+  // act = 动作；interactive/completed 是响应的同级字段——并入 current 供渲染判断
+  const applyAction = (act, interactive, completed) => {
+    pushTutor(act);
+    setCurrent(act ? { ...act, interactive: !!interactive } : null);
+    setDone(!!completed);
+  };
+
   const start = async () => {
     setErr(null); setBusy(true);
     try {
       const res = await api.startSession(form.userId, form.subjectId, form.kgId || undefined);
       setSession(res);
-      setChat([]);
-      pushTutor(res.current_action);
+      setChat([]); setDone(false);
+      applyAction(res.current_action || res.action, res.interactive, res.completed);
     } catch (e) { setErr(humanize(e.message)); } finally { setBusy(false); }
   };
 
+  // 展示步骤"继续"→ advance → 下一个动作
+  const cont = async () => {
+    if (!session || busy) return;
+    setBusy(true);
+    try {
+      const out = await api.advanceStep(session.session_id);
+      applyAction(out.action, out.interactive, out.completed);
+    } catch (e) { setErr(humanize(e.message)); } finally { setBusy(false); }
+  };
+
+  // 问答步骤"提交"→ respond → 反馈 + 下一个动作
   const submit = async () => {
     if (!answer.trim() || !session) return;
     const a = answer.trim();
@@ -84,7 +104,8 @@ export default function LearnCenter() {
       const r = out.result || {};
       const fb = `${r.feedback || ''}${r.correctness ? `\n（判定：${r.correctness}）` : ''}`;
       setChat((c) => [...c, { who: 'tutor', text: fb.trim() || '（已记录）', type: 'feedback' }]);
-      if (r.next_action) pushTutor(r.next_action);
+      const nxt = out.next || {};
+      applyAction(nxt.action, nxt.interactive, nxt.completed);
     } catch (e) { setErr(humanize(e.message)); } finally { setBusy(false); }
   };
 
@@ -148,11 +169,24 @@ export default function LearnCenter() {
             </div>
           ))}
         </div>
-        <div className="composer">
-          <textarea value={answer} placeholder="输入你的回答…" onChange={(e) => setAnswer(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }} />
-          <button onClick={submit} disabled={busy || !answer.trim()}>提交</button>
-        </div>
+        {done ? (
+          <div className="row" style={{ justifyContent: 'center', padding: '10px 0' }}>
+            <span className="tag ok" style={{ fontSize: 15 }}>🎉 本科目已学完！</span>
+            <button className="ghost" onClick={() => { setSession(null); setCurrent(null); setDone(false); }}>
+              学下一科
+            </button>
+          </div>
+        ) : current && current.interactive ? (
+          <div className="composer">
+            <textarea value={answer} placeholder="输入你的回答…" onChange={(e) => setAnswer(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }} />
+            <button onClick={submit} disabled={busy || !answer.trim()}>提交</button>
+          </div>
+        ) : (
+          <div className="row" style={{ justifyContent: 'flex-end' }}>
+            <button onClick={cont} disabled={busy}>{busy ? '…' : '继续 →'}</button>
+          </div>
+        )}
         {err && <p className="tag bad" style={{ marginTop: 10 }}>{err}</p>}
       </div>
     </div>

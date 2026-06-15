@@ -23,6 +23,10 @@ def client(tmp_path):
     cfg = AppConfig(_env_file=None, db_path=tmp_path / "e2e.db")
     app = create_app(cfg)
     with TestClient(app) as c:
+        # 注入本地确定性判分器，避免测试依赖 MiniMax 网络（有 key 时编排器会默认用真 LLM）
+        from backend.teaching.local_judge import LocalJudgeProvider
+
+        app.state.tutor_llm = LocalJudgeProvider()
         yield c, app, tmp_path
 
 
