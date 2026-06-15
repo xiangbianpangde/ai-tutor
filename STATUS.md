@@ -89,7 +89,7 @@ pyclipper + transformers<5）；③ tutor_cli 不再吞 TutorError.hint（外部
 | 7 research-tool 深度集成 | specs/07-research-tool集成.md | ⏳ 待开始 | - |
 | 8 pdf2zh 深度集成 | specs/08-pdf2zh集成.md | ⏳ 待开始 | - |
 | 9 Agentic RAG + 缓存 + 监控 | specs/09-AgenticRAG.md | ◐ C3：M-008 RAG 引擎（词法检索+NLI风格验证+自主重检索状态机+REST）；真向量后端/NLI模型延后 | 2026-06-15 |
-| 10 策略升级 + 健康监控 + 幻觉检测 | specs/10-策略升级.md | ◐ C3 M-009 教学编排 + C4 M-010 费曼/M-011 FSRS/M-012 阶段校准/M-013 长期记忆/M-016 红线编排（REST 齐备） | 2026-06-15 |
+| 10 策略升级 + 健康监控 + 幻觉检测 | specs/10-策略升级.md | ✅ C3 M-009 教学编排 + C4 M-010~M-013/M-016 + **MiniMax 真判分接入**：多科目可**完全学完**（status=completed，脚本3科+UI1科实测，`doc/reports/多科目全流程学完测试.md`） | 2026-06-15 |
 | 11 打包发布：Electron + Python 嵌入 | specs/11-打包发布.md | ◐ C5：M-015 打包调度（Nuitka onedir FSM + 软压缩 + 校验）+ M-001 收尾（聚合健康）；真编译/Electron 真验=发布阶段 | 2026-06-15 |
 
 ## 收束节点历史
