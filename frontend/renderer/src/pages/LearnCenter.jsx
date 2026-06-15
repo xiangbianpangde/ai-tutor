@@ -9,6 +9,36 @@ export default function LearnCenter() {
   const [answer, setAnswer] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  // 导入资料一键建科目（#21 零门槛入口）
+  const [imp, setImp] = useState({ open: false, name: '', md: '', status: null });
+
+  const importSubject = async () => {
+    if (!imp.name.trim() || !imp.md.trim()) return;
+    setErr(null);
+    setImp((s) => ({ ...s, status: '提交中…' }));
+    try {
+      const { task_id } = await api.importSubject(form.userId, imp.name.trim(), imp.md);
+      // 轮询任务进度
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 800));
+        const t = await api.getTask(task_id);
+        if (t.state === 'succeeded') {
+          setForm((f) => ({ ...f, subjectId: t.result.subject_id, kgId: '' }));
+          setImp({ open: false, name: '', md: '', status: null });
+          break;
+        }
+        if (t.state === 'failed') {
+          setImp((s) => ({ ...s, status: null }));
+          setErr(`建科目失败：${t.error || '未知错误'}`);
+          break;
+        }
+        setImp((s) => ({ ...s, status: `${t.message || '处理中'} ${Math.round((t.progress || 0) * 100)}%` }));
+      }
+    } catch (e) {
+      setImp((s) => ({ ...s, status: null }));
+      setErr(e.message);
+    }
+  };
 
   const pushTutor = (action) => {
     if (!action) return;
@@ -52,11 +82,36 @@ export default function LearnCenter() {
             onChange={(e) => setForm({ ...form, subjectId: e.target.value })} />
           <label>KG ID（可选，留空从科目解析）</label>
           <input value={form.kgId} onChange={(e) => setForm({ ...form, kgId: e.target.value })} />
-          <div style={{ marginTop: 18 }}>
+          <div style={{ marginTop: 18 }} className="row">
             <button onClick={start} disabled={busy || !form.subjectId}>{busy ? '开启中…' : '开始学习'}</button>
+            <button className="ghost" onClick={() => setImp((s) => ({ ...s, open: !s.open }))}>
+              {imp.open ? '收起' : '没有科目？导入资料新建'}
+            </button>
           </div>
           {err && <p className="tag bad" style={{ marginTop: 14 }}>{err}</p>}
         </div>
+
+        {imp.open && (
+          <div className="card" style={{ maxWidth: 440, marginTop: 16 }}>
+            <h3>导入资料一键建科目</h3>
+            <p className="muted" style={{ marginBottom: 6 }}>
+              粘贴带 # 标题的 Markdown 资料，自动采集 + 建知识图谱，建好即可学。
+            </p>
+            <label>科目名称</label>
+            <input value={imp.name} placeholder="如 线性代数入门"
+              onChange={(e) => setImp({ ...imp, name: e.target.value })} />
+            <label>资料内容（Markdown）</label>
+            <textarea value={imp.md} rows={8} placeholder={'# 第一章\n## 小节\n内容…'}
+              style={{ resize: 'vertical' }}
+              onChange={(e) => setImp({ ...imp, md: e.target.value })} />
+            <div style={{ marginTop: 14 }} className="row">
+              <button onClick={importSubject} disabled={!!imp.status || !imp.name.trim() || !imp.md.trim()}>
+                {imp.status ? '建科目中…' : '创建科目'}
+              </button>
+              {imp.status && <span className="tag">{imp.status}</span>}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

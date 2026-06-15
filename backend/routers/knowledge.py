@@ -105,6 +105,80 @@ async def kg_noise(kg_id: str, request: Request, threshold: float = 0.05) -> dic
     return ok(NoiseGate(threshold=threshold).audit_kg(store, kg_id))
 
 
+@router.post("/subjects/import", status_code=202,
+             summary="导入资料一键建科目（采集→建图→建科目，#21 零门槛入口）")
+async def import_subject(
+    request: Request,
+    user_id: str = Body(..., embed=True),
+    subject_name: str = Body(..., embed=True),
+    markdown: str = Body(..., embed=True),
+) -> dict:
+    """把粘贴的 markdown 资料一键建成可学科目：采集→toc 建图（纯规则免 LLM）→建 Subject。
+
+    异步返回 task_id；进度经 GET /api/tasks/{id} 轮询，完成后 subject_id 即可开学。
+    解决 #21 最大摩擦点：新用户零资料 → 导入即得可学科目（数据管线 M-014 串成一键）。
+    """
+    import tempfile
+
+    from shared.errors import TutorError
+
+    store = request.app.state.store
+    if store is None:
+        raise TutorError("DATABASE_ERROR", hint="DB 未就绪")
+    if not (markdown or "").strip():
+        raise TutorError("IMPORT_EMPTY", hint="资料内容不能为空")
+    manager = request.app.state.tasks
+    config = request.app.state.config
+
+    from shared.slug import slugify
+
+    subject_slug = slugify(subject_name) or "subject"
+
+    def job(reporter: ProgressReporter) -> dict[str, Any]:
+        from servers.knowledge_mcp.acquisition_adapter import AcquireSource, acquire
+        from servers.knowledge_mcp.kg_enrich_adapter import build_kg_toc
+        from shared.models import Subject, User
+        from shared.storage import FileStore
+
+        with store.session() as s:
+            if s.get(User, user_id) is None:
+                s.add(User(id=user_id, display_name=user_id))
+                s.commit()
+        reporter.update(0.15, "写入资料")
+        tmp_dir = Path(tempfile.mkdtemp())
+        md_file = tmp_dir / f"{subject_slug}.md"
+        md_file.write_text(markdown, encoding="utf-8")
+
+        reporter.update(0.35, "采集语料")
+        fs = FileStore(str(config.files_root))
+        manifest, corpus_id = acquire(
+            subject=subject_name, version="v1",
+            sources=[AcquireSource(type="file", uri=str(md_file))],
+            user_id=user_id, file_store=fs, db=store,
+        )
+        md_path = Path(manifest.file_paths["markdown"])
+
+        reporter.update(0.65, "建知识图谱")
+        kg_id, concepts, _edges, _quality, _mermaid = build_kg_toc(
+            corpus_id=corpus_id, subject_slug=subject_slug, markdown_path=md_path, db=store,
+        )
+
+        reporter.update(0.9, "关联科目")
+        with store.session() as s:
+            subj = s.get(Subject, subject_slug)
+            if subj is None:
+                s.add(Subject(id=subject_slug, display_name=subject_name,
+                              user_id=user_id, kg_id=kg_id))
+            else:
+                subj.kg_id = kg_id
+            s.commit()
+        reporter.update(1.0, "完成")
+        return {"subject_id": subject_slug, "kg_id": kg_id, "concepts": len(concepts)}
+
+    task_id = manager.submit("import_subject", job)
+    return ok({"task_id": task_id, "subject_id": subject_slug})
+
+
 def default_build_runner(
     reporter: ProgressReporter, *, store: Any, corpus_id: str, depth: str, **_: Any
 ) -> dict[str, Any]:

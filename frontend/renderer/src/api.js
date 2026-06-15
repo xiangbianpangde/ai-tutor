@@ -35,6 +35,10 @@ export const api = {
   nextAction: (sid) => request('GET', `/api/tutoring/sessions/${sid}/next-action`),
   respond: (sid, answer) => request('POST', `/api/tutoring/sessions/${sid}/respond`, { answer }),
 
+  importSubject: (userId, subjectName, markdown) =>
+    request('POST', '/api/knowledge/subjects/import', { user_id: userId, subject_name: subjectName, markdown }),
+  getTask: (taskId) => request('GET', `/api/tasks/${taskId}`),
+
   ragQuery: (kgId, query, topK = 5) =>
     request('POST', '/api/knowledge/rag/query', { kg_id: kgId, query, top_k: topK }),
   reviewSchedule: (rating, card) =>
