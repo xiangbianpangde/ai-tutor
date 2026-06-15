@@ -25,7 +25,7 @@ from .middleware import (
     TaskManager,
 )
 from .responses import error_payload, ok, status_for
-from .routers import ENGINE_ROUTERS, meta, tasks
+from .routers import ENGINE_ROUTERS, meta, tasks, ws
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -106,6 +106,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
         app.include_router(router, prefix=f"/api/{name}")
     app.include_router(meta.router, prefix="/api/meta")
     app.include_router(tasks.router, prefix="/api/tasks")
+    app.include_router(ws.router)  # WebSocket /ws/events（#7 实时推送，无 /api 前缀）
 
     return app
 

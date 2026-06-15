@@ -4,7 +4,7 @@
 """
 from __future__ import annotations
 
-from . import digest, knowledge, sync, tutoring
+from . import digest, knowledge, meta, sync, tasks, tutoring, ws  # noqa: F401
 
 # (engine 名, router) —— create_app 按此挂载到 /api/{engine}
 ENGINE_ROUTERS = [
