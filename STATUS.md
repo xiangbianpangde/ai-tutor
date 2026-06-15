@@ -1,8 +1,9 @@
 # AI-Tutor 开发状态
 
-> 更新: 2026-06-15（**v2 11 功能点全部就位 + 前端补全 + 端到端真管线过堂**：C3-C5 共 9 backend
-> 模块 + #7 WebSocket + React 前端 5 页面/向导/3 可视化（Vite build + Playwright 真浏览器验证）+
-> test_e2e_pipeline 真建图全链；**939 测试全绿**；D2/D3 收束四阶段已执行待签核 / C1+D1 已签核）
+> 更新: 2026-06-15（**v2 11 功能点全部就位 + 前端补全 + 端到端真管线 + 真编译/真跑实证**：
+> C3-C5 共 9 backend 模块 + #7 WebSocket + React 前端（5 页面/向导/3 可视化）+ test_e2e_pipeline
+> 真建图全链；**939 测试全绿**；**Electron 运行时真跑（截图）+ 真 Nuitka onedir 编译全后端**；
+> D2/D3 收束四阶段已执行待签核 / C1+D1 已签核；#21 仅剩人工验收环节）
 > 流程档位: 标准
 > 收束节点: 功能点3后 / 功能点7后 / 功能点11后
 
@@ -340,9 +341,11 @@ ai-tutor/
 8. ~~**前端补全**~~ ✅ 2026-06-15：#7 WebSocket（/ws/events，commit 69ad4c7）+ #4 五页面/向导/
    WS 客户端 + #5 三可视化（commit fdf3bae）。**Vite build 通过 + Playwright 真浏览器验证**：
    仪表盘拉真后端 5/5 子系统、WS 收 ws.connected、复习页 FSRS 评分往返（良好→S=3.2 下次3天）。
-9. **后续阶段**（下一步，发布前）：① 真机端到端 demo（牺牲品语料，不碰演示科目）；
-   ② 真 Nuitka 编译 + Electron 运行时真跑（发布阶段，需 C 编译器/桌面环境）；
-   ③ 终极验收 #21（不懂代码的人从安装走到学完第一课）。
+9. ~~**真编译 + 真跑**~~ ✅ 2026-06-15：Electron 运行时真跑（截图实证）+ 真 Nuitka onedir
+   编译全后端（184 C 文件，过 M-015 校验）+ run_aitutor.py 修相对导入坑。
+   `worklogs/2026-06-15_真编译与真跑-Nuitka-Electron.md`。
+10. **唯一剩余**（发布期，技术链路已全通）：打 NSIS 安装包 → 找不懂代码的人真走 #21 终极验收
+    （人工环节）；可选：真向量后端/NLI 模型（规模化）、前端更多页面打磨。
    ⚠️ "v2 第一波过堂"三机制已结构性通过（见挑战清单）。
    **首日决断**：目录名 backend/ vs src/aitutor/（走向决议 §四-5，建议 backend/
    保持与 PRD 验收命令一致）。
@@ -376,10 +379,14 @@ ai-tutor/
       ✅ 进程重启后会话可续（M-004 session_summaries + v1 SessionStore 落库）；
       ✅ **真建图端到端**：真采集→真 toc 建图(17 概念,纯规则)→图查看→RAG 检索→真 engine
       教学会话→真判分→进 list_sessions，全链一个测试跑通（无 fake/无网络/无真 LLM）。
-- [ ] **终极验收（#21）**：把 Claude Desktop 从流程里完全删掉，让一个不懂代码的人从安装走到
-      学完第一课。⏳ 后端全链 + 前端（5 页面/向导/可视化，Playwright 真浏览器验证）已就位；
-      **剩 Electron 运行时真跑 + 真 Nuitka 编译打包**（需桌面环境 + C 编译器，环境受限）→
-      具备可安装包后做无代码人真验。架构层面"人→AI→ai-tutor"三层已拆除（前端直连 FastAPI）。
+- ◐ **终极验收（#21）**：把 Claude Desktop 从流程里完全删掉，让一个不懂代码的人从安装走到
+      学完第一课。**技术链路全部打通实证**（2026-06-15，`worklogs/2026-06-15_真编译与真跑-*.md`）：
+      ✅ **Electron 运行时真跑**——Electron spawn 真后端→渲染层 WebSocket 连接→健康门控→
+      截图实证（`doc/reports/screenshots/electron-runtime.png`：真窗口 5/5 子系统/实时在线/向导）；
+      ✅ **真 Nuitka onedir 编译**——全 FastAPI 后端编成 ai-tutor-backend.exe（184 C 文件，cl 14.5），
+      过 M-015 ArtifactVerifier；修了直编 main.py 的相对导入坑（run_aitutor.py 启动器）。
+      架构"人→AI→ai-tutor"三层已拆（前端直连 FastAPI）。**唯一剩余 = 人工环节**：找个真不懂代码的
+      人亲手从安装走到学完第一课（需打 NSIS 安装包 + 真人参与，非技术阻塞）。
 
 ### 第二批挑战（2026-06-13 复跑后新增 · 出题人：上一任接手者）
 
