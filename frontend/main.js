@@ -84,6 +84,21 @@ app.whenReady().then(async () => {
         : { ready: false, error: '后端启动失败（15 秒未就绪）' },
     );
   }
+
+  // 验证模式（AITUTOR_VERIFY=<png 路径>）：渲染完成后截图并退出。CI/无人值守真跑验证用。
+  if (process.env.AITUTOR_VERIFY && mainWindow) {
+    const out = process.env.AITUTOR_VERIFY;
+    const fs = require('node:fs');
+    await new Promise((r) => setTimeout(r, 2500)); // 等 React 渲染 + 首次数据拉取
+    try {
+      const img = await mainWindow.webContents.capturePage();
+      fs.writeFileSync(out, img.toPNG());
+      console.log(`[verify] screenshot -> ${out}`);
+    } catch (e) {
+      console.log(`[verify] capture failed: ${e}`);
+    }
+    app.quit();
+  }
 });
 
 ipcMain.handle('get-backend-url', () => BACKEND_URL);

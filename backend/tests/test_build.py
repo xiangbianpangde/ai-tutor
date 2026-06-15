@@ -33,6 +33,19 @@ def test_nuitka_includes_data_and_excludes_tests():
     assert any("--nofollow-import-to=pytest" in a for a in args)
 
 
+def test_nuitka_entry_is_absolute_import_launcher():
+    """实测踩坑：直接编 backend/main.py 相对导入会 ImportError；默认入口须是绝对导入启动器。"""
+    b = NuitkaBuilder()
+    assert b.entry == "run_aitutor.py"
+    assert b.entry != "backend/main.py"
+    assert b.build_args()[-1] == "run_aitutor.py"
+
+
+def test_nuitka_dist_subdir_derives_from_entry():
+    assert NuitkaBuilder().dist_subdir == "run_aitutor.dist"
+    assert NuitkaBuilder(entry="foo.py").dist_subdir == "foo.dist"
+
+
 def test_nuitka_build_runs_runner():
     builder = NuitkaBuilder()
     res = builder.build(lambda cmd: (0, "Nuitka build done"))

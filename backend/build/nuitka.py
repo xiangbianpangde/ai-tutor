@@ -8,20 +8,30 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from pathlib import PurePath
 
 CommandRunner = Callable[[Sequence[str]], "tuple[int, str]"]
 
 
 @dataclass
 class NuitkaBuilder:
-    """构造并（可选）执行 Nuitka onedir 编译命令。"""
+    """构造并（可选）执行 Nuitka onedir 编译命令。
 
-    entry: str = "backend/main.py"
+    entry 默认 `run_aitutor.py`（绝对导入启动器）——**不可**直接用 `backend/main.py`：
+    相对导入被当顶层脚本编译会 ImportError（实测踩过，见 run_aitutor.py 注释）。
+    """
+
+    entry: str = "run_aitutor.py"
     output_dir: str = "dist"
     output_name: str = "ai-tutor-backend"
     data_dirs: tuple[tuple[str, str], ...] = (("data", "data"),)
     exclude_imports: tuple[str, ...] = ("pytest", "ruff")
     python_exe: str = "python"
+
+    @property
+    def dist_subdir(self) -> str:
+        """Nuitka onedir 产物子目录名 = 入口文件名去扩展 + .dist。"""
+        return f"{PurePath(self.entry).stem}.dist"
 
     def build_args(self) -> list[str]:
         """生成 Nuitka 命令参数。**onedir（--standalone），绝不 --onefile**。"""

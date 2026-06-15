@@ -43,7 +43,7 @@ class BuildOrchestrator:
             return self._final(STATE_FAILED, steps, warnings,
                                error="Nuitka 编译失败（硬停）")
 
-        out_dir = dist_dir or f"{self.config.nuitka.output_dir}/main.dist"
+        out_dir = dist_dir or f"{self.config.nuitka.output_dir}/{self.config.nuitka.dist_subdir}"
 
         # 2) UPX 压缩（软）
         if self.config.enable_upx:

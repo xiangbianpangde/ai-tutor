@@ -41,3 +41,9 @@ Thumbs.db
 
 # Playwright 验证临时产物
 .playwright-mcp/
+
+# Nuitka 编译产物
+build_out/
+build_out2/
+*.dist/
+*.build/
