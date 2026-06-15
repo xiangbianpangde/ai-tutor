@@ -96,6 +96,13 @@ ignore = [
     "N817",  # 领域缩写导入
 ]
 
+# FastAPI 依赖注入的 Body/Query/Path/Depends 在参数默认值里调用是其官方惯用，非 B008
+# 真 bug（标量 Body 本就被 ruff 放行，但 list[str]/dict 形态会误报）——登记为不可变调用。
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Body", "fastapi.Query", "fastapi.Path", "fastapi.Depends", "fastapi.Form",
+]
+
 [tool.ruff.lint.per-file-ignores]
 # CLI / demo / 一次性脚本：合法 print 到 stdout + sys.path 后置 import + 容忍中间变量
 "scripts/**" = ["T201", "E402", "F841"]
@@ -149,6 +156,12 @@ forbidden_modules = ["backend.routers", "backend.app", "backend.main"]
 name = "backend.pipeline 是数据管线层，不反向依赖上层（routers/app/main）"
 type = "forbidden"
 source_modules = ["backend.pipeline"]
+forbidden_modules = ["backend.routers", "backend.app", "backend.main"]
+
+[[tool.importlinter.contracts]]
+name = "backend.rag 是检索引擎层，不反向依赖上层（routers/app/main）"
+type = "forbidden"
+source_modules = ["backend.rag"]
 forbidden_modules = ["backend.routers", "backend.app", "backend.main"]
 
 [tool.pytest.ini_options]

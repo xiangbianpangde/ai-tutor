@@ -1,6 +1,7 @@
 """knowledge 引擎 router（前缀 /api/knowledge）。
 
 C1：/health。C2：POST /subjects/{id}/graphs（**异步**构建 KG，M-007）。
+C3：POST /rag/query + /rag/validate（M-008 RAG 引擎，#9 AgenticRAG）。
 后续波次迁入 acquire / query / review / update / diff / rollback / conflicts。
 """
 from __future__ import annotations
@@ -12,10 +13,63 @@ from fastapi import Body, Request
 
 from ..middleware import ProgressReporter
 from ..pipeline import NoiseGate
+from ..rag import AnswerValidator, KGChunkSource, LexicalRetriever, RAGEngine
 from ..responses import ok
 from ._common import engine_router
 
 router = engine_router("knowledge")
+
+
+def _get_rag_engine(request: Request, kg_id: str) -> RAGEngine:
+    """按 kg_id 取/建 RAG 引擎（每 kg_id 缓存——避免每次请求重扫概念建索引）。
+
+    共享 app 的 cache（M-005）+ events（M-006）；LLM 法官经 app.state.rag_judge 注入（默认无）。
+    """
+    from shared.errors import TutorError
+
+    store = request.app.state.store
+    if store is None:
+        raise TutorError("DATABASE_ERROR", hint="DB 未就绪")
+    engines: dict[str, RAGEngine] = getattr(request.app.state, "rag_engines", None)
+    if engines is None:
+        engines = {}
+        request.app.state.rag_engines = engines
+    engine = engines.get(kg_id)
+    if engine is None:
+        retriever = LexicalRetriever(KGChunkSource(store, kg_id))
+        validator = AnswerValidator(llm_judge=getattr(request.app.state, "rag_judge", None))
+        engine = RAGEngine(
+            retriever, validator,
+            cache=getattr(request.app.state, "cache", None),
+            events=getattr(request.app.state, "events", None),
+        )
+        engines[kg_id] = engine
+    return engine
+
+
+@router.post("/rag/query", summary="RAG 检索（M-008，自主重检索 ≤3 轮）")
+async def rag_query(
+    request: Request,
+    kg_id: str = Body(..., embed=True),
+    query: str = Body(..., embed=True),
+    top_k: int = Body(5, embed=True),
+) -> dict:
+    """在指定 KG 上做 RAG 检索，透明披露轮次/是否达标/top_score。"""
+    engine = _get_rag_engine(request, kg_id)
+    result = await engine.retrieve(query, top_k=top_k)
+    return ok(result.to_dict())
+
+
+@router.post("/rag/validate", summary="答案-引用源一致性验证（M-008，NLI 风格）")
+async def rag_validate(
+    request: Request,
+    answer: str = Body(..., embed=True),
+    sources: list[str] = Body(..., embed=True),
+) -> dict:
+    """验证答案是否被引用源支撑（回退启发式永不过度授信）。"""
+    validator = AnswerValidator(llm_judge=getattr(request.app.state, "rag_judge", None))
+    result = validator.validate(answer, sources)
+    return ok(result.to_dict())
 
 
 @router.get("/graphs/{kg_id}/noise", summary="KG 噪声红线审计（M-014，噪声<5%）")
