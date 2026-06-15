@@ -1,8 +1,8 @@
 # AI-Tutor 开发状态
 
-> 更新: 2026-06-15（**v2 11 功能点全部就位 + 前端补全**：C3-C5 共 9 backend 模块（934 测试全绿）
-> + #7 WebSocket + React 前端 5 页面/向导/3 可视化（Vite build + Playwright 真浏览器验证全栈打通）；
-> D2/D3 收束四阶段已执行待签核 / C1+D1 已签核）
+> 更新: 2026-06-15（**v2 11 功能点全部就位 + 前端补全 + 端到端真管线过堂**：C3-C5 共 9 backend
+> 模块 + #7 WebSocket + React 前端 5 页面/向导/3 可视化（Vite build + Playwright 真浏览器验证）+
+> test_e2e_pipeline 真建图全链；**939 测试全绿**；D2/D3 收束四阶段已执行待签核 / C1+D1 已签核）
 > 流程档位: 标准
 > 收束节点: 功能点3后 / 功能点7后 / 功能点11后
 
@@ -369,13 +369,17 @@ ai-tutor/
 - [x] **死循环回归** ✅ 2026-06-13：21 步 give_exercise 占比 15% <50%，讲解类 55% 穿插。
 - [x] **休息触发** ✅ 2026-06-13：FIX-F freezegun 测试——6 轮全对回答走表 50 分钟触发
       `study_streak` 休息建议，非答错驱动；间隔 >15 分钟正确重置。
-- ◐ **v2 第一波过堂**（2026-06-13 结构性通过，端到端 demo 待牺牲品语料）：
-      ✅ build_kg 异步任务+进度可查（M-007：POST→202 task_id + GET /api/tasks 轮询，真机实证）；
+- [x] **v2 第一波过堂** ✅ 2026-06-15（端到端真管线已沉成自动化测试 `test_e2e_pipeline.py`，
+      牺牲品语料 mini_subject.md，不碰演示库）：
+      ✅ build_kg 异步任务+进度可查（M-007：POST→202 task_id + GET /api/tasks 轮询）；
       ✅ 同一问题问两遍命中缓存（M-005 SQLite 缓存，跨重启）；
-      ✅ 进程重启后会话可续（M-004 session_summaries + v1 SessionStore 落库）。
-      三机制齐备且各有测试；真建图端到端过堂需牺牲品语料（不碰 fastapi-houduankaifa 演示库）。
+      ✅ 进程重启后会话可续（M-004 session_summaries + v1 SessionStore 落库）；
+      ✅ **真建图端到端**：真采集→真 toc 建图(17 概念,纯规则)→图查看→RAG 检索→真 engine
+      教学会话→真判分→进 list_sessions，全链一个测试跑通（无 fake/无网络/无真 LLM）。
 - [ ] **终极验收（#21）**：把 Claude Desktop 从流程里完全删掉，让一个不懂代码的人从安装走到
-      学完第一课。做不到，"人→AI→ai-tutor"的三层架构就还在。
+      学完第一课。⏳ 后端全链 + 前端（5 页面/向导/可视化，Playwright 真浏览器验证）已就位；
+      **剩 Electron 运行时真跑 + 真 Nuitka 编译打包**（需桌面环境 + C 编译器，环境受限）→
+      具备可安装包后做无代码人真验。架构层面"人→AI→ai-tutor"三层已拆除（前端直连 FastAPI）。
 
 ### 第二批挑战（2026-06-13 复跑后新增 · 出题人：上一任接手者）
 
