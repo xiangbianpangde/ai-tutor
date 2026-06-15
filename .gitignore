@@ -38,3 +38,6 @@ Thumbs.db
 # 秘钥
 .env
 *.key
+
+# Playwright 验证临时产物
+.playwright-mcp/

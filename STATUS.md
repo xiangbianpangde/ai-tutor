@@ -1,6 +1,8 @@
 # AI-Tutor 开发状态
 
-> 更新: 2026-06-15（**C5 第五波完成 → v2 11 功能点全部就位**；C3+C4+C5 共 9 backend 模块，934 测试全绿（+79），D2/D3 收束四阶段已执行待签核 / C1+D1 已签核）
+> 更新: 2026-06-15（**v2 11 功能点全部就位 + 前端补全**：C3-C5 共 9 backend 模块（934 测试全绿）
+> + #7 WebSocket + React 前端 5 页面/向导/3 可视化（Vite build + Playwright 真浏览器验证全栈打通）；
+> D2/D3 收束四阶段已执行待签核 / C1+D1 已签核）
 > 流程档位: 标准
 > 收束节点: 功能点3后 / 功能点7后 / 功能点11后
 
@@ -79,8 +81,8 @@ pyclipper + transformers<5）；③ tutor_cli 不再吞 TutorError.hint（外部
 | 1 后端骨架：FastAPI 统一应用 | specs/01-基础骨架.md | ✅ C1 完成（backend/ 跑通 :18501）| 2026-06-13 |
 | 2 API 迁移：MCP → REST | specs/02-API迁移.md | ◐ 网关+信封+health 就位；32 tool 迁移随引擎 C2-C4 | - |
 | 3 中间件层：Session/File/Cache/Monitor | specs/03-中间件层.md | ◐ C2：M-005 缓存层就位（SQLite 跨重启）；Session/File/Monitor 待续 | - |
-| 4 Electron 前端骨架 | specs/04-前端应用.md | ◐ 客户端入口骨架（spawn+health-gate）；5 页面/向导/WS 待后续波次 | - |
-| 5 可视化：KG图/遗忘曲线/掌握度 | specs/05-可视化.md | ⏳ 待开始 | - |
+| 4 Electron 前端骨架 | specs/04-前端应用.md | ✅ React 渲染层：5 页面+侧边栏路由+首次向导+WS 客户端（指数退避重连）。Vite build 通过 + 真浏览器验证（仪表盘拉真后端 5/5 子系统）；Electron 运行时真跑待桌面环境 | 2026-06-15 |
+| 5 可视化：KG图/遗忘曲线/掌握度 | specs/05-可视化.md | ✅ ForceGraph（d3-force 力导向图）+ ForgettingCurve（FSRS 保持率）+ MasteryHeatmap（认知负荷）；后端 /graphs/{kg}/view 配套。真浏览器验证 FSRS 评分往返 | 2026-06-15 |
 | 6 数据管线：采集→清洗→结构化 | specs/06-数据管线.md | ⏳ 待开始 | - |
 | 7 research-tool 深度集成 | specs/07-research-tool集成.md | ⏳ 待开始 | - |
 | 8 pdf2zh 深度集成 | specs/08-pdf2zh集成.md | ⏳ 待开始 | - |
@@ -335,9 +337,12 @@ ai-tutor/
 6. ~~**C4 第四波**~~ ✅ 2026-06-15（M-010~M-013 + M-016，36 测试，backend 124 全绿，commit e1aa27d）。
 7. ~~**C5 第五波**~~ ✅ 2026-06-15（M-015 + M-001 收尾，backend 137 全绿，commit 1c2af16）。
    **D3 收束节点四阶段已执行，待人签核** → v2 11 功能点全部就位。
-8. **后续阶段**（下一步，发布前补全）：① 前端 5 页面 + 首次向导 + WebSocket 实时推送
-   （spec 04/05 后续波次）；② 真机端到端 demo（牺牲品语料，不碰演示科目）；③ 真 Nuitka
-   编译 + Electron 真验（发布阶段）；④ 终极验收 #21（不懂代码的人从安装走到学完第一课）。
+8. ~~**前端补全**~~ ✅ 2026-06-15：#7 WebSocket（/ws/events，commit 69ad4c7）+ #4 五页面/向导/
+   WS 客户端 + #5 三可视化（commit fdf3bae）。**Vite build 通过 + Playwright 真浏览器验证**：
+   仪表盘拉真后端 5/5 子系统、WS 收 ws.connected、复习页 FSRS 评分往返（良好→S=3.2 下次3天）。
+9. **后续阶段**（下一步，发布前）：① 真机端到端 demo（牺牲品语料，不碰演示科目）；
+   ② 真 Nuitka 编译 + Electron 运行时真跑（发布阶段，需 C 编译器/桌面环境）；
+   ③ 终极验收 #21（不懂代码的人从安装走到学完第一课）。
    ⚠️ "v2 第一波过堂"三机制已结构性通过（见挑战清单）。
    **首日决断**：目录名 backend/ vs src/aitutor/（走向决议 §四-5，建议 backend/
    保持与 PRD 验收命令一致）。
