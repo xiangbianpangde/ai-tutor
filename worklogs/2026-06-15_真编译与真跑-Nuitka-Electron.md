@@ -51,11 +51,28 @@
 > 这不是 Playwright 浏览器，是**真 Electron 外壳 spawn 真后端 + 渲染真 React UI**。
 > 「Electron 运行时真跑」与「真 Nuitka 编译」两项从「环境受限待验」转为**已实证**。
 
+## 三、NSIS 安装包 + 打包应用真跑（#21 可安装包）
+
+- electron-builder 26（ELECTRON_BUILDER_BINARIES_MIRROR=npmmirror 绕 github 二进制下载）。
+- package.json 加 build 配置：extraResources 把**编译后端 onedir**（286MB）塞进
+  `resources/backend/`；main.js 加 `app.isPackaged` 分支——打包形态 spawn 内置
+  `ai-tutor-backend.exe`（非 .venv python）。
+- **产出真安装包**：`frontend/release/AI-Tutor Setup 2.0.0.exe`（**139MB NSIS 安装包**，
+  含 Electron 外壳 + Chromium + React 渲染层 + 编译后端 + pypinyin 数据；签名 + blockmap）。
+  （尾部 publish-info 报错是自动更新元信息生成需 repo 配置，**不影响安装包本体**；已加
+  `publish:null` 消除。）
+- **打包应用真跑**（`win-unpacked/AI-Tutor.exe`，`isPackaged=true`，**无 .venv 无开发 Python**）：
+  spawn `resources/backend/ai-tutor-backend.exe` 内置编译后端 → 渲染层连接 → 截图实证
+  （`doc/reports/screenshots/packaged-app.png`：子系统就绪 5/5 / 实时在线 v2.0.0 /
+  实时已连接 / 首次向导）。**完整桌面应用 = 编译后端 + Electron 外壳，自包含运行。**
+
 ## 结论修正
 
 此前「沙箱内无法真做」是**未动手的错误假设**。实测：
 - ✅ 真 Nuitka onedir 编译（工具链 + 全后端 exe 真 serving + 功能正确 + M-015 校验）；
   顺带从真编译里抓出 2 个真打包 bug（相对导入 / pypinyin 包数据）并修进 M-015
 - ✅ Electron 运行时真跑（截图实证全栈）
-- 剩 #21 终极验收的**人工**环节（不懂代码的人亲手走一遍）——这是唯一真正需要人的部分；
-  技术链路（可编译后端 + 可启动 Electron + 全栈连通）已全部打通。
+- ✅ NSIS 安装包真产出（139MB）+ 打包应用真跑（内置编译后端，无 .venv）
+- 剩 #21 终极验收的**唯一人工环节**：找个真不懂代码的人，亲手双击安装包 → 走到学完第一课。
+  **技术链路 100% 打通**（可编译后端真 serving + 可启动 Electron + 真安装包 + 打包应用自包含真跑）；
+  缺的只是一个真人——这是 AI 无法替代的部分，不是技术阻塞。

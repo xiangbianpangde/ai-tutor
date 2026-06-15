@@ -19,18 +19,31 @@ let backendProc = null;
 let mainWindow = null;
 
 function startBackend() {
-  // 开发期用仓库 .venv 的解释器；可经 AITUTOR_PYTHON 覆盖。打包后换内置 python（C5）。
-  const defaultPython = path.join(
-    REPO_ROOT,
-    '.venv',
-    process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
-  );
-  const python = process.env.AITUTOR_PYTHON || defaultPython;
-  backendProc = spawn(python, ['-m', 'backend.main'], {
-    cwd: REPO_ROOT,
-    env: { ...process.env, NO_PROXY: '*' }, // 死系统代理绕法（见持久记忆）
-    stdio: 'inherit',
-  });
+  if (app.isPackaged) {
+    // 打包形态（C5/M-015）：spawn 内置 Nuitka onedir 后端 exe（resources/backend/）。
+    const exe = path.join(
+      process.resourcesPath, 'backend',
+      process.platform === 'win32' ? 'ai-tutor-backend.exe' : 'ai-tutor-backend',
+    );
+    backendProc = spawn(exe, [], {
+      cwd: path.dirname(exe),
+      env: { ...process.env, NO_PROXY: '*' },
+      stdio: 'inherit',
+    });
+  } else {
+    // 开发期用仓库 .venv 的解释器；可经 AITUTOR_PYTHON 覆盖。
+    const defaultPython = path.join(
+      REPO_ROOT,
+      '.venv',
+      process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
+    );
+    const python = process.env.AITUTOR_PYTHON || defaultPython;
+    backendProc = spawn(python, ['-m', 'backend.main'], {
+      cwd: REPO_ROOT,
+      env: { ...process.env, NO_PROXY: '*' }, // 死系统代理绕法（见持久记忆）
+      stdio: 'inherit',
+    });
+  }
   backendProc.on('exit', (code) => console.log(`[backend] exited code=${code}`));
 }
 
