@@ -26,6 +26,9 @@ class NuitkaBuilder:
     output_name: str = "ai-tutor-backend"
     data_dirs: tuple[tuple[str, str], ...] = (("data", "data"),)
     exclude_imports: tuple[str, ...] = ("pytest", "ruff")
+    # 含数据文件的包须显式带数据，否则运行期 FileNotFoundError（实测：pypinyin 的
+    # pinyin_dict.json / phrases_dict.json 不随编译进 onedir）。
+    include_package_data: tuple[str, ...] = ("pypinyin",)
     python_exe: str = "python"
 
     @property
@@ -44,6 +47,8 @@ class NuitkaBuilder:
         ]
         for src, dst in self.data_dirs:
             args.append(f"--include-data-dir={src}={dst}")
+        for pkg in self.include_package_data:
+            args.append(f"--include-package-data={pkg}")
         for mod in self.exclude_imports:
             args.append(f"--nofollow-import-to={mod}")
         args.append(self.entry)

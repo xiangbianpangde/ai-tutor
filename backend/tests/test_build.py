@@ -33,6 +33,12 @@ def test_nuitka_includes_data_and_excludes_tests():
     assert any("--nofollow-import-to=pytest" in a for a in args)
 
 
+def test_nuitka_includes_package_data_for_pypinyin():
+    """实测踩坑：pypinyin 数据文件不随编译进 onedir → 运行期 FileNotFoundError。"""
+    args = NuitkaBuilder().build_args()
+    assert any("--include-package-data=pypinyin" in a for a in args)
+
+
 def test_nuitka_entry_is_absolute_import_launcher():
     """实测踩坑：直接编 backend/main.py 相对导入会 ImportError；默认入口须是绝对导入启动器。"""
     b = NuitkaBuilder()

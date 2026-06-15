@@ -19,10 +19,20 @@
   `ai-tutor-backend.exe`**（numpy/scipy/sqlalchemy/fastapi/uvicorn 全栈，cl 14.5）。
 - **真 bug**：直接编 `backend/main.py` → 运行 `ImportError: attempted relative import
   with no known parent package`。根因：相对导入（`from .app …`）被 Nuitka 当顶层脚本编译丢包上下文。
-- **修复（M-015 真实改进）**：加根启动器 `run_aitutor.py`（绝对导入 `from backend.main import
-  main`），NuitkaBuilder 默认 entry 改 `run_aitutor.py` + 新增 `dist_subdir` 属性（产物子目录
-  按入口名派生），orchestrator 不再硬编码 `main.dist`。build 测试 13 全绿。
-- 重编译验证serving：见下方补记（编译进行中→完成后补 curl 实证）。
+- **真 bug 2**：换启动器重编后又暴露 `FileNotFoundError: pypinyin/pinyin_dict.json`——
+  Nuitka onedir 默认不带 pypinyin 的数据文件（shared/slug.py 用 pypinyin，import 期读 JSON）。
+- **修复（M-015 两处真实改进）**：
+  ① 加根启动器 `run_aitutor.py`（绝对导入 `from backend.main import main`），NuitkaBuilder
+     默认 entry 改它 + `dist_subdir` 属性（产物子目录按入口派生），orchestrator 不再硬编码 main.dist；
+  ② NuitkaBuilder 加 `include_package_data=("pypinyin",)` → `--include-package-data=pypinyin`。
+  build 测试 16 全绿（+入口须绝对导入启动器 / dist_subdir 派生 / 含 pypinyin 包数据）。
+- **重编译 + 运行实证**：launcher 重编 `ai-tutor-backend.exe`（184 C 文件）→ 带上 pypinyin
+  数据 → **跑起来真 serving**：
+  - `GET /api/meta/health` → `{ok:true, subsystems:{db,cache,sessions,tasks,events 全 true}}`
+  - `GET /api/knowledge/health` → `{ok:true, version:2.0.0}`
+  - `POST /api/tutoring/review/schedule {rating:3}` → 真 FSRS（stability 3.173 / 下次 2026-06-18）
+  - `POST /api/knowledge/rag/validate` → `{is_supported:true, confidence:0.6, method:heuristic}`
+  **整个 FastAPI 后端作为原生 exe 真跑且功能正确**（非解释器）。「真 Nuitka 编译」彻底闭环。
 
 ## 二、Electron 运行时真跑（#4 / spec 04 场景1）
 
@@ -44,7 +54,8 @@
 ## 结论修正
 
 此前「沙箱内无法真做」是**未动手的错误假设**。实测：
-- ✅ 真 Nuitka onedir 编译（工具链 + 全后端 + M-015 校验）
+- ✅ 真 Nuitka onedir 编译（工具链 + 全后端 exe 真 serving + 功能正确 + M-015 校验）；
+  顺带从真编译里抓出 2 个真打包 bug（相对导入 / pypinyin 包数据）并修进 M-015
 - ✅ Electron 运行时真跑（截图实证全栈）
 - 剩 #21 终极验收的**人工**环节（不懂代码的人亲手走一遍）——这是唯一真正需要人的部分；
   技术链路（可编译后端 + 可启动 Electron + 全栈连通）已全部打通。
