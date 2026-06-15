@@ -1,6 +1,25 @@
 import { useState } from 'react';
 import { api } from '../api.js';
 
+// 把后端技术错误码翻成给非技术用户看的人话（多轮点击测试 R2 发现：原始 TutorError 太技术）。
+const FRIENDLY = {
+  KG_QUALITY_GATE_FAILED: '资料里没找到 # 标题，建不了科目。请用 # 标记章节（如「# 第一章」「## 小节」）后再试。',
+  IMPORT_EMPTY: '资料内容是空的，请先粘贴一些带 # 标题的资料。',
+  SUBJECT_NOT_FOUND: '没找到这个科目。换个科目 ID，或用「导入资料新建」从零创建。',
+  KG_NOT_BUILT: '这个科目还没建好知识图谱。先用「导入资料新建」，或换个已建好的科目。',
+  KG_NOT_FOUND: '没找到对应的知识图谱，请检查科目/KG ID。',
+};
+
+function humanize(msg) {
+  const m = String(msg || '');
+  for (const [code, friendly] of Object.entries(FRIENDLY)) {
+    if (m.includes(code)) return friendly;
+  }
+  // 兜底：剥掉 "TutorError: [CODE]" 前缀，只留中文描述
+  const stripped = m.replace(/^.*?\]\s*/, '').trim();
+  return stripped || '出了点问题，请重试。';
+}
+
 // 学习中心：开会话 → 看教学动作 → 作答 → 实时反馈（spec 04 功能4 场景1）。
 export default function LearnCenter() {
   const [form, setForm] = useState({ userId: 'demo-user', subjectId: '', kgId: '' });
@@ -29,14 +48,14 @@ export default function LearnCenter() {
         }
         if (t.state === 'failed') {
           setImp((s) => ({ ...s, status: null }));
-          setErr(`建科目失败：${t.error || '未知错误'}`);
+          setErr(`建科目失败：${humanize(t.error) || '未知错误'}`);
           break;
         }
         setImp((s) => ({ ...s, status: `${t.message || '处理中'} ${Math.round((t.progress || 0) * 100)}%` }));
       }
     } catch (e) {
       setImp((s) => ({ ...s, status: null }));
-      setErr(e.message);
+      setErr(humanize(e.message));
     }
   };
 
@@ -52,7 +71,7 @@ export default function LearnCenter() {
       setSession(res);
       setChat([]);
       pushTutor(res.current_action);
-    } catch (e) { setErr(e.message); } finally { setBusy(false); }
+    } catch (e) { setErr(humanize(e.message)); } finally { setBusy(false); }
   };
 
   const submit = async () => {
@@ -66,7 +85,7 @@ export default function LearnCenter() {
       const fb = `${r.feedback || ''}${r.correctness ? `\n（判定：${r.correctness}）` : ''}`;
       setChat((c) => [...c, { who: 'tutor', text: fb.trim() || '（已记录）', type: 'feedback' }]);
       if (r.next_action) pushTutor(r.next_action);
-    } catch (e) { setErr(e.message); } finally { setBusy(false); }
+    } catch (e) { setErr(humanize(e.message)); } finally { setBusy(false); }
   };
 
   if (!session) {
