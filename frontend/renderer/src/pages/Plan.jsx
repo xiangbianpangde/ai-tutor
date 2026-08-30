@@ -23,6 +23,7 @@ export default function Plan() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [weak, setWeak] = useState([]); // 薄弱诊断：{concept_id, band, mastery}
 
   useEffect(() => {
     api.listSubjects(userId).then((list) => {
@@ -34,6 +35,9 @@ export default function Plan() {
   useEffect(() => {
     if (!subjectId) return;
     setLoading(true); setErr(null);
+    api.get(`/api/tutoring/users/${encodeURIComponent(userId)}/weak-concepts`)
+      .then((d) => setWeak(d.items || []))
+      .catch(() => setWeak([]));
     api.get(`/api/tutoring/users/${encodeURIComponent(userId)}/subjects/${encodeURIComponent(subjectId)}/learning-plan`)
       .then(setData)
       .catch((e) => setErr(String(e.message || e)))
@@ -115,6 +119,14 @@ export default function Plan() {
                     <div style={{ width: `${Math.round((ph.mastered_ratio || 0) * 100)}%`, height: '100%',
                       background: ph.status === 'done' ? 'var(--accent-2)' : ph.status === 'in_progress' ? 'var(--accent)' : 'var(--muted)',
                       transition: 'width 300ms' }} />
+                  </div>
+                  <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                    薄弱点：{(() => {
+                      const weakInPhase = weak.filter((w) => ph.concept_ids.includes(w.concept_id));
+                      return weakInPhase.length
+                        ? weakInPhase.map((w) => `${w.label} ${Math.round((w.mastery || 0) * 100)}%`).join('、')
+                        : '—';
+                    })()}
                   </div>
                 </div>
               );

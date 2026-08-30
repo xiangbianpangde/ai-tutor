@@ -357,6 +357,7 @@ async def record_review(
 
     from datetime import datetime
     from servers.tutoring_mcp.memory_store import MemoryStore
+    from servers.tutoring_mcp.bkt_store import BKTStore
 
     mem = MemoryStore(store)
     curve = mem.record_review(
@@ -367,13 +368,22 @@ async def record_review(
         review_mode=review_mode,
         review_date=datetime.utcnow(),
     )
+    # 复习反哺 BKT：准确率 ≥0.6 视为一次正确观测（BKT 掌握度随复习推进）。
+    # 这让"复习"真正进入学习闭环，而不只是遗忘曲线的日程管理。
+    bkt = BKTStore(store).record_observation(
+        user_id=user_id, concept_id=concept_id, correct=accuracy >= 0.6,
+    )
     return ok({
         "curvature": {
             "lambda_param": round(getattr(curve, "lambda_param", 0.0), 4),
             "next_review_at": getattr(curve, "next_review_at", None).isoformat()
             if getattr(curve, "next_review_at", None) else None,
             "review_streak": getattr(curve, "review_streak", 0),
-        }
+        },
+        "bkt": {
+            "p_mastery": round(getattr(bkt, "p_mastery", 0.0), 4),
+            "n_observations": getattr(bkt, "n_observations", 0),
+        },
     })
 
 

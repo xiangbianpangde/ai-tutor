@@ -87,6 +87,29 @@ def test_record_review_advances_next_review_and_streak(client) -> None:
     assert resp2.json()["data"]["curvature"]["review_streak"] == 2
 
 
+def test_record_review_feeds_bkt_mastery(client) -> None:
+    """复习反哺：accuracy>=0.6 → 一次正确 BKT 观测，p_mastery 上升。"""
+    http, app = client
+    resp = http.post(
+        "/api/tutoring/users/rv-user/review/record",
+        json={"concept_id": "ml:1:x", "subject_id": "ml",
+              "accuracy": 0.85, "review_mode": "queue"},
+    )
+    assert resp.status_code == 200
+    bkt = resp.json()["data"]["bkt"]
+    assert bkt["n_observations"] == 1
+    assert bkt["p_mastery"] > 0.05  # 从 p_init 0.05 提升
+    # 低准确率 → 一次错误观测，n 递增但 mastery 下降
+    resp2 = http.post(
+        "/api/tutoring/users/rv-user/review/record",
+        json={"concept_id": "ml:1:x", "subject_id": "ml",
+              "accuracy": 0.2, "review_mode": "queue"},
+    )
+    bkt2 = resp2.json()["data"]["bkt"]
+    assert bkt2["n_observations"] == 2
+    assert bkt2["p_mastery"] < bkt["p_mastery"]
+
+
 def test_record_review_rejects_invalid_accuracy(client) -> None:
     http, _app = client
     resp = http.post(

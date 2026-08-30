@@ -9,6 +9,7 @@ import {
 // 知识图谱页（#5 功能1+3）：选科目 → 力导向图 + 认知负荷热力图 + 节点详情 + RAG 资料问答。
 export default function KnowledgeGraph() {
   const [subjects, setSubjects] = useState([]);
+  const [userId, setUserId] = useState(currentUser());
   const [picked, setPicked] = useState(null); // {subject_id, kg_id?, display_name}
   const [kgId, setKgId] = useState('');
   const [graph, setGraph] = useState(null);
@@ -28,8 +29,8 @@ export default function KnowledgeGraph() {
   const [verdict, setVerdict] = useState(null);
 
   useEffect(() => {
-    api.listSubjects('demo-user').then(setSubjects).catch(() => setSubjects([]));
-  }, []);
+    api.listSubjects(userId).then(setSubjects).catch(() => setSubjects([]));
+  }, [userId]);
 
   const loadGraph = async (id) => {
     const target = (id || kgId).trim();
