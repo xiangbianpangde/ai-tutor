@@ -375,3 +375,40 @@ async def record_review(
             "review_streak": getattr(curve, "review_streak", 0),
         }
     })
+
+
+# ------------------------------------------------------------------ #
+# 多 Session 学习计划（learning_plans 表 + 实时 BKT 进度）
+# ------------------------------------------------------------------ #
+@router.get("/users/{user_id}/subjects/{subject_id}/learning-plan",
+            summary="跨会话学习计划：惰性建计划 + 实时 BKT 掌握度进度")
+async def learning_plan(request: Request, user_id: str, subject_id: str) -> dict:
+    """读取（必要时构建并持久化）学习计划，并叠加实时掌握度进度。
+
+    数据源：learning_plans 表（按 user+subject 唯一）；构建用
+    servers.tutoring_mcp.server._get_or_build_plan（KG 拓扑序 → 章节 Phase 分组）。
+    进度用 BKT 实时计算，计划本身只存概念 id 分组，不会"过期"。
+    """
+    from servers.tutoring_mcp.server import _get_or_build_plan, _progress_for
+    from shared.errors import TutorError
+
+    store = request.app.state.store
+    if store is None:
+        raise TutorError("DATABASE_ERROR", hint="DB 未就绪")
+
+    from shared.models import Subject
+
+    with store.session() as s:
+        subj = s.get(Subject, subject_id)
+        if subj is None or subj.user_id != user_id:
+            raise TutorError("SUBJECT_NOT_FOUND", f"subject_id={subject_id} 不存在或不属于该用户")
+        kg_id = subj.kg_id
+        if not kg_id:
+            raise TutorError("KG_NOT_BUILT", hint=f"subject={subject_id} 未关联 KG")
+
+    plan = _get_or_build_plan(store, user_id, subject_id, kg_id)
+    progress = _progress_for(store, user_id, subject_id, kg_id)
+    return ok({
+        "plan": plan.model_dump(mode="json"),
+        "progress": progress.model_dump(mode="json"),
+    })
