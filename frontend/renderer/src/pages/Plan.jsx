@@ -74,7 +74,15 @@ export default function Plan() {
       </div>
 
       {err && <div className="banner error"><span>{err}</span></div>}
-      {loading && <div className="card"><span className="muted">加载中…</span></div>}
+      {loading && (
+        <div className="card" role="status" aria-busy="true">
+          <div className="skeleton" style={{ height: 18, width: '38%', marginBottom: 14 }} />
+          <div className="skeleton" style={{ height: 12, width: '82%', marginBottom: 8 }} />
+          <div className="skeleton" style={{ height: 12, width: '66%', marginBottom: 8 }} />
+          <div className="skeleton" style={{ height: 12, width: '74%' }} />
+          <span className="muted" style={{ marginTop: 10 }}>加载中…</span>
+        </div>
+      )}
 
       {!loading && !err && progress && (
         <>

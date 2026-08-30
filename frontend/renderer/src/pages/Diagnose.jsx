@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api.js';
 import { IconPulse, IconGraph, IconTarget } from '../components/Icons.jsx';
+import SpotlightCard from '../components/SpotlightCard.jsx';
+import CountUp from '../components/CountUp.jsx';
 
 // 薄弱概念诊断：聚合 BKT 掌握度 + 近期判分历史，最薄弱的排最前。
 // 数据来自后端真实计算（BKT + 会话判分历史），前端只做展示，不推断掌握度。
@@ -60,28 +62,36 @@ export default function Diagnose() {
         <button className="ghost" style={{ marginTop: 14 }} onClick={() => switchUser(userId)}>切换</button>
       </div>
 
-      {loading && <div className="card"><span className="muted">加载中…</span></div>}
+      {loading && (
+        <div className="card" role="status" aria-busy="true">
+          <div className="skeleton" style={{ height: 18, width: '38%', marginBottom: 14 }} />
+          <div className="skeleton" style={{ height: 12, width: '82%', marginBottom: 8 }} />
+          <div className="skeleton" style={{ height: 12, width: '66%', marginBottom: 8 }} />
+          <div className="skeleton" style={{ height: 12, width: '74%' }} />
+          <span className="muted" style={{ marginTop: 10 }}>加载中…</span>
+        </div>
+      )}
       {err && <div className="banner error">{err}</div>}
 
       {!loading && !err && ov && (
         <>
           <div className="grid cols-4" style={{ marginBottom: 16 }}>
-            <div className="card diag-stat">
-              <span className="stat-num">{ov.concepts}</span>
+            <SpotlightCard className="card diag-stat">
+              <span className="num"><CountUp to={ov.concepts} /></span>
               <span className="stat-label">已学概念</span>
-            </div>
-            <div className="card diag-stat">
-              <span className="stat-num bad-text">{ov.weak}</span>
+            </SpotlightCard>
+            <SpotlightCard className="card diag-stat">
+              <span className="num bad-text"><CountUp to={ov.weak} /></span>
               <span className="stat-label">薄弱</span>
-            </div>
-            <div className="card diag-stat">
-              <span className="stat-num warn-text">{ov.consolidating}</span>
+            </SpotlightCard>
+            <SpotlightCard className="card diag-stat">
+              <span className="num warn-text"><CountUp to={ov.consolidating} /></span>
               <span className="stat-label">巩固中</span>
-            </div>
-            <div className="card diag-stat">
-              <span className="stat-num ok-text">{ov.mastered}</span>
+            </SpotlightCard>
+            <SpotlightCard className="card diag-stat">
+              <span className="num ok-text"><CountUp to={ov.mastered} /></span>
               <span className="stat-label">已掌握</span>
-            </div>
+            </SpotlightCard>
           </div>
 
           <div className="card">

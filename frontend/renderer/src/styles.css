@@ -408,3 +408,69 @@ svg text { fill: #6b675a; font-family: var(--font); }
   border: 1px solid var(--border-soft);
 }
 .btn-ghost:hover { background: var(--border-soft); }
+
+/* ===== react-bits 暖纸适配（零依赖） ===== */
+/* SpotlightCard：悬停/键盘聚焦时径向聚光随鼠标移动 */
+.card-spotlight {
+  position: relative;
+  overflow: hidden;
+  --mouse-x: 50%;
+  --mouse-y: 50%;
+  --spotlight-color: rgba(253, 180, 140, 0.14);
+  transition: box-shadow 300ms ease;
+}
+.card-spotlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--mouse-x) var(--mouse-y), var(--spotlight-color), transparent 80%);
+  opacity: 0;
+  transition: opacity 400ms ease;
+  pointer-events: none;
+}
+.card-spotlight:hover::before,
+.card-spotlight:focus-within::before {
+  opacity: 1;
+}
+.card-spotlight:hover {
+  box-shadow: var(--shadow-pop);
+}
+
+/* Skeleton 骨架屏（UX Pro Max：加载反馈 + aria-busy） */
+.skeleton {
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--panel-2) 25%, var(--border-soft) 50%, var(--panel-2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-slide 1.4s infinite;
+}
+@keyframes skeleton-slide {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; background: var(--panel-2); }
+}
+
+/* CountUp 数字（滚动入场） */
+.count-up {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ShinyText 纯 CSS（标题微光，无 framer-motion） */
+.shiny-text {
+  display: inline-block;
+  background: linear-gradient(120deg, var(--text-strong) 40%, var(--accent) 50%, var(--text-strong) 60%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: shine-sweep 6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shiny-text { animation: none; background: none; -webkit-text-fill-color: var(--text-strong); color: var(--text-strong); }
+}
+@keyframes shine-sweep {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}

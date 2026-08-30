@@ -50,7 +50,15 @@ export default function Tasks() {
       </div>
 
       {err && <div className="banner error"><span>{err}</span></div>}
-      {loading && <div className="card"><span className="muted">加载中…</span></div>}
+      {loading && (
+        <div className="card" role="status" aria-busy="true">
+          <div className="skeleton" style={{ height: 18, width: '38%', marginBottom: 14 }} />
+          <div className="skeleton" style={{ height: 12, width: '82%', marginBottom: 8 }} />
+          <div className="skeleton" style={{ height: 12, width: '66%', marginBottom: 8 }} />
+          <div className="skeleton" style={{ height: 12, width: '74%' }} />
+          <span className="muted" style={{ marginTop: 10 }}>加载中…</span>
+        </div>
+      )}
       {!loading && !err && items.length === 0 && (
         <div className="card"><p className="muted">还没有后台任务。去「学习中心」导入一份资料，任务会在这里出现。</p></div>
       )}

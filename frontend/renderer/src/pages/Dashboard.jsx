@@ -4,6 +4,8 @@ import {
   IconPulse, IconDatabase, IconInbox, IconBolt, IconBook, IconCheck, IconAlert,
   IconClock, IconGraduation,
 } from '../components/Icons.jsx';
+import CountUp from '../components/CountUp.jsx';
+import SpotlightCard from '../components/SpotlightCard.jsx';
 
 // 仪表盘（spec 04 功能2 场景2）：系统健康 + 缓存命中 + 最近会话 + 实时事件流。
 
@@ -115,7 +117,7 @@ export default function Dashboard({ events, connected }) {
         <div className="card stat-card" style={{ '--bar': 'var(--accent)' }}>
           <h3><IconPulse /> 子系统就绪</h3>
           <div className="stat">
-            {upCount}<span className="muted" style={{ fontSize: 18 }}>/{total}</span>
+            <CountUp to={upCount} /><span className="muted" style={{ fontSize: 18 }}>/{total}</span>
             <Ring value={total ? upCount / total : 0} label={`${upCount}/${total}`} />
           </div>
           <div className="stat-sub" style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 10 }}>
@@ -133,19 +135,19 @@ export default function Dashboard({ events, connected }) {
           <div className="stat-sub">命中 {cache?.hits ?? 0} 次 · 节省 {cache?.saved_tokens ?? 0} tokens</div>
         </div>
 
-        <div className="card stat-card" style={{ '--bar': 'var(--purple)' }}>
+        <SpotlightCard className="card stat-card" style={{ '--bar': 'var(--purple)' }}>
           <h3><IconBook /> 我的科目会话</h3>
-          <div className="stat">{sessions.length}</div>
+          <div className="stat"><CountUp to={sessions.length} /></div>
           <div className="stat-sub">{active > 0 ? `${active} 个进行中` : '暂无进行中的学习'}</div>
-        </div>
+        </SpotlightCard>
 
-        <div className="card stat-card" style={{ '--bar': connected ? 'var(--accent-2)' : 'var(--faint)' }}>
+        <SpotlightCard className="card stat-card" style={{ '--bar': connected ? 'var(--accent-2)' : 'var(--faint)' }}>
           <h3><IconBolt /> 实时通道</h3>
           <div className="stat" style={{ color: connected ? 'var(--accent-2)' : 'var(--faint)', fontSize: 22 }}>
             {connected ? '在线' : '离线'}
           </div>
           <div className="stat-sub">WebSocket /ws/events · v{health?.version || '—'}</div>
-        </div>
+        </SpotlightCard>
       </div>
 
       <div className="grid-main">
