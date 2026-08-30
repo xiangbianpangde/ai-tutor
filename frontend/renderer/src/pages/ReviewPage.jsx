@@ -1,22 +1,54 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../api.js';
 import ForgettingCurve from '../components/ForgettingCurve.jsx';
 import {
   IconFrown, IconMeh, IconSmile, IconBolt, IconReset, IconClock, IconCheck,
 } from '../components/Icons.jsx';
 
-// 复习页（#5 功能2）：FSRS 间隔重复演示 + 遗忘曲线。
+// 复习页（#5 功能2）：今日复习队列（遗忘曲线真实到期）+ FSRS 间隔演示 + 遗忘曲线。
 const RATINGS = [
   { v: 1, label: '忘了', color: '#bf4e43', icon: IconFrown },
   { v: 2, label: '困难', color: '#bd832e', icon: IconMeh },
   { v: 3, label: '良好', color: '#5b8cff', icon: IconSmile },
   { v: 4, label: '容易', color: '#5f9268', icon: IconBolt },
 ];
+const USER_KEY = 'aitutor.user';
+
+function currentUser() {
+  return localStorage.getItem(USER_KEY) || 'demo-user';
+}
 
 export default function ReviewPage() {
+  const [userId, setUserId] = useState(currentUser());
+  const [due, setDue] = useState([]);
+  const [dueErr, setDueErr] = useState(null);
+  const [dueLoading, setDueLoading] = useState(true);
   const [card, setCard] = useState(null);
   const [history, setHistory] = useState([]);
   const [err, setErr] = useState(null);
+
+  const loadDue = (uid) => {
+    setDueErr(null);
+    setDueLoading(true);
+    api.get(`/api/tutoring/users/${encodeURIComponent(uid)}/review-due`)
+      .then((d) => setDue(d.items || []))
+      .catch((e) => setDueErr(String(e.message || e)))
+      .finally(() => setDueLoading(false));
+  };
+
+  useEffect(() => { loadDue(userId); }, [userId]);
+
+  const reportDone = async (item) => {
+    try {
+      await api.post(`/api/tutoring/users/${encodeURIComponent(userId)}/review/record`, {
+        concept_id: item.concept_id,
+        subject_id: item.subject_id,
+        accuracy: 0.9,
+        review_mode: 'queue',
+      });
+      setDue((prev) => prev.filter((x) => x.concept_id !== item.concept_id));
+    } catch (e) { setDueErr(String(e.message || e)); }
+  };
 
   const rate = async (rating) => {
     setErr(null);
@@ -37,8 +69,37 @@ export default function ReviewPage() {
       <div className="page-head">
         <div>
           <h1 className="page-title">复习</h1>
-          <p className="page-sub">FSRS-5 间隔重复 · 遗忘曲线</p>
+          <p className="page-sub">今日过期概念（遗忘曲线）· FSRS-5 间隔重复</p>
         </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3><IconClock /> 今日复习队列</h3>
+        <div className="row" style={{ gap: 8, marginBottom: 8 }}>
+          <span className="muted">用户</span>
+          <input type="text" value={userId} style={{ width: 160 }}
+            onChange={(e) => setUserId(e.target.value)} />
+        </div>
+        {dueErr && <div className="banner error" style={{ marginBottom: 8 }}><span>{dueErr}</span></div>}
+        {dueLoading && <span className="muted">加载中…</span>}
+        {!dueLoading && !dueErr && due.length === 0 && (
+          <p className="muted" style={{ fontSize: 13 }}>
+            今天没有到期的概念。到期项按遗忘曲线 next_review_at 计算，复习后会自动更新。
+          </p>
+        )}
+        {due.map((item) => (
+          <div key={item.concept_id} className="kv" style={{ padding: '10px 0', borderBottom: '1px solid var(--border-soft)', alignItems: 'center' }}>
+            <div style={{ flex: 1 }}>
+              <strong>{item.label}</strong>
+              <span className="muted" style={{ marginLeft: 8, fontSize: 12 }}>
+                逾期 {item.overdue_days} 天 · 观测 {item.n_data_points} · λ={item.lambda_param}
+              </span>
+            </div>
+            <button className="ghost sm" style={{ marginLeft: 12 }} onClick={() => reportDone(item)}>
+              <IconCheck /> 已完成
+            </button>
+          </div>
+        ))}
       </div>
 
       <div className="grid-main" style={{ gridTemplateColumns: '2fr 3fr' }}>

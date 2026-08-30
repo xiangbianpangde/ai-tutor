@@ -286,3 +286,92 @@ async def weak_concepts(request: Request, user_id: str) -> dict:
         "wrong_attempts": sum(i["wrong_attempts"] for i in items),
     }
     return ok({"user_id": user_id, "overview": overview, "items": items})
+
+
+# ------------------------------------------------------------------ #
+# 今日复习队列（M-011 遗忘曲线 → 行动列表）
+# ------------------------------------------------------------------ #
+@router.get("/users/{user_id}/review-due",
+            summary="今日复习队列：next_review_at 已到期的概念（欠复习倒序）")
+async def review_due(request: Request, user_id: str, subject_id: str | None = None) -> dict:
+    """基于 forgetting_curves 的到期概念列表；subjects 可限定科目。
+
+    每个条目附概念可读名（concepts 表回填）。未来可在此接
+    MemoryStore.get_due_reviews() 的持久化查询——遗忘曲线表是唯一真相源。
+    """
+    store = request.app.state.store
+    if store is None:
+        from shared.errors import TutorError
+
+        raise TutorError("DATABASE_ERROR", hint="DB 未就绪")
+
+    from datetime import datetime
+    from servers.tutoring_mcp.memory_store import MemoryStore
+
+    mem = MemoryStore(store)
+    due = mem.get_due_reviews(user_id=user_id, subject_id=subject_id)
+
+    from shared.models import ConceptRow
+
+    items = []
+    with store.session() as s:
+        for d in due:
+            name_row = (
+                s.query(ConceptRow.name_primary)
+                .filter(ConceptRow.base_id == d.concept_id)
+                .first()
+            )
+            label = name_row[0] if name_row and name_row[0] else d.concept_id
+            items.append({
+                "concept_id": d.concept_id,
+                "label": label,
+                "subject_id": d.subject_id,
+                "next_review_at": d.next_review_at.isoformat(),
+                "overdue_days": round(max(0.0, d.days_overdue), 2),
+                "lambda_param": round(d.lambda_param, 4),
+                "n_data_points": d.n_data_points,
+            })
+    return ok({"user_id": user_id, "items": items})
+
+
+@router.post("/users/{user_id}/review/record",
+             summary="记录一次真实复习（写 review_history + 重拟合遗忘曲线）")
+async def record_review(
+    request: Request,
+    user_id: str,
+    concept_id: str = Body(..., embed=True),
+    subject_id: str = Body(..., embed=True),
+    accuracy: float = Body(..., embed=True),
+    review_mode: str = Body("quick_quiz", embed=True),
+) -> dict:
+    """上报复习结果：accuracy ∈ [0,1]，后端据此推进 next_review_at 与 streak。"""
+    store = request.app.state.store
+    if store is None:
+        from shared.errors import TutorError
+
+        raise TutorError("DATABASE_ERROR", hint="DB 未就绪")
+    if not 0.0 <= accuracy <= 1.0:
+        from shared.errors import TutorError
+
+        raise TutorError("REVIEW_INVALID_ACCURACY", "accuracy 必须在 [0,1]")
+
+    from datetime import datetime
+    from servers.tutoring_mcp.memory_store import MemoryStore
+
+    mem = MemoryStore(store)
+    curve = mem.record_review(
+        user_id=user_id,
+        concept_id=concept_id,
+        subject_id=subject_id,
+        accuracy=accuracy,
+        review_mode=review_mode,
+        review_date=datetime.utcnow(),
+    )
+    return ok({
+        "curvature": {
+            "lambda_param": round(getattr(curve, "lambda_param", 0.0), 4),
+            "next_review_at": getattr(curve, "next_review_at", None).isoformat()
+            if getattr(curve, "next_review_at", None) else None,
+            "review_streak": getattr(curve, "review_streak", 0),
+        }
+    })

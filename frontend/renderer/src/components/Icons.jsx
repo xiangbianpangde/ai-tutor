@@ -32,6 +32,7 @@ export const IconInbox = (p) => (<I {...p}><path d="M22 12h-6l-2 3h-4l-2-3H2" />
 export const IconAlert = (p) => (<I {...p}><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4M12 17h.01" /></I>);
 export const IconCheck = (p) => (<I {...p}><path d="M20 6 9 17l-5-5" /></I>);
 export const IconClock = (p) => (<I {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></I>);
+export const IconTasks = (p) => (<I {...p}><path d="M4 5h16v4H4zM4 11h16v4H4zM4 17h16v4H4z" /></I>);
 export const IconDatabase = (p) => (<I {...p}><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5" /><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></I>);
 export const IconSearch = (p) => (<I {...p}><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></I>);
 export const IconSend = (p) => (<I {...p}><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></I>);
