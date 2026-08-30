@@ -29,6 +29,12 @@ export const api = {
   cacheStats: () => request('GET', '/api/meta/cache/stats'),
   recentEvents: (limit = 50) => request('GET', `/api/meta/events?limit=${limit}`),
 
+  // ── LLM 设置（运行时热替换，key 仅存后端进程内存）──
+  getLlmSettings: () => request('GET', '/api/settings/llm'),
+  applyLlmSettings: (cfg) => request('POST', '/api/settings/llm', cfg),
+  testLlmSettings: (cfg) => request('POST', '/api/settings/llm/test', cfg),
+  resetLlmSettings: () => request('POST', '/api/settings/llm/reset'),
+
   listSessions: (userId) => request('GET', `/api/tutoring/sessions?user_id=${encodeURIComponent(userId)}`),
   startSession: (userId, subjectId, kgId) =>
     request('POST', '/api/tutoring/sessions/start', { user_id: userId, subject_id: subjectId, kg_id: kgId }),

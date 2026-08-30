@@ -40,6 +40,15 @@ class TeachingOrchestrator:
         self._engine_factory = engine_factory
         self._engine: Any = None
 
+    def set_llm(self, llm: Any) -> None:
+        """运行时热替换 LLM：更新注入引用并丢弃缓存的 engine。
+
+        下一次请求会用新 llm 重建 TeachingEngine（进行中的会话不受影响——
+        会话状态在 SessionStore，与 llm 无关）。
+        """
+        self._llm = llm
+        self._engine = None
+
     # ------------------------------------------------------------------ #
     # 内部
     # ------------------------------------------------------------------ #
