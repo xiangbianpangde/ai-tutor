@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { api } from '../api.js';
 import ForgettingCurve from '../components/ForgettingCurve.jsx';
+import {
+  IconFrown, IconMeh, IconSmile, IconBolt, IconReset, IconClock, IconCheck,
+} from '../components/Icons.jsx';
 
 // 复习页（#5 功能2）：FSRS 间隔重复演示 + 遗忘曲线。
 const RATINGS = [
-  { v: 1, label: '忘了', color: '#e5484d' },
-  { v: 2, label: '困难', color: '#f0a020' },
-  { v: 3, label: '良好', color: '#5b8cff' },
-  { v: 4, label: '容易', color: '#38c79a' },
+  { v: 1, label: '忘了', color: '#bf4e43', icon: IconFrown },
+  { v: 2, label: '困难', color: '#bd832e', icon: IconMeh },
+  { v: 3, label: '良好', color: '#5b8cff', icon: IconSmile },
+  { v: 4, label: '容易', color: '#5f9268', icon: IconBolt },
 ];
 
 export default function ReviewPage() {
@@ -25,40 +28,82 @@ export default function ReviewPage() {
     } catch (e) { setErr(e.message); }
   };
 
+  const avgInterval = history.length
+    ? (history.reduce((a, h) => a + (h.interval || 0), 0) / history.length).toFixed(1)
+    : null;
+
   return (
     <div>
-      <h1 className="page-title">复习</h1>
-      <p className="page-sub">FSRS-5 间隔重复 · 遗忘曲线</p>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">复习</h1>
+          <p className="page-sub">FSRS-5 间隔重复 · 遗忘曲线</p>
+        </div>
+      </div>
 
-      <div className="grid cols-2" style={{ alignItems: 'start' }}>
-        <div className="card">
-          <h3>间隔重复演示</h3>
-          <p className="muted" style={{ marginBottom: 14 }}>
-            对一张卡评分，看 FSRS 如何排下次复习。
-            {card ? ` 当前：稳定性 ${card.stability?.toFixed(1)} · 复习 ${card.reps} 次` : ' 当前：新卡'}
-          </p>
-          <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
-            {RATINGS.map((r) => (
-              <button key={r.v} style={{ background: r.color }} onClick={() => rate(r.v)}>{r.label}</button>
-            ))}
-            {card && <button className="ghost" onClick={() => { setCard(null); setHistory([]); }}>重置</button>}
+      <div className="grid-main" style={{ gridTemplateColumns: '2fr 3fr' }}>
+        <div>
+          <div className="card" style={{ marginBottom: 16 }}>
+            <h3><IconBolt /> 给这张卡评分</h3>
+            <p className="muted" style={{ marginTop: 0 }}>
+              {card
+                ? `已复习 ${card.reps} 次 · 当前稳定性 ${card.stability?.toFixed(1)}`
+                : '当前是一张新卡——评一次分，看 FSRS 如何安排下次复习。'}
+            </p>
+            <div className="row" style={{ gap: 8 }}>
+              {RATINGS.map((r) => (
+                <button key={r.v} className="rate-btn" style={{ background: r.color }}
+                  onClick={() => rate(r.v)}>
+                  <r.icon size={20} />
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            {card && (
+              <button className="ghost sm" style={{ marginTop: 14 }}
+                onClick={() => { setCard(null); setHistory([]); }}>
+                <IconReset /> 重置为新卡
+              </button>
+            )}
+            {err && <div className="banner" style={{ marginTop: 14, marginBottom: 0 }}><span>{err}</span></div>}
           </div>
-          {err && <p className="tag bad" style={{ marginTop: 12 }}>{err}</p>}
-          <div className="feed" style={{ marginTop: 16 }}>
-            {history.length === 0 && <div className="empty">还没评分</div>}
-            {history.map((h, i) => (
-              <div className="feed-item" key={i}>
-                <span>{RATINGS.find((r) => r.v === h.rating)?.label}</span>
-                <span className="muted">下次 {h.interval} 天后 · S={h.stability?.toFixed(1)}</span>
-              </div>
-            ))}
-          </div>
+
+          {card && (
+            <div className="card">
+              <h3><IconCheck /> 卡片状态</h3>
+              <div className="kv"><span className="k">稳定性 S</span><span className="v">{card.stability?.toFixed(2)}</span></div>
+              <div className="kv"><span className="k">难度 D</span><span className="v">{card.difficulty?.toFixed(2) ?? '—'}</span></div>
+              <div className="kv"><span className="k">复习次数</span><span className="v">{card.reps}</span></div>
+              <div className="kv"><span className="k">连续正确</span><span className="v">{card.lapses !== undefined ? `${card.reps - card.lapses}` : '—'}</span></div>
+            </div>
+          )}
         </div>
 
         <div>
           <div className="card" style={{ marginBottom: 16 }}>
-            <h3>遗忘曲线（FSRS 保持率模型）</h3>
+            <h3><IconClock /> 遗忘曲线（FSRS 保持率模型）</h3>
             <ForgettingCurve />
+          </div>
+
+          <div className="card">
+            <h3><IconClock /> 复习历史</h3>
+            {avgInterval && (
+              <p className="muted" style={{ marginTop: 0 }}>近 {history.length} 次平均间隔 {avgInterval} 天</p>
+            )}
+            <div className="timeline">
+              {history.length === 0 && <div className="empty">还没评分——点左边的评分按钮开始</div>}
+              {history.map((h, i) => {
+                const r = RATINGS.find((x) => x.v === h.rating);
+                return (
+                  <div className="timeline-item" key={i}>
+                    <span className="tl-dot" style={{ background: r?.color }} />
+                    <span style={{ flex: 1 }}>{r?.label}</span>
+                    <span className="tag info">下次 {h.interval} 天后</span>
+                    <span className="faint mono">S={h.stability?.toFixed(1)}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

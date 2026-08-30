@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../api.js';
+import {
+  IconLearn, IconPlus, IconSend, IconArrowRight, IconAlert, IconGraduation, IconCheck,
+} from '../components/Icons.jsx';
 
 // 把后端技术错误码翻成给非技术用户看的人话（多轮点击测试 R2 发现：原始 TutorError 太技术）。
 const FRIENDLY = {
@@ -20,7 +23,13 @@ function humanize(msg) {
   return stripped || '出了点问题，请重试。';
 }
 
-// 学习中心：开会话 → 看教学动作 → 作答 → 实时反馈（spec 04 功能4 场景1）。
+// 动作类型徽章色调
+const ACTION_CLS = {
+  explain: 'info', question: 'warn', practice: 'purple',
+  feedback: 'ok', recap: '', example: 'info',
+};
+
+// 学习中心（spec 04 功能4 场景1）：选科目 → 教学对话 → 作答 → 实时反馈。
 export default function LearnCenter() {
   const [form, setForm] = useState({ userId: 'demo-user', subjectId: '', kgId: '' });
   const [session, setSession] = useState(null);
@@ -31,14 +40,20 @@ export default function LearnCenter() {
   const [current, setCurrent] = useState(null); // 当前教学动作 {type, content, interactive, completed}
   const [done, setDone] = useState(false); // 本科目是否学完
   const [subjects, setSubjects] = useState([]); // 我的科目（独立验收：免手填不透明 ID）
+  const [importOpen, setImportOpen] = useState(false); // 导入资料弹窗
+  const [imp, setImp] = useState({ name: '', md: '', status: null });
+  const chatEndRef = useRef(null);
 
   // 拉用户已有科目供点选
   useEffect(() => {
     if (session) return;
     api.listSubjects(form.userId).then(setSubjects).catch(() => setSubjects([]));
   }, [session, form.userId]);
-  // 导入资料一键建科目（#21 零门槛入口）
-  const [imp, setImp] = useState({ open: false, name: '', md: '', status: null });
+
+  // 新消息自动滚到底部
+  useEffect(() => {
+    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [chat, busy]);
 
   const importSubject = async () => {
     if (!imp.name.trim() || !imp.md.trim()) return;
@@ -52,7 +67,8 @@ export default function LearnCenter() {
         const t = await api.getTask(task_id);
         if (t.state === 'succeeded') {
           setForm((f) => ({ ...f, subjectId: t.result.subject_id, kgId: '' }));
-          setImp({ open: false, name: '', md: '', status: null });
+          setImp({ name: '', md: '', status: null });
+          setImportOpen(false);
           break;
         }
         if (t.state === 'failed') {
@@ -68,14 +84,10 @@ export default function LearnCenter() {
     }
   };
 
-  const pushTutor = (action) => {
-    if (!action) return;
-    setChat((c) => [...c, { who: 'tutor', text: action.content || `[${action.type}]`, type: action.type }]);
-  };
-
-  // act = 动作；interactive/completed 是响应的同级字段——并入 current 供渲染判断
   const applyAction = (act, interactive, completed) => {
-    pushTutor(act);
+    if (act) {
+      setChat((c) => [...c, { who: 'tutor', text: act.content || `[${act.type}]`, type: act.type }]);
+    }
     setCurrent(act ? { ...act, interactive: !!interactive } : null);
     setDone(!!completed);
   };
@@ -116,60 +128,85 @@ export default function LearnCenter() {
     } catch (e) { setErr(humanize(e.message)); } finally { setBusy(false); }
   };
 
+  /* ── 选科/开场屏 ── */
   if (!session) {
     return (
       <div>
-        <h1 className="page-title">学习中心</h1>
-        <p className="page-sub">开启一次学习会话</p>
-        <div className="card" style={{ maxWidth: 440 }}>
+        <div className="page-head">
+          <div>
+            <h1 className="page-title">学习中心</h1>
+            <p className="page-sub">选一个科目，开始一次 25 分钟的专注学习</p>
+          </div>
+          <div className="page-actions">
+            <button className="ghost" onClick={() => setImportOpen(true)}>
+              <IconPlus /> 导入资料新建科目
+            </button>
+          </div>
+        </div>
+
+        {err && <div className="banner"><IconAlert /><span>{err}</span></div>}
+
+        {subjects.length > 0 ? (
+          <>
+            <div className="nav-section" style={{ padding: '0 2px 10px' }}>我的科目 · 点击开始</div>
+            <div className="subject-grid">
+              {subjects.map((s) => (
+                <button key={s.subject_id}
+                  className={`subject-card${form.subjectId === s.subject_id ? ' selected' : ''}`}
+                  onClick={() => setForm({ ...form, subjectId: s.subject_id, kgId: '' })}>
+                  <div className="sc-name">{s.display_name}</div>
+                  <div className="sc-meta">
+                    <span className="tag info">{s.concepts} 概念</span>
+                    {form.subjectId === s.subject_id && <span className="tag ok"><IconCheck /> 已选</span>}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="row" style={{ marginTop: 22 }}>
+              <button className="lg" onClick={start}
+                disabled={busy || !form.subjectId}>
+                {busy ? <><span className="spinner" /> 开启中…</> : <>开始学习 <IconArrowRight /></>}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="card" style={{ maxWidth: 480 }}>
+            <h3><IconLearn /> 还没有科目</h3>
+            <p className="muted">从导入一份带 # 标题的 Markdown 资料开始，系统会自动建知识图谱，然后就能开课。</p>
+            <button onClick={() => setImportOpen(true)}><IconPlus /> 导入资料新建</button>
+          </div>
+        )}
+
+        <div className="card" style={{ maxWidth: 480, marginTop: 20 }}>
+          <h3>高级选项</h3>
           <label>用户 ID</label>
           <input value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })} />
-          {subjects.length > 0 && (
-            <>
-              <label>我的科目（点一个开始学）</label>
-              <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
-                {subjects.map((s) => (
-                  <button key={s.subject_id}
-                    className={form.subjectId === s.subject_id ? '' : 'ghost'}
-                    onClick={() => setForm({ ...form, subjectId: s.subject_id, kgId: '' })}>
-                    {s.display_name}（{s.concepts} 概念）
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-          <label>{subjects.length > 0 ? '或手填科目 ID' : '科目 ID'}</label>
-          <input value={form.subjectId} placeholder="点上面的科目，或导入新建"
+          <label>科目 ID（手动指定，优先于上面所选）</label>
+          <input value={form.subjectId} placeholder="留空则用上面点选的科目"
             onChange={(e) => setForm({ ...form, subjectId: e.target.value })} />
           <label>KG ID（可选，留空从科目解析）</label>
           <input value={form.kgId} onChange={(e) => setForm({ ...form, kgId: e.target.value })} />
-          <div style={{ marginTop: 18 }} className="row">
-            <button onClick={start} disabled={busy || !form.subjectId}>{busy ? '开启中…' : '开始学习'}</button>
-            <button className="ghost" onClick={() => setImp((s) => ({ ...s, open: !s.open }))}>
-              {imp.open ? '收起' : '没有科目？导入资料新建'}
-            </button>
-          </div>
-          {err && <p className="tag bad" style={{ marginTop: 14 }}>{err}</p>}
         </div>
 
-        {imp.open && (
-          <div className="card" style={{ maxWidth: 440, marginTop: 16 }}>
-            <h3>导入资料一键建科目</h3>
-            <p className="muted" style={{ marginBottom: 6 }}>
-              粘贴带 # 标题的 Markdown 资料，自动采集 + 建知识图谱，建好即可学。
-            </p>
-            <label>科目名称</label>
-            <input value={imp.name} placeholder="如 线性代数入门"
-              onChange={(e) => setImp({ ...imp, name: e.target.value })} />
-            <label>资料内容（Markdown）</label>
-            <textarea value={imp.md} rows={8} placeholder={'# 第一章\n## 小节\n内容…'}
-              style={{ resize: 'vertical' }}
-              onChange={(e) => setImp({ ...imp, md: e.target.value })} />
-            <div style={{ marginTop: 14 }} className="row">
-              <button onClick={importSubject} disabled={!!imp.status || !imp.name.trim() || !imp.md.trim()}>
-                {imp.status ? '建科目中…' : '创建科目'}
-              </button>
-              {imp.status && <span className="tag">{imp.status}</span>}
+        {importOpen && (
+          <div className="overlay" onClick={(e) => { if (e.target === e.currentTarget) setImportOpen(false); }}>
+            <div className="modal">
+              <h2><IconPlus /> 导入资料一键建科目</h2>
+              <p className="muted">粘贴带 # 标题的 Markdown 资料，自动采集 + 建知识图谱，建好即可学。</p>
+              <label>科目名称</label>
+              <input value={imp.name} placeholder="如 线性代数入门"
+                onChange={(e) => setImp({ ...imp, name: e.target.value })} />
+              <label>资料内容（Markdown，用 # 标记章节）</label>
+              <textarea value={imp.md} rows={9} placeholder={'# 第一章\n## 1.1 小节\n内容…'}
+                style={{ resize: 'vertical', fontFamily: 'var(--mono)', fontSize: 13 }}
+                onChange={(e) => setImp({ ...imp, md: e.target.value })} />
+              <div style={{ marginTop: 20 }} className="row">
+                <button onClick={importSubject}
+                  disabled={!!imp.status || !imp.name.trim() || !imp.md.trim()}>
+                  {imp.status ? <><span className="spinner" /> {imp.status}</> : '创建科目'}
+                </button>
+                <button className="ghost" onClick={() => setImportOpen(false)}>取消</button>
+              </div>
             </div>
           </div>
         )}
@@ -177,38 +214,66 @@ export default function LearnCenter() {
     );
   }
 
+  /* ── 会话屏 ── */
   return (
     <div>
-      <h1 className="page-title">学习中心</h1>
-      <p className="page-sub">会话 {session.session_id.slice(0, 12)}… · 共 {session.total_concepts} 概念</p>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">学习中心</h1>
+          <p className="page-sub">
+            会话 <span className="mono">{session.session_id.slice(0, 12)}…</span>
+            {' '}· 共 {session.total_concepts} 概念
+          </p>
+        </div>
+        <div className="page-actions">
+          <button className="ghost sm" onClick={() => { setSession(null); setCurrent(null); setDone(false); setChat([]); }}>
+            结束本次学习
+          </button>
+        </div>
+      </div>
+
       <div className="card">
-        <div className="chat">
+        <div className="chat chat-scroll">
           {chat.map((m, i) => (
             <div key={i} className={`bubble ${m.who}`}>
-              {m.type && m.who === 'tutor' && <div className="tag" style={{ marginBottom: 6 }}>{m.type}</div>}
+              {m.type && m.who === 'tutor' && (
+                <div><span className={`action-badge tag-${ACTION_CLS[m.type] || ''}`}>{m.type}</span></div>
+              )}
               {m.text}
             </div>
           ))}
+          {busy && (
+            <div className="bubble tutor typing"><span /><span /><span /></div>
+          )}
+          <div ref={chatEndRef} />
         </div>
+
         {done ? (
-          <div className="row" style={{ justifyContent: 'center', padding: '10px 0' }}>
-            <span className="tag ok" style={{ fontSize: 15 }}>🎉 本科目已学完！</span>
-            <button className="ghost" onClick={() => { setSession(null); setCurrent(null); setDone(false); }}>
+          <div className="row" style={{ justifyContent: 'center', padding: '12px 0', gap: 14 }}>
+            <span className="tag ok" style={{ fontSize: 14, padding: '6px 14px' }}>
+              <IconGraduation /> 本科目已学完
+            </span>
+            <button className="ghost" onClick={() => { setSession(null); setCurrent(null); setDone(false); setChat([]); }}>
               学下一科
             </button>
           </div>
         ) : current && current.interactive ? (
           <div className="composer">
-            <textarea value={answer} placeholder="输入你的回答…" onChange={(e) => setAnswer(e.target.value)}
+            <textarea value={answer} placeholder="输入你的回答…（Enter 发送，Shift+Enter 换行）"
+              onChange={(e) => setAnswer(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }} />
-            <button onClick={submit} disabled={busy || !answer.trim()}>提交</button>
+            <button className="lg" onClick={submit} disabled={busy || !answer.trim()}>
+              <IconSend /> 提交
+            </button>
           </div>
         ) : (
           <div className="row" style={{ justifyContent: 'flex-end' }}>
-            <button onClick={cont} disabled={busy}>{busy ? '…' : '继续 →'}</button>
+            <button className="lg" onClick={cont} disabled={busy}>
+              {busy ? <><span className="spinner" /> 思考中…</> : <>继续 <IconArrowRight /></>}
+            </button>
           </div>
         )}
-        {err && <p className="tag bad" style={{ marginTop: 10 }}>{err}</p>}
+        {err && <div className="banner" style={{ marginTop: 14, marginBottom: 0 }}><IconAlert /><span>{err}</span></div>}
       </div>
     </div>
   );

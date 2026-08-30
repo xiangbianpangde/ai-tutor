@@ -8,13 +8,16 @@ import KnowledgeGraph from './pages/KnowledgeGraph.jsx';
 import ReviewPage from './pages/ReviewPage.jsx';
 import Settings from './pages/Settings.jsx';
 import Wizard from './components/Wizard.jsx';
+import {
+  IconDashboard, IconLearn, IconGraph, IconReview, IconSettings, IconGraduation,
+} from './components/Icons.jsx';
 
 const NAV = [
-  { to: '/dashboard', label: '仪表盘', icon: '◧' },
-  { to: '/learn', label: '学习中心', icon: '✎' },
-  { to: '/graph', label: '知识图谱', icon: '⬡' },
-  { to: '/review', label: '复习', icon: '↻' },
-  { to: '/settings', label: '设置', icon: '⚙' },
+  { to: '/dashboard', label: '仪表盘', icon: IconDashboard },
+  { to: '/learn', label: '学习中心', icon: IconLearn },
+  { to: '/graph', label: '知识图谱', icon: IconGraph },
+  { to: '/review', label: '复习', icon: IconReview },
+  { to: '/settings', label: '设置', icon: IconSettings },
 ];
 
 export default function App() {
@@ -31,20 +34,25 @@ export default function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark">🎓</span>
-          <span className="brand-name">AI-Tutor</span>
+          <span className="brand-mark"><IconGraduation size={20} /></span>
+          <span>
+            <div className="brand-name">AI-Tutor</div>
+            <div className="brand-ver">48h · 私人辅导</div>
+          </span>
         </div>
+        <div className="nav-section">导航</div>
         <nav>
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-              <span className="nav-icon">{n.icon}</span>
-              {n.label}
+            <NavLink key={n.to} to={n.to}
+              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+              <n.icon />
+              <span className="nav-label">{n.label}</span>
             </NavLink>
           ))}
         </nav>
         <div className="conn">
           <span className={`dot ${connected ? 'on' : 'off'}`} />
-          {connected ? '实时已连接' : '连接中…'}
+          <span className="conn-label">{connected ? '实时连接正常' : '正在连接后端…'}</span>
         </div>
       </aside>
 
