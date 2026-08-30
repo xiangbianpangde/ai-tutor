@@ -14,13 +14,12 @@ const BAND_META = {
   mastered: { label: '已掌握', cls: 'ok' },
 };
 
-export function currentUser() {
+function currentUser() {
   return localStorage.getItem(USER_KEY) || 'demo-user';
 }
 
 export default function Diagnose() {
-  const [userId, setUserId] = useState(currentUser());
-  const [data, setData] = useState(null);
+  const [userId, setUserId] = useState(currentUser());  const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
   const [loading, setLoading] = useState(true);
 

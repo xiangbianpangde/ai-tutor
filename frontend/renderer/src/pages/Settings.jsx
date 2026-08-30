@@ -26,7 +26,9 @@ function loadSaved() {
 export default function Settings() {
   const saved = loadSaved();
   const preset = PROVIDER_PRESETS[saved.provider] || PROVIDER_PRESETS.deepseek;
-  const [s, setS] = useState({
+  // 合并并补兜底（旧版本存储缺 baseUrl/model：填充 provider 预设，避免空端点）。
+  // 显式字段而非 spread+覆盖，避免对象字面量重复键警告。
+  const stored = {
     provider: 'deepseek',
     apiKey: '',
     baseUrl: '',
@@ -34,9 +36,14 @@ export default function Settings() {
     dailyGoalMin: 45,
     pomodoroMin: 25,
     ...saved,
-    // 旧版本存储缺 baseUrl/model：补 provider 预设，避免空端点
-    baseUrl: saved.baseUrl || preset.base_url || '',
-    model: saved.model || preset.model || '',
+  };
+  const [s, setS] = useState({
+    provider: stored.provider,
+    apiKey: stored.apiKey,
+    baseUrl: stored.baseUrl || preset.base_url || '',
+    model: stored.model || preset.model || '',
+    dailyGoalMin: stored.dailyGoalMin,
+    pomodoroMin: stored.pomodoroMin,
   });
   const [savedFlag, setSaved] = useState(false);
   const [backend, setBackend] = useState(null);
