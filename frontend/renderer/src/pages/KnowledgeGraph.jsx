@@ -16,11 +16,16 @@ export default function KnowledgeGraph() {
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  // RAG 问答
+  // RAG 深挖
   const [q, setQ] = useState('');
   const [ragBusy, setRagBusy] = useState(false);
   const [ragHits, setRagHits] = useState(null);
+  const [ragMeta, setRagMeta] = useState(null);
   const [ragErr, setRagErr] = useState(null);
+  // 答案-引用一致性验证
+  const [candidate, setCandidate] = useState('');
+  const [validating, setValidating] = useState(false);
+  const [verdict, setVerdict] = useState(null);
 
   useEffect(() => {
     api.listSubjects('demo-user').then(setSubjects).catch(() => setSubjects([]));
@@ -43,11 +48,25 @@ export default function KnowledgeGraph() {
 
   const ask = async () => {
     if (!q.trim() || !kgId.trim()) return;
-    setRagErr(null); setRagBusy(true);
+    setRagErr(null); setRagBusy(true); setVerdict(null);
     try {
       const res = await api.ragQuery(kgId.trim(), q.trim(), 5);
-      setRagHits(res?.hits || res?.results || res || []);
-    } catch (e) { setRagErr(e.message); setRagHits(null); } finally { setRagBusy(false); }
+      // 真实契约：data = { chunks, confirmed, rounds, top_score, state }
+      setRagHits(res?.chunks || []);
+      setRagMeta({ rounds: res?.rounds, confirmed: res?.confirmed,
+        topScore: res?.top_score });
+    } catch (e) { setRagErr(String(e.message || e)); setRagHits(null); } finally { setRagBusy(false); }
+  };
+
+  const validate = async () => {
+    const sources = (ragHits || []).map((h) => `${h.metadata?.name || h.source}: ${h.text}`)
+      .slice(0, 3);
+    if (!candidate.trim() || sources.length === 0) return;
+    setValidating(true); setVerdict(null);
+    try {
+      // 无 llm_judge 时后端回退启发式（永不过度授信）
+      setVerdict(await api.ragValidate(candidate.trim(), sources));
+    } catch (e) { setRagErr(String(e.message || e)); } finally { setValidating(false); }
   };
 
   return (
@@ -108,9 +127,9 @@ export default function KnowledgeGraph() {
             </div>
           </div>
 
-          {/* RAG 资料问答 */}
+          {/* RAG 深挖：检索 + 元数据披露 + 答案-引用一致性验证 */}
           <div className="card" style={{ marginTop: 16 }}>
-            <h3><IconSpark /> 向资料提问（RAG）</h3>
+            <h3><IconSpark /> 向资料提问（RAG 深挖）</h3>
             <div className="row">
               <input value={q} placeholder="如：这个图谱里「先修关系」最密集的概念是？"
                 onChange={(e) => setQ(e.target.value)}
@@ -120,6 +139,12 @@ export default function KnowledgeGraph() {
               </button>
             </div>
             {ragErr && <div className="banner" style={{ marginTop: 14, marginBottom: 0 }}><IconAlert /><span>{ragErr}</span></div>}
+            {ragMeta && (
+              <p className="muted" style={{ margin: '10px 0 0', fontSize: 12 }}>
+                检索 {ragMeta.rounds} 轮 ·{ragMeta.confirmed ? ' 已确认' : ' 未确认（不假装）'}
+                {typeof ragMeta.topScore === 'number' && ` · 最高分 ${(ragMeta.topScore * 100).toFixed(1)}%`}
+              </p>
+            )}
             {ragHits && (
               <div className="feed" style={{ marginTop: 14 }}>
                 {ragHits.length === 0 && <div className="empty">没有检索到相关片段</div>}
@@ -127,15 +152,43 @@ export default function KnowledgeGraph() {
                   <div className="feed-item" key={i}>
                     <span className="feed-icon"><IconBook size={14} /></span>
                     <div className="feed-body">
-                      <div className="feed-type">{h.concept || h.title || h.id || `片段 ${i + 1}`}</div>
+                      <div className="feed-type">{h.metadata?.name || h.source || h.id || `片段 ${i + 1}`}</div>
                       <div className="feed-desc" style={{ whiteSpace: 'normal' }}>
-                        {String(h.text || h.content || h.summary || '').slice(0, 160)}
+                        {String(h.text || h.content || '').slice(0, 200)}
                       </div>
                     </div>
                     {typeof h.score === 'number' && <span className="tag info">{(h.score * 100).toFixed(0)}%</span>}
                   </div>
                 ))}
               </div>
+            )}
+
+            {ragHits && ragHits.length > 0 && (
+              <>
+                <div style={{ marginTop: 14 }}>
+                  <label>答案（用于引用验证，选已验证答案可防幻觉）</label>
+                  <div className="row">
+                    <textarea value={candidate} rows={2}
+                      placeholder="输入你的答案，验证它是否被上述片段支撑…"
+                      onChange={(e) => setCandidate(e.target.value)} />
+                    <button onClick={validate} disabled={validating || !candidate.trim()}>
+                      {validating ? <><span className="spinner" /> 验证中…</> : '验证引用'}
+                    </button>
+                  </div>
+                </div>
+                {verdict && (
+                  <div className="banner" style={{ marginTop: 14, marginBottom: 0 }}
+                    data-ok={verdict.is_supported}>
+                    <IconAlert />
+                    <span>
+                      {verdict.is_supported
+                        ? `引用被支撑（信度 ${(verdict.confidence * 100).toFixed(0)}%）`
+                        : `未被引用支撑（信度 ${(verdict.confidence * 100).toFixed(0)}%）：${(verdict.mismatched_claims || []).join('；') || '无引用源'}`}
+                      {' · '}方式 {verdict.method}
+                    </span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </>

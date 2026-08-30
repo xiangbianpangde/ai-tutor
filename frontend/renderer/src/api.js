@@ -49,6 +49,8 @@ export const api = {
 
   ragQuery: (kgId, query, topK = 5) =>
     request('POST', '/api/knowledge/rag/query', { kg_id: kgId, query, top_k: topK }),
+  ragValidate: (answer, sources) =>
+    request('POST', '/api/knowledge/rag/validate', { answer, sources }),
   reviewSchedule: (rating, card) =>
     request('POST', '/api/tutoring/review/schedule', { rating, card }),
   stageCalibrate: (scores, currentStage = 0) =>
