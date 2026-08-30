@@ -52,7 +52,10 @@ function describeEvent(e) {
 }
 
 function relTime(ts) {
-  if (!ts) return '';
+  // Sanity gate: ts must be epoch milliseconds within ±24h of the renderer's
+  // clock. Anything else (seconds-precision values, perf_counter leftovers,
+  // undefined) renders as '—' instead of absurd "496190 小时前".
+  if (!ts || typeof ts !== 'number' || ts < 1e12 || ts > Date.now() + 86_400_000) return '—';
   const d = Date.now() - ts;
   if (d < 60_000) return '刚刚';
   if (d < 3_600_000) return `${Math.floor(d / 60_000)} 分钟前`;

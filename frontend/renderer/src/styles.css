@@ -394,3 +394,17 @@ svg text { fill: #6b675a; font-family: var(--font); }
   .content { padding: 22px 18px 40px; }
   .grid.cols-4, .grid.cols-3, .grid.cols-2, .grid-main { grid-template-columns: 1fr; }
 }
+
+/* 薄弱诊断页（Diagnose）*/
+.diag-stat { display: flex; flex-direction: column; gap: 2px; }
+.diag-stat .num { font-size: 30px; font-weight: 700; font-family: var(--serif); color: var(--text-strong); }
+.diag-stat .num.bad-text { color: var(--bad); }
+.diag-stat .num.warn-text { color: var(--warn); }
+.diag-stat .num.ok-text { color: var(--accent-2); }
+.diag-stat .stat-label { font-size: 12px; color: var(--muted); }
+.tag.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.btn-ghost {
+  background: var(--panel-2, #f0eee6); color: var(--text-strong);
+  border: 1px solid var(--border-soft);
+}
+.btn-ghost:hover { background: var(--border-soft); }

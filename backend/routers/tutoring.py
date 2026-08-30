@@ -179,3 +179,110 @@ async def query_facts(
 ) -> dict:
     return ok(_memory(request).query_facts(user_id=user_id, subject_id=subject_id,
                                            query=query, limit=limit))
+
+
+# ------------------------------------------------------------------ #
+# 薄弱概念诊断（前端「薄弱诊断」面板数据源）
+# ------------------------------------------------------------------ #
+_WEAK_THRESHOLD = 0.5            # 低于此 →薄弱
+_CONSOLIDATION_THRESHOLD = 0.8   # 低于此 →巩固中；达到 →已掌握
+
+
+def _band(mastery: float) -> str:
+    if mastery < _WEAK_THRESHOLD:
+        return "weak"
+    if mastery < _CONSOLIDATION_THRESHOLD:
+        return "consolidating"
+    return "mastered"
+
+
+@router.get("/users/{user_id}/weak-concepts",
+            summary="薄弱概念诊断：BKT 掌握度 + 近期判分历史聚合")
+async def weak_concepts(request: Request, user_id: str) -> dict:
+    """按用户聚合 BKT 掌握度与各会话近期判分历史，最薄弱的排最前。
+
+    数据源：
+    - ``bkt_params``：每概念 p_mastery / n_observations（跨会话持久）。
+    - ``sessions.context_json.recent_history``：答题明细（正确性 / 时间戳 /
+      自我纠正标记），只统计该用户自己的会话。
+    概念可读名来自 concepts 表（同一 base 概念可能对应多行，取首个非空名）。
+    """
+    import json
+
+    store = request.app.state.store
+    if store is None:
+        from shared.errors import TutorError
+
+        raise TutorError("DATABASE_ERROR", hint="DB 未就绪")
+
+    from shared.models import BKTParamRow, ConceptRow, SessionRow
+
+    concepts: dict[str, dict] = {}
+    attempts: list[dict] = []
+    with store.session() as s:
+        for row in s.query(BKTParamRow).filter_by(user_id=user_id).all():
+            concepts[row.concept_id] = {
+                "concept_id": row.concept_id,
+                "label": row.concept_id,
+                "mastery": round(float(row.p_mastery), 4),
+                "observations": int(row.n_observations),
+                "last_updated": (
+                    row.last_updated.isoformat() if row.last_updated else None
+                ),
+            }
+        for concept_id in concepts:
+            name_row = (
+                s.query(ConceptRow.name_primary)
+                .filter(ConceptRow.base_id == concept_id)
+                .first()
+            )
+            if name_row and name_row[0]:
+                concepts[concept_id]["label"] = name_row[0]
+
+        for row in s.query(SessionRow).filter_by(user_id=user_id).all():
+            raw = row.context_json or "{}"
+            if isinstance(raw, str):
+                try:
+                    ctx = json.loads(raw)
+                except (ValueError, TypeError):
+                    continue
+            else:
+                ctx = raw  # JSON 列反序列化后已是 dict
+            for entry in ctx.get("recent_history") or []:
+                attempts.append({
+                    "session_id": row.id,
+                    "concept_id": entry.get("concept_id"),
+                    "correctness": entry.get("correctness"),
+                    "timestamp": entry.get("timestamp"),
+                    "was_self_corrected": bool(entry.get("was_self_corrected")),
+                    "answer": entry.get("answer"),
+                })
+
+    items = []
+    for concept in concepts.values():
+        cid = concept["concept_id"]
+        mine = [a for a in attempts if a.get("concept_id") == cid]
+        wrong = [
+            a for a in mine if a.get("correctness") in ("partial", "incorrect")
+        ]
+        recent_wrong = sorted(
+            wrong, key=lambda a: a.get("timestamp") or "", reverse=True
+        )
+        items.append({
+            **concept,
+            "band": _band(concept["mastery"]),
+            "attempts": len(mine),
+            "wrong_attempts": len(wrong),
+            "last_wrong_at": recent_wrong[0].get("timestamp") if recent_wrong else None,
+        })
+    items.sort(key=lambda item: (item["mastery"], -item["wrong_attempts"]))
+
+    overview = {
+        "concepts": len(items),
+        "mastered": sum(1 for i in items if i["band"] == "mastered"),
+        "consolidating": sum(1 for i in items if i["band"] == "consolidating"),
+        "weak": sum(1 for i in items if i["band"] == "weak"),
+        "attempts": sum(i["attempts"] for i in items),
+        "wrong_attempts": sum(i["wrong_attempts"] for i in items),
+    }
+    return ok({"user_id": user_id, "overview": overview, "items": items})

@@ -7,13 +7,15 @@ import LearnCenter from './pages/LearnCenter.jsx';
 import KnowledgeGraph from './pages/KnowledgeGraph.jsx';
 import ReviewPage from './pages/ReviewPage.jsx';
 import Settings from './pages/Settings.jsx';
+import Diagnose from './pages/Diagnose.jsx';
 import Wizard from './components/Wizard.jsx';
 import {
-  IconDashboard, IconLearn, IconGraph, IconReview, IconSettings, IconGraduation,
+  IconDashboard, IconLearn, IconGraph, IconReview, IconSettings, IconGraduation, IconPulse,
 } from './components/Icons.jsx';
 
 const NAV = [
   { to: '/dashboard', label: '仪表盘', icon: IconDashboard },
+  { to: '/diagnose', label: '薄弱诊断', icon: IconPulse },
   { to: '/learn', label: '学习中心', icon: IconLearn },
   { to: '/graph', label: '知识图谱', icon: IconGraph },
   { to: '/review', label: '复习', icon: IconReview },
@@ -60,6 +62,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard events={events} connected={connected} />} />
+          <Route path="/diagnose" element={<Diagnose />} />
           <Route path="/learn" element={<LearnCenter events={events} />} />
           <Route path="/graph" element={<KnowledgeGraph />} />
           <Route path="/review" element={<ReviewPage />} />
