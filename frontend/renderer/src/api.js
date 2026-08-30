@@ -13,7 +13,7 @@ async function request(method, path, body) {
   }
   // 统一信封：{ok, data} 或 {ok:false, error}
   if (data && data.ok === false) {
-    const msg = (data.error && (data.error.message || data.error.code)) || '请求失败';
+    const msg = (data.error && (data.error.hint || data.error.message || data.error.code)) || '请求失败';
     throw new Error(msg);
   }
   return data && 'data' in data ? data.data : data;

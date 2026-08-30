@@ -1,18 +1,27 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api.js';
-import { IconSettings, IconCheck, IconPulse, IconDatabase } from '../components/Icons.jsx';
+import {
+  IconSettings, IconCheck, IconPulse, IconDatabase, IconReset, IconEye, IconEyeOff,
+} from '../components/Icons.jsx';
 
 // 设置：LLM provider/base_url/model/key（存 localStorage 并热应用到后端）
-// + 学习偏好 + 后端信息。key 只存本机 localStorage 与后端进程内存，
-// 不落盘、不入日志；请求只发往用户显式配置的 base_url。
+// + 学习偏好（每日目标/番茄钟，由复习页消费）+ 后端信息。
+// key 只存本机 localStorage 与后端进程内存；不落盘、不入日志；
+// 请求只发往用户显式配置的 base_url。
 const KEY = 'aitutor.settings';
 
-// 各 provider 的默认端点/模型（用户可在 UI 覆盖 base_url 与 model）。
 const PROVIDER_PRESETS = {
   deepseek: { base_url: 'https://api.deepseek.com', model: 'deepseek-chat' },
   openai: { base_url: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
   ollama: { base_url: 'http://localhost:11434/v1', model: 'qwen2.5:7b' },
   custom: { base_url: '', model: '' },
+};
+
+// source 说明（后端返回：runtime / injected / fallback）
+const SOURCE_NOTE = {
+  runtime: '本次进程内的热应用；重启后端后回到环境变量/本地判分器，重新保存即恢复。',
+  injected: '由宿主注入（测试/嵌入场景）；生产不会出现。',
+  fallback: '未配置真 LLM，当前为本地判分器（基础模式）。',
 };
 
 function loadSaved() {
@@ -23,11 +32,17 @@ function loadSaved() {
   }
 }
 
+export function readPrefs() {
+  const saved = loadSaved();
+  return {
+    dailyGoalMin: Number(saved.dailyGoalMin) || 45,
+    pomodoroMin: Number(saved.pomodoroMin) || 25,
+  };
+}
+
 export default function Settings() {
   const saved = loadSaved();
   const preset = PROVIDER_PRESETS[saved.provider] || PROVIDER_PRESETS.deepseek;
-  // 合并并补兜底（旧版本存储缺 baseUrl/model：填充 provider 预设，避免空端点）。
-  // 显式字段而非 spread+覆盖，避免对象字面量重复键警告。
   const stored = {
     provider: 'deepseek',
     apiKey: '',
@@ -49,6 +64,7 @@ export default function Settings() {
   const [backend, setBackend] = useState(null);
   const [effective, setEffective] = useState(null);
   const [testState, setTestState] = useState(null); // {ok, text}
+  const [showKey, setShowKey] = useState(false);
 
   useEffect(() => {
     api.systemHealth().then(setBackend).catch(() => setBackend(null));
@@ -56,8 +72,8 @@ export default function Settings() {
   }, []);
 
   const setProvider = (provider) => {
-    const preset = PROVIDER_PRESETS[provider] || {};
-    setS({ ...s, provider, baseUrl: preset.base_url ?? '', model: preset.model ?? '' });
+    const p = PROVIDER_PRESETS[provider] || {};
+    setS({ ...s, provider, baseUrl: p.base_url ?? '', model: p.model ?? '' });
     setTestState(null);
   };
 
@@ -68,27 +84,30 @@ export default function Settings() {
   });
 
   const validate = () => {
-    const cfg = buildCfg();
-    if (!/^https?:\/\//.test(cfg.base_url)) return 'Base URL 必须以 http:// 或 https:// 开头';
-    if (!cfg.api_key) return 'API Key 不能为空';
-    if (!cfg.model) return 'Model 不能为空';
+    if (!/^https?:\/\//.test(s.baseUrl.trim())) return 'Base URL 必须以 http:// 或 https:// 开头';
+    if (!s.apiKey.trim()) return 'API Key 不能为空';
+    if (!s.model.trim()) return 'Model 不能为空';
     return null;
   };
 
   const persist = () => localStorage.setItem(KEY, JSON.stringify(s));
 
   const save = async () => {
-    const problem = validate();
-    if (problem) { setTestState({ ok: false, text: problem }); return; }
+    // 单步：先探测（防止保存坏端点），成功才应用并落盘
+    setTestState({ ok: null, text: '探测中…' });
     try {
-      // 保存并热应用到后端（生效无需重启）
+      const probed = await api.testLlmSettings(buildCfg());
+      if (!probed.ok) {
+        setTestState({ ok: false, text: `连接失败：${probed.error || '未知原因'}，未保存` });
+        return;
+      }
       setEffective(await api.applyLlmSettings(buildCfg()));
       persist();
       setSaved(true);
-      setTestState({ ok: true, text: '已保存并应用到后端' });
+      setTestState({ ok: true, text: `已应用（${probed.model}，${probed.latency_ms}ms）` });
       setTimeout(() => setSaved(false), 1800);
     } catch (e) {
-      setTestState({ ok: false, text: String(e.message || e) });
+      setTestState({ ok: false, text: `保存失败：${String(e.message || e)}，未保存` });
     }
   };
 
@@ -101,11 +120,33 @@ export default function Settings() {
       if (r.ok) setTestState({ ok: true, text: `连通（${r.model}，${r.latency_ms}ms）` });
       else setTestState({ ok: false, text: r.error || '探测失败' });
     } catch (e) {
+      setTestState({ ok: false, text: `探测失败：${String(e.message || e)}` });
+    }
+  };
+
+  const resetLlm = async () => {
+    try {
+      const after = await api.resetLlmSettings();
+      setEffective(after);
+      setTestState({ ok: true, text: '已切回环境/本地判分器（配置保留，可随时重新应用）' });
+    } catch (e) {
+      setTestState({ ok: false, text: String(e.message || e) });
+    }
+  };
+
+  const clearAll = async () => {
+    localStorage.removeItem(KEY);
+    setS({ provider: 'none', apiKey: '', baseUrl: '', model: '', dailyGoalMin: 45, pomodoroMin: 25 });
+    try {
+      setEffective(await api.resetLlmSettings());
+      setTestState({ ok: true, text: '已清除本机配置并切回默认' });
+    } catch (e) {
       setTestState({ ok: false, text: String(e.message || e) });
     }
   };
 
   const needsKey = s.provider !== 'none';
+  const sourceText = effective ? (SOURCE_NOTE[effective.source] || '') : '';
 
   return (
     <div>
@@ -134,8 +175,15 @@ export default function Settings() {
                 placeholder="https://api.deepseek.com"
                 onChange={(e) => setS({ ...s, baseUrl: e.target.value })} />
               <label>API Key</label>
-              <input type="password" value={s.apiKey} placeholder="sk-…"
-                onChange={(e) => setS({ ...s, apiKey: e.target.value })} />
+              <div className="row" style={{ gap: 6 }}>
+                <input type={showKey ? 'text' : 'password'} value={s.apiKey}
+                  placeholder="sk-…" style={{ flex: 1 }}
+                  onChange={(e) => setS({ ...s, apiKey: e.target.value })} />
+                <button className="ghost sm" onClick={() => setShowKey(!showKey)}
+                  title={showKey ? '隐藏 Key' : '显示 Key'}>
+                  {showKey ? <IconEyeOff size={15} /> : <IconEye size={15} />}
+                </button>
+              </div>
               <label>Model</label>
               <input type="text" value={s.model} placeholder="deepseek-chat"
                 onChange={(e) => setS({ ...s, model: e.target.value })} />
@@ -147,6 +195,9 @@ export default function Settings() {
           <label>番茄钟（分钟）</label>
           <input type="number" value={s.pomodoroMin} min={10} max={90}
             onChange={(e) => setS({ ...s, pomodoroMin: Number(e.target.value) })} />
+          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+            每日目标已生效于「复习」页的建议复习量；番茄钟保留（将在专注计时接入后使用）。
+          </div>
           <div style={{ marginTop: 20 }} className="row">
             <button onClick={save}><IconCheck /> 保存并应用</button>
             {needsKey && (
@@ -155,6 +206,10 @@ export default function Settings() {
               </button>
             )}
             {saved && <span className="tag ok">已保存</span>}
+          </div>
+          <div className="row" style={{ marginTop: 8 }}>
+            <button className="ghost sm" onClick={resetLlm}>重置 LLM</button>
+            <button className="ghost sm" onClick={clearAll}>清除本机配置</button>
           </div>
           {testState && (
             <div className="kv" style={{ marginTop: 10 }}>
@@ -171,6 +226,7 @@ export default function Settings() {
                   ? '本地判分器（未配置真 LLM）'
                   : `${effective.provider} · ${effective.model || ''} · ${effective.base_url || ''} · key ${effective.api_key_masked || '***'}`}
               </span>
+              {sourceText && <span className="muted" style={{ display: 'block', marginTop: 4, fontSize: 12 }}>{sourceText}</span>}
             </div>
           )}
         </div>
@@ -179,6 +235,7 @@ export default function Settings() {
           <h3><IconPulse /> 后端信息</h3>
           <div className="kv"><span className="k">API 基址</span><span className="v mono">{api.base}</span></div>
           <div className="kv"><span className="k">版本</span><span className="v">{backend?.version || '不可达'}</span></div>
+          <div className="kv"><span className="k">LLM 生效来源</span><span className="v mono">{effective?.source || '—'}</span></div>
           <h3 style={{ marginTop: 20 }}><IconDatabase /> 子系统</h3>
           <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
             {backend?.subsystems

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api.js';
 import ForgettingCurve from '../components/ForgettingCurve.jsx';
+import { readPrefs } from './Settings.jsx';
 import {
   IconFrown, IconMeh, IconSmile, IconBolt, IconReset, IconClock, IconCheck,
 } from '../components/Icons.jsx';
@@ -12,6 +13,7 @@ const RATINGS = [
   { v: 3, label: '良好', color: '#5b8cff', icon: IconSmile },
   { v: 4, label: '容易', color: '#5f9268', icon: IconBolt },
 ];
+
 const USER_KEY = 'aitutor.user';
 
 function currentUser() {
@@ -74,7 +76,7 @@ export default function ReviewPage() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3><IconClock /> 今日复习队列</h3>
+        <h3><IconClock /> 今日复习队列 <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>（每日目标 {readPrefs().dailyGoalMin} 分钟）</span></h3>
         <div className="row" style={{ gap: 8, marginBottom: 8 }}>
           <span className="muted">用户</span>
           <input type="text" value={userId} style={{ width: 160 }}
