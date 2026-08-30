@@ -56,7 +56,7 @@ class OpenAICompatProvider:
 
     def __init__(
         self, *, api_key: str, base_url: str, model: str,
-        timeout: float = 120.0,
+        timeout: float = 120.0, supports_generation: bool = True,
     ) -> None:
         if not api_key:
             raise TutorError("LLM_CONFIG_INVALID", hint="API key 不能为空")
@@ -66,6 +66,9 @@ class OpenAICompatProvider:
         self.base_url = _validate_base_url(base_url)
         self.model = model
         self.timeout = timeout
+        # 实例属性遮蔽类属性：推理模型（MiniMax-M3 等）建议 False——判分走真
+        # LLM，讲解/练习走模板，避免逐步生成导致分钟级卡顿。
+        self.supports_generation = supports_generation
 
     def describe(self) -> dict[str, str]:
         """脱敏描述（设置页回读用）；永不含完整 key。"""

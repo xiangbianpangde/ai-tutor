@@ -58,8 +58,15 @@ async def get_llm(request: Request) -> dict:
 
 
 def _apply(request: Request, provider: OpenAICompatProvider) -> dict[str, Any]:
-    """实例化后热替换：app.state + orchestrator（若已缓存）的 engine 缓存失效。"""
+    """实例化后热替换：写运行时口与构造注入口，并失效已缓存 orchestrator。
+
+    - ``tutor_llm_runtime``：当前生效引用（GET 回读的来源）。
+    - ``tutor_llm``：orchestrator 构造时的注入参数——之后新建的编排器
+      直接用它，不再走 env 选择链（env 里的旧/失效 key 因此被绕开）。
+    - 已缓存的编排器经 ``set_llm`` 丢弃 engine 缓存，下次请求即用新 LLM。
+    """
     request.app.state.tutor_llm_runtime = provider
+    request.app.state.tutor_llm = provider
     teaching = getattr(request.app.state, "teaching", None)
     if teaching is not None and hasattr(teaching, "set_llm"):
         teaching.set_llm(provider)
@@ -72,9 +79,11 @@ async def apply_llm(
     base_url: str = Body(..., embed=True),
     api_key: str = Body(..., embed=True),
     model: str = Body(..., embed=True),
+    supports_generation: bool = Body(True, embed=True),
 ) -> dict:
     provider = OpenAICompatProvider(
         api_key=api_key, base_url=base_url, model=model,
+        supports_generation=supports_generation,
     )
     return ok(_apply(request, provider))
 
@@ -100,6 +109,7 @@ async def test_llm(
 @router.post("/llm/reset", summary="清除运行时覆盖（回到 env 选择链）")
 async def reset_llm(request: Request) -> dict:
     request.app.state.tutor_llm_runtime = None
+    request.app.state.tutor_llm = None
     teaching = getattr(request.app.state, "teaching", None)
     if teaching is not None and hasattr(teaching, "set_llm"):
         teaching.set_llm(None)
