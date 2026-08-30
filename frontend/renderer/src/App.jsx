@@ -10,9 +10,10 @@ import Settings from './pages/Settings.jsx';
 import Diagnose from './pages/Diagnose.jsx';
 import Tasks from './pages/Tasks.jsx';
 import Plan from './pages/Plan.jsx';
+import History from './pages/History.jsx';
 import Wizard from './components/Wizard.jsx';
 import {
-  IconDashboard, IconLearn, IconGraph, IconReview, IconSettings, IconGraduation, IconPulse, IconTasks, IconBook,
+  IconDashboard, IconLearn, IconGraph, IconReview, IconSettings, IconGraduation, IconPulse, IconTasks, IconBook, IconHistory,
 } from './components/Icons.jsx';
 
 const NAV = [
@@ -23,6 +24,7 @@ const NAV = [
   { to: '/review', label: '复习', icon: IconReview },
   { to: '/tasks', label: '任务中心', icon: IconTasks },
   { to: '/plan', label: '学习计划', icon: IconBook },
+  { to: '/history', label: '会话历史', icon: IconHistory },
   { to: '/settings', label: '设置', icon: IconSettings },
 ];
 
@@ -72,6 +74,7 @@ export default function App() {
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/plan" element={<Plan />} />
+          <Route path="/history" element={<History />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </main>

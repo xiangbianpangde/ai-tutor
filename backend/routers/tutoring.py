@@ -412,3 +412,86 @@ async def learning_plan(request: Request, user_id: str, subject_id: str) -> dict
         "plan": plan.model_dump(mode="json"),
         "progress": progress.model_dump(mode="json"),
     })
+
+
+# ------------------------------------------------------------------ #
+# 会话历史回放（跨会话判分详情 + 概览，复盘"我之前怎么错的"）
+# ------------------------------------------------------------------ #
+@router.get("/users/{user_id}/session-history",
+            summary="会话历史回放：跨会话判分详情 + 概览统计")
+async def session_history(request: Request, user_id: str) -> dict:
+    """聚合该用户所有会话的判分回放（recent_history 全量，SQLite 持久）。
+
+    每条记录：会话 id / 概念名 / 正确性 / 时间 / 答案原文 / 自我纠正标记。
+    概览：会话数 / 总判分 / correct_rate / 各正确性计数。按时间倒序。
+    """
+    import json
+
+    store = request.app.state.store
+    if store is None:
+        from shared.errors import TutorError
+
+        raise TutorError("DATABASE_ERROR", hint="DB 未就绪")
+
+    from shared.models import ConceptRow, SessionRow
+
+    sessions = []
+    entries = []
+    with store.session() as s:
+        rows = (
+            s.query(SessionRow)
+            .filter_by(user_id=user_id)
+            .order_by(SessionRow.started_at.desc())
+            .all()
+        )
+        for row in rows:
+            raw = row.context_json or "{}"
+            try:
+                ctx = json.loads(raw) if isinstance(raw, str) else raw
+            except (ValueError, TypeError):
+                ctx = {}
+            history = ctx.get("recent_history") or []
+            sessions.append({
+                "session_id": row.id,
+                "subject_id": row.subject_id,
+                "status": row.status,
+                "started_at": (
+                    row.started_at.isoformat() if row.started_at else None
+                ),
+                "history_count": len(history),
+            })
+            for entry in history:
+                cid = entry.get("concept_id") or ""
+                name_row = (
+                    s.query(ConceptRow.name_primary)
+                    .filter(ConceptRow.base_id == cid)
+                    .first()
+                )
+                entries.append({
+                    "session_id": row.id,
+                    "subject_id": row.subject_id,
+                    "concept_id": cid,
+                    "concept_name": name_row[0] if name_row and name_row[0] else cid,
+                    "correctness": entry.get("correctness"),
+                    "timestamp": entry.get("timestamp"),
+                    "answer": entry.get("answer"),
+                    "was_self_corrected": bool(entry.get("was_self_corrected")),
+                })
+
+    entries.sort(key=lambda e: e.get("timestamp") or "", reverse=True)
+    total = len(entries)
+    counts = {"correct": 0, "partial": 0, "incorrect": 0}
+    for e in entries:
+        c = e.get("correctness")
+        if c in counts:
+            counts[c] += 1
+    overview = {
+        "sessions": len(sessions),
+        "attempts": total,
+        "correct": counts["correct"],
+        "partial": counts["partial"],
+        "incorrect": counts["incorrect"],
+        "correct_rate": round(counts["correct"] / total, 3) if total else 0.0,
+    }
+    return ok({"user_id": user_id, "overview": overview,
+               "sessions": sessions, "entries": entries})

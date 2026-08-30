@@ -49,3 +49,5 @@ export const IconX = (p) => (<I {...p}><path d="M18 6 6 18M6 6l12 12" /></I>);
 export const IconSmile = (p) => (<I {...p}><circle cx="12" cy="12" r="9" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><path d="M9 9h.01M15 9h.01" /></I>);
 export const IconMeh = (p) => (<I {...p}><circle cx="12" cy="12" r="9" /><path d="M8 15h8" /><path d="M9 9h.01M15 9h.01" /></I>);
 export const IconFrown = (p) => (<I {...p}><circle cx="12" cy="12" r="9" /><path d="M16 16s-1.5-2-4-2-4 2-4 2" /><path d="M9 9h.01M15 9h.01" /></I>);
+
+export const IconHistory = (p) => (<I {...p}><path d="M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7V8l-4-3 4-3v1Z" /><path d="M12 7v5l3 2" /></I>);
