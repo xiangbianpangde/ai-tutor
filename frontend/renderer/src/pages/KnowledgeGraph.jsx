@@ -7,6 +7,11 @@ import {
 } from '../components/Icons.jsx';
 
 // 知识图谱页（#5 功能1+3）：选科目 → 力导向图 + 认知负荷热力图 + 节点详情 + RAG 资料问答。
+const USER_KEY = 'aitutor.user';
+function currentUser() {
+  return localStorage.getItem(USER_KEY) || 'demo-user';
+}
+
 export default function KnowledgeGraph() {
   const [subjects, setSubjects] = useState([]);
   const [userId, setUserId] = useState(currentUser());
