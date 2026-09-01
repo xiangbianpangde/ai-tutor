@@ -254,19 +254,6 @@ wheels = [
 ]
 
 [[package]]
-name = "arxiv"
-version = "4.0.0"
-source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
-dependencies = [
-    { name = "lxml" },
-    { name = "requests" },
-]
-sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/fb/48/88c8e9c42712760ca9e74e52f6c4a388ee9e9939e341bfd8da295a9d1b17/arxiv-4.0.0.tar.gz", hash = "sha256:1d30a1dba5054e0df9b1d63f8e190b58e6a59d0c2f4ccec344ce1de5bafe546d", size = 198009, upload-time = "2026-05-17T23:42:30.952Z" }
-wheels = [
-    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/af/50/4d01d219958b19b5aaca6ae74820b181baea438cd034d5b3c04b4cf4f75e/arxiv-4.0.0-py3-none-any.whl", hash = "sha256:fc7e65e74d0fba21df2c521df24119d015fcb839dd5c4feb683ee35548c932c4", size = 13014, upload-time = "2026-05-17T23:42:29.246Z" },
-]
-
-[[package]]
 name = "attrs"
 version = "26.1.0"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
@@ -877,34 +864,34 @@ wheels = [
 
 [package.optional-dependencies]
 cudart = [
-    { name = "nvidia-cuda-runtime", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cuda-runtime" },
 ]
 cufft = [
-    { name = "nvidia-cufft", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cufft" },
 ]
 cufile = [
-    { name = "nvidia-cufile", marker = "sys_platform == 'linux'" },
+    { name = "nvidia-cufile" },
 ]
 cupti = [
-    { name = "nvidia-cuda-cupti", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cuda-cupti" },
 ]
 curand = [
-    { name = "nvidia-curand", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-curand" },
 ]
 cusolver = [
-    { name = "nvidia-cusolver", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cusolver" },
 ]
 cusparse = [
-    { name = "nvidia-cusparse", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cusparse" },
 ]
 nvjitlink = [
-    { name = "nvidia-nvjitlink", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-nvjitlink" },
 ]
 nvrtc = [
-    { name = "nvidia-cuda-nvrtc", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cuda-nvrtc" },
 ]
 nvtx = [
-    { name = "nvidia-nvtx", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-nvtx" },
 ]
 
 [[package]]
@@ -3719,12 +3706,14 @@ wheels = [
 
 [[package]]
 name = "research-tool"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "../调研/research-tool" }
 dependencies = [
+    { name = "defusedxml" },
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pypinyin" },
+    { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "rich" },
     { name = "typer" },
@@ -3732,34 +3721,42 @@ dependencies = [
 
 [package.optional-dependencies]
 search = [
-    { name = "arxiv" },
     { name = "ddgs" },
     { name = "tavily-python" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "arxiv", marker = "extra == 'all'", specifier = ">=2.1" },
-    { name = "arxiv", marker = "extra == 'search'", specifier = ">=2.1" },
+    { name = "anthropic", marker = "extra == 'all'", specifier = ">=0.40" },
+    { name = "anthropic", marker = "extra == 'llm'", specifier = ">=0.40" },
     { name = "crawl4ai", marker = "extra == 'all'", specifier = ">=0.4" },
     { name = "crawl4ai", marker = "extra == 'crawl'", specifier = ">=0.4" },
     { name = "ddgs", marker = "extra == 'all'", specifier = ">=6.0" },
     { name = "ddgs", marker = "extra == 'search'", specifier = ">=6.0" },
+    { name = "defusedxml", specifier = ">=0.7" },
+    { name = "faster-whisper", marker = "extra == 'all'", specifier = ">=1.0" },
+    { name = "faster-whisper", marker = "extra == 'video'", specifier = ">=1.0" },
+    { name = "gradio", marker = "extra == 'all'", specifier = ">=4.0" },
     { name = "gradio", marker = "extra == 'ui'", specifier = ">=4.0" },
     { name = "httpx", specifier = ">=0.27" },
+    { name = "mineru", marker = "extra == 'all'", specifier = ">=2.0" },
     { name = "mineru", marker = "extra == 'pdf'", specifier = ">=2.0" },
+    { name = "openai", marker = "extra == 'all'", specifier = ">=1.0" },
+    { name = "openai", marker = "extra == 'llm'", specifier = ">=1.0" },
     { name = "pydantic", specifier = ">=2.6" },
     { name = "pypinyin", specifier = ">=0.51" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
+    { name = "python-dotenv", specifier = ">=1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.7" },
     { name = "tavily-python", marker = "extra == 'all'", specifier = ">=0.5" },
     { name = "tavily-python", marker = "extra == 'search'", specifier = ">=0.5" },
     { name = "typer", specifier = ">=0.12" },
+    { name = "yt-dlp", marker = "extra == 'all'", specifier = ">=2024.5" },
+    { name = "yt-dlp", marker = "extra == 'video'", specifier = ">=2024.5" },
 ]
-provides-extras = ["crawl", "search", "pdf", "ui", "all", "dev"]
+provides-extras = ["llm", "crawl", "search", "pdf", "ui", "video", "all", "dev"]
 
 [[package]]
 name = "rich"

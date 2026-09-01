@@ -1,0 +1,1163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fastshot — Describe an app. We'll build it.</title>
+  <meta name="description" content="Fastshot turns a written description into a working app.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Ccircle cx='17' cy='17' r='17' fill='%239C86CE'/%3E%3Ccircle cx='17' cy='17' r='8.6' fill='%23fff'/%3E%3Ccircle cx='17' cy='17' r='3.7' fill='%23151519'/%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=block" rel="stylesheet">
+
+  <script>document.documentElement.classList.add('anim');</script>
+  <style>
+    /* Base */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0a0d12;
+    }
+
+    body {
+      color: #fff;
+      font-family: var(--font-text);
+      font-synthesis: none;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: geometricPrecision;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+      color: inherit;
+      background: none;
+      border: 0;
+    }
+
+    button {
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    img,
+    svg {
+      display: block;
+    }
+
+    :focus-visible {
+      outline: 2px solid #F8B285;
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    /* Reference frame: 1560 × 1008 */
+    :root {
+      --font-text: Inter, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-display: Inter, var(--font-text);
+
+      --u: min(0.06410256vw, 0.12400794vh);
+      --vu: 0.09920635vh;
+      --inset-top: 41;
+      --inset-bottom: 106;
+
+      /* Nav */
+      --brand-x: 225;
+      --brand-y: 45;
+      --mark: 34;
+      --brand-gap: 12;
+      --brand-fs: 18.49;
+      --links-y: 50.5;
+      --links-gap: 50;
+      --links-fs: 21.69;
+      --cta-x: 1195;
+      --cta-y: 42;
+      --cta-w: 140;
+      --cta-h: 43;
+      --cta-r: 12;
+      --cta-fs: 15.70;
+      --cta-dy: 2;
+
+      /* Hero */
+      --hero-gap: 51;
+      --h1-y: 323;
+      --h1-fs: 36.25;
+      --display-ls: 0.0018em;
+      --nav-ls: -0.0115em;
+      --brand-ls: -0.0154em;
+      --cta-ls: -0.0127em;
+      --body-ls: 0.007em;
+      --label-ls: normal;
+      --model-ls: normal;
+      --proof-ls: 0.0065em;
+
+      --w-regular: 400;
+      --w-display-wght: 410;
+      --w-medium: 500;
+      --w-semibold: 600;
+      --w-display: var(--w-display-wght);
+      --w-nav: 400;
+      --w-brand: 500;
+      --w-cta: 520;
+      --w-body: var(--w-regular);
+      --w-label: var(--w-medium);
+      --w-model: var(--w-regular);
+      --w-proof: 480;
+
+      /* Composer */
+      --card-x: 425;
+      --card-y: 413;
+      --card-w: 708;
+      --card-h: 143;
+      --card-r: 26;
+      --ph-x: 452;
+      --ph-y: 446;
+      --ph-fs: 9.97;
+      --chips-x: 444;
+      --chips-y: 505;
+      --chip-h: 30;
+      --chip-r: 9;
+      --chip-fs: 9.0;
+      --chip-gap: 5.5;
+      --son-fs: 10.4;
+      --son-top: 15.5;
+      --chev-gap: 6.2;
+      --chev-x: 1013.5;
+      --chev-y: 522.3;
+      --att-x: 1043.2;
+      --att-y: 515.1;
+      --send-x: 1084;
+      --send-y: 507;
+      --send-d: 35;
+
+      /* Footer */
+      --by-y: 799;
+      --by-fs: 14.01;
+      --logo-y: 867;
+      --logo-gap: 62;
+
+      --e-primary: cubic-bezier(.16, 1, .3, 1);
+      --e-soft: cubic-bezier(.22, 1, .36, 1);
+    }
+
+    @supports (height: 100dvh) {
+      :root {
+        --u: min(0.06410256vw, 0.12400794dvh);
+        --vu: 0.09920635dvh;
+      }
+    }
+
+    @media (min-width: 1561px) {
+      :root {
+        --inset-top: 27;
+        --inset-bottom: 74;
+      }
+    }
+
+    /* Full-bleed stage */
+    .stage {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      background: #0a0d12;
+    }
+
+    .stage-video {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+    }
+
+    .frame {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      padding: calc(var(--inset-top) * var(--vu))
+        calc(225 * var(--u))
+        calc(var(--inset-bottom) * var(--vu));
+    }
+
+    /* Navigation */
+    .menu-toggle {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .nav {
+      position: relative;
+      flex: none;
+      width: 100%;
+      height: calc(43 * var(--u));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: calc(var(--brand-gap) * var(--u));
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .brand-mark {
+      width: calc(var(--mark) * var(--u));
+      height: calc(var(--mark) * var(--u));
+      flex: none;
+      transition: transform .25s var(--e-primary);
+    }
+
+    .brand:hover .brand-mark {
+      transform: scale(1.04);
+    }
+
+    .brand-name {
+      display: inline-flex;
+      align-items: center;
+      font-family: var(--font-display);
+      font-size: calc(var(--brand-fs) * var(--u));
+      font-weight: var(--w-brand);
+      line-height: 1;
+      letter-spacing: var(--brand-ls);
+      font-variation-settings: "opsz" 32;
+      transform: translateY(calc(1 * var(--u)));
+      text-shadow: 0 calc(1 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, .30);
+    }
+
+    .nav-links {
+      position: absolute;
+      left: 50%;
+      top: calc((50.5 - 41) * var(--u));
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: calc(var(--links-gap) * var(--u));
+    }
+
+    .nav-link {
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: var(--font-text);
+      font-size: calc(var(--links-fs) * var(--u));
+      font-weight: var(--w-nav);
+      line-height: 1.2;
+      letter-spacing: var(--nav-ls);
+      text-shadow: 0 calc(1 * var(--u)) calc(12 * var(--u)) rgba(0, 0, 0, .32);
+      transition: opacity .18s ease;
+    }
+
+    .nav-link:hover {
+      opacity: .72;
+    }
+
+    .cta {
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: calc(var(--cta-w) * var(--u));
+      height: calc(var(--cta-h) * var(--u));
+      margin-top: calc((42 - 41) * var(--u));
+      border-radius: calc(var(--cta-r) * var(--u));
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: var(--font-text);
+      font-size: calc(var(--cta-fs) * var(--u));
+      font-weight: var(--w-cta);
+      letter-spacing: var(--cta-ls);
+      background: linear-gradient(180deg, #3d3d3f 0%, #1d1d20 100%);
+      box-shadow: inset 0 calc(1 * var(--u)) 0 rgba(255, 255, 255, .10),
+        0 calc(2 * var(--u)) calc(14 * var(--u)) rgba(0, 0, 0, .28);
+      transition: filter .18s ease, transform .12s ease;
+    }
+
+    .cta span {
+      display: inline-block;
+      transform: translateY(calc(var(--cta-dy) * var(--u)));
+    }
+
+    .cta:hover {
+      filter: brightness(1.16);
+    }
+
+    .cta:active {
+      transform: translateY(1px);
+    }
+
+    .burger {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-radius: 11px;
+      background: rgba(255, 255, 255, .10);
+      cursor: pointer;
+    }
+
+    .burger-icon {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 17px;
+      height: 12px;
+    }
+
+    .burger-bar {
+      width: 17px;
+      height: 2px;
+      border-radius: 1px;
+      background: #fff;
+      transition: transform .25s ease, opacity .25s ease;
+    }
+
+    .sheet {
+      display: none;
+    }
+
+    /* Hero */
+    .hero {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: calc(var(--hero-gap) * var(--vu));
+      padding-bottom: calc(4 * var(--vu));
+    }
+
+    .h1 {
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: calc(var(--h1-fs) * var(--u));
+      font-weight: var(--w-display);
+      line-height: 1.10;
+      letter-spacing: var(--display-ls);
+      font-variation-settings: "opsz" 32;
+      text-align: center;
+      white-space: nowrap;
+      text-shadow: 0 calc(2 * var(--u)) calc(22 * var(--u)) rgba(0, 0, 0, .30);
+    }
+
+    /* Composer */
+    .card {
+      position: relative;
+      width: calc(var(--card-w) * var(--u));
+      height: calc(var(--card-h) * var(--u));
+      margin-right: calc(3 * var(--u));
+      border-radius: calc(var(--card-r) * var(--u));
+      background: rgba(41, 41, 43, .955);
+      backdrop-filter: blur(calc(26 * var(--u))) saturate(112%);
+      -webkit-backdrop-filter: blur(calc(26 * var(--u))) saturate(112%);
+      box-shadow: inset 0 0 0 1px rgba(214, 228, 255, .14),
+        0 calc(22 * var(--u)) calc(60 * var(--u)) rgba(0, 0, 0, .30);
+    }
+
+    .ph {
+      position: absolute;
+      top: calc((446 - 413) * var(--u));
+      right: calc(24 * var(--u));
+      left: calc((452 - 425) * var(--u));
+      overflow: hidden;
+      color: #8B8C8E;
+      font-size: calc(var(--ph-fs) * var(--u));
+      font-weight: var(--w-body);
+      line-height: 1.35;
+      letter-spacing: var(--body-ls);
+      white-space: nowrap;
+    }
+
+    .tools {
+      position: absolute;
+      top: calc((505 - 413) * var(--u));
+      left: calc((444 - 425) * var(--u));
+      right: calc((425 + 708 - 1134) * var(--u));
+      height: calc(var(--chip-h) * var(--u));
+    }
+
+    .chips {
+      display: flex;
+      align-items: center;
+      gap: calc(var(--chip-gap) * var(--u));
+      height: 100%;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      flex: none;
+      width: calc(var(--cw) * var(--u));
+      height: calc(var(--chip-h) * var(--u));
+      padding-left: calc(var(--pl) * var(--u));
+      gap: calc(var(--ig) * var(--u));
+      border: 1px solid rgba(255, 255, 255, .05);
+      border-radius: calc(var(--chip-r) * var(--u));
+      color: #909093;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+      font-size: calc(var(--chip-fs) * var(--u));
+      font-weight: var(--w-label);
+      line-height: 1;
+      background: linear-gradient(180deg, rgba(255, 255, 255, .088) 0%,
+        rgba(255, 255, 255, .050) 45%, rgba(255, 255, 255, .038) 100%);
+      transition: background .18s ease, border-color .18s ease, color .18s ease, transform .12s ease;
+    }
+
+    .chip span {
+      display: inline-block;
+      transform: translateY(calc(2 * var(--u)));
+      white-space: nowrap;
+    }
+
+    .chip svg {
+      flex: none;
+      height: auto;
+      fill: currentColor;
+    }
+
+    .chip:hover {
+      color: #c8c8cb;
+      border-color: rgba(255, 255, 255, .12);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .07));
+    }
+
+    .chip:active {
+      transform: scale(.97);
+    }
+
+    /* Desktop right cluster: deliberately absolute, not a flex-centered group. */
+    .right {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .right > * {
+      position: absolute;
+      pointer-events: auto;
+    }
+
+    .model {
+      top: calc(var(--son-top) * var(--u));
+      left: calc((955 - 444 - 0.8) * var(--u));
+      display: inline-flex;
+      align-items: center;
+      gap: calc(var(--chev-gap) * var(--u));
+      padding: 0;
+      color: #98999C;
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: calc(var(--son-fs) * var(--u));
+      font-weight: var(--w-model);
+      line-height: 1;
+      letter-spacing: var(--model-ls);
+      transition: color .18s ease;
+    }
+
+    .model:hover {
+      color: #fff;
+    }
+
+    .model svg {
+      flex: none;
+      width: calc(6.8 * var(--u));
+      height: auto;
+      fill: currentColor;
+    }
+
+    .attach {
+      top: calc((515.14 - 505) * var(--u));
+      left: calc((1043.15 - 444) * var(--u));
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: auto;
+      height: auto;
+      padding: 0;
+      color: #A9AAAD;
+      cursor: pointer;
+      transition: color .18s ease;
+    }
+
+    .attach:hover {
+      color: #fff;
+    }
+
+    .attach svg {
+      width: calc(19.79 * var(--u));
+      height: auto;
+      fill: currentColor;
+    }
+
+    .send {
+      top: calc((507 - 505) * var(--u));
+      left: calc((1084 - 444) * var(--u));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: calc(var(--send-d) * var(--u));
+      height: calc(var(--send-d) * var(--u));
+      padding: 0;
+      border-radius: 50%;
+      color: #fff;
+      cursor: pointer;
+      background: linear-gradient(163deg, #FBBC94 0%, #F49D70 46%, #E88654 100%);
+      box-shadow: 0 calc(3 * var(--u)) calc(12 * var(--u)) rgba(210, 110, 60, .34);
+      transition: filter .18s ease, transform .12s ease;
+    }
+
+    .send:hover {
+      filter: brightness(1.07);
+    }
+
+    .send:active {
+      transform: scale(.95);
+    }
+
+    .send svg {
+      width: calc(11.66 * var(--u));
+      height: auto;
+      fill: #fff;
+    }
+
+    /* Proof */
+    .proof {
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: calc(52.3 * var(--vu));
+    }
+
+    .proof-caption {
+      color: rgba(255, 255, 255, .95);
+      font-family: var(--font-display);
+      font-size: calc(var(--by-fs) * var(--u));
+      font-weight: var(--w-proof);
+      line-height: 1;
+      letter-spacing: var(--proof-ls);
+      font-variation-settings: "opsz" 32;
+      text-align: center;
+      text-shadow: 0 calc(1 * var(--u)) calc(12 * var(--u)) rgba(0, 0, 0, .35);
+    }
+
+    .logos {
+      display: flex;
+      align-items: center;
+      gap: calc(var(--logo-gap) * var(--u));
+      color: #fff;
+      filter: drop-shadow(0 calc(1 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, .30));
+    }
+
+    .logo {
+      flex: none;
+      height: calc(37 * var(--u));
+      color: #fff;
+      fill: currentColor;
+      overflow: visible;
+    }
+
+    .logo-google { width: calc(96.84 * var(--u)); }
+    .logo-cisco { width: calc(67.29 * var(--u)); }
+    .logo-adobe { width: calc(88.68 * var(--u)); }
+
+    .logo text {
+      fill: currentColor;
+      font-family: Inter, -apple-system, "Segoe UI", sans-serif;
+      dominant-baseline: alphabetic;
+    }
+
+    /* Entrance animation */
+    @keyframes e-settle-down {
+      from { opacity: 0; transform: translateY(calc(-5 * var(--u))); }
+      to { opacity: 1; transform: none; }
+    }
+
+    @keyframes e-settle-up {
+      from { opacity: 0; transform: translateY(calc(6 * var(--u))); }
+      to { opacity: 1; transform: none; }
+    }
+
+    @keyframes e-mark {
+      from { transform: scale(.9); }
+      to { transform: none; }
+    }
+
+    @keyframes e-focus {
+      from {
+        opacity: 0;
+        transform: translateY(calc(14 * var(--u)));
+        filter: blur(calc(6 * var(--u)));
+      }
+      to {
+        opacity: 1;
+        transform: none;
+        filter: blur(0);
+      }
+    }
+
+    @keyframes e-panel {
+      from {
+        opacity: 0;
+        transform: translateY(calc(18 * var(--u))) scale(.985);
+      }
+      to { opacity: 1; transform: none; }
+    }
+
+    @keyframes e-populate {
+      from { opacity: 0; transform: translateY(calc(4 * var(--u))); }
+      to { opacity: 1; transform: none; }
+    }
+
+    @keyframes e-send {
+      from { transform: scale(.82); }
+      to { transform: none; }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      html.anim .brand { animation: e-settle-down .58s var(--e-soft) .06s both; }
+      html.anim .brand-mark { animation: e-mark .62s var(--e-primary) .06s both; }
+      html.anim .nav-link:nth-child(1) { animation: e-settle-down .50s var(--e-soft) .16s both; }
+      html.anim .nav-link:nth-child(2) { animation: e-settle-down .50s var(--e-soft) .21s both; }
+      html.anim .nav-link:nth-child(3) { animation: e-settle-down .50s var(--e-soft) .26s both; }
+      html.anim .nav-link:nth-child(4) { animation: e-settle-down .50s var(--e-soft) .31s both; }
+      html.anim .cta { animation: e-settle-down .55s var(--e-soft) .34s both; }
+      html.anim .h1 {
+        animation: e-focus 1.00s var(--e-primary) .30s both;
+        will-change: transform, opacity;
+      }
+      html.anim .card {
+        animation: e-panel .90s var(--e-primary) .62s both;
+        will-change: transform, opacity;
+      }
+      html.anim .ph { animation: e-populate .50s var(--e-soft) .88s both; }
+      html.anim .chips { animation: e-populate .50s var(--e-soft) .94s both; }
+      html.anim .right { animation: e-populate .50s var(--e-soft) 1.00s both; }
+      html.anim .send { animation: e-send .50s var(--e-primary) 1.00s both; }
+      html.anim .proof-caption { animation: e-settle-up .55s var(--e-soft) 1.08s both; }
+      html.anim .logo-google { animation: e-settle-up .55s var(--e-soft) 1.16s both; }
+      html.anim .logo-cisco { animation: e-settle-up .55s var(--e-soft) 1.22s both; }
+      html.anim .logo-adobe { animation: e-settle-up .55s var(--e-soft) 1.28s both; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+
+    /* Tablet: fluid desktop architecture, one toolbar row. */
+    @media (min-width: 600px) and (max-width: 1180px) and (min-height: 600px) {
+      :root { --u: 1px; }
+
+      .frame {
+        padding: clamp(24px, 3.4vh, 44px)
+          clamp(28px, 4.2vw, 60px)
+          clamp(26px, 4.4vh, 56px);
+      }
+
+      .nav { height: auto; }
+      .nav-links {
+        position: static;
+        top: auto;
+        left: auto;
+        transform: none;
+        gap: clamp(16px, 2.5vw, 32px);
+      }
+      .nav-link { font-size: clamp(14px, 1.6vw, 18px); }
+      .cta {
+        align-self: center;
+        width: auto;
+        height: clamp(36px, 4vh, 42px);
+        margin-top: 0;
+        padding: 0 clamp(14px, 1.8vw, 22px);
+        font-size: clamp(13px, 1.4vw, 15px);
+      }
+
+      .h1 {
+        font-size: clamp(27px, 4.3vw, 44px);
+        line-height: 1.12;
+        white-space: normal;
+      }
+
+      .card {
+        width: min(100%, clamp(516px, 74vw, 760px));
+        height: auto;
+        margin-right: 0;
+        padding: clamp(15px, 1.9vw, 24px);
+        border-radius: clamp(17px, 2.1vw, 26px);
+        display: flex;
+        flex-direction: column;
+        gap: clamp(20px, 3.2vh, 44px);
+      }
+
+      .ph {
+        position: static;
+        left: auto;
+        top: auto;
+        right: auto;
+        white-space: normal;
+        font-size: clamp(11px, 1.35vw, 14px);
+        line-height: 1.4;
+      }
+
+      .tools {
+        position: static;
+        left: auto;
+        top: auto;
+        right: auto;
+        height: auto;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: clamp(10px, 1.4vw, 18px);
+      }
+
+      .chips {
+        height: auto;
+        flex-wrap: nowrap;
+        gap: clamp(6px, .85vw, 10px);
+      }
+
+      .chip {
+        width: auto;
+        height: clamp(29px, 3.4vh, 34px);
+        padding: 0 clamp(7px, 1vw, 13px);
+        font-size: clamp(9.6px, 1.12vw, 12.5px);
+      }
+
+      .chip span { transform: none; }
+
+      .right {
+        position: static;
+        inset: auto;
+        display: flex;
+        align-items: center;
+        gap: 0;
+        margin-left: auto;
+        pointer-events: auto;
+      }
+
+      .right > * {
+        position: static;
+      }
+
+      .model {
+        top: auto;
+        left: auto;
+        font-size: clamp(9.8px, 1.12vw, 12.5px);
+      }
+
+      .model svg { width: 6.8px; }
+
+      .attach {
+        top: auto;
+        left: auto;
+        margin-left: clamp(9px, 1.4vw, 20px);
+      }
+
+      .attach svg { width: clamp(16px, 1.8vw, 20px); }
+
+      .send {
+        top: auto;
+        left: auto;
+        flex: none;
+        width: clamp(32px, 3.5vw, 38px);
+        height: clamp(32px, 3.5vw, 38px);
+        margin-left: clamp(9px, 1.3vw, 18px);
+      }
+
+      .send svg { width: clamp(10px, 1.2vw, 13px); }
+
+      .proof { gap: clamp(15px, 2.5vh, 30px); }
+      .proof-caption { font-size: clamp(12px, 1.4vw, 14px); }
+      .logos { gap: clamp(28px, 4vw, 48px); }
+      .logo { height: clamp(16px, 2.1vw, 20px); }
+      .logo-google { width: clamp(78px, 8.1vw, 96.84px); }
+      .logo-cisco { width: clamp(54px, 5.7vw, 67.29px); }
+      .logo-adobe { width: clamp(72px, 7.4vw, 88.68px); }
+    }
+
+    /* Compact: phone / short viewport architecture. */
+    @media (max-width: 599px), (max-height: 599px) and (max-width: 1180px) {
+      :root { --u: 1px; }
+
+      .frame {
+        padding:
+          max(18px, env(safe-area-inset-top))
+          max(clamp(18px, 5.2vw, 40px), env(safe-area-inset-right))
+          max(20px, env(safe-area-inset-bottom))
+          max(clamp(18px, 5.2vw, 40px), env(safe-area-inset-left));
+      }
+
+      .nav { height: auto; }
+      .nav-links,
+      .nav > .cta { display: none; }
+      .burger { display: flex; }
+      .brand { gap: 10px; }
+      .brand-mark { width: 30px; height: 30px; }
+      .brand-name { font-size: 16px; }
+
+      .h1 {
+        width: 100%;
+        max-width: 15ch;
+        font-size: clamp(29px, 7.6vw, 50px);
+        line-height: 1.14;
+        letter-spacing: -.012em;
+        white-space: normal;
+      }
+
+      .card {
+        width: 100%;
+        max-width: 600px;
+        height: auto;
+        margin-right: 0;
+        padding: clamp(13px, 3.4vw, 18px);
+        border-radius: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: clamp(16px, 4.6vh, 34px);
+      }
+
+      .ph {
+        position: static;
+        top: auto;
+        right: auto;
+        left: auto;
+        font-size: clamp(9.4px, 2.95vw, 14px);
+        line-height: 1.4;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+
+      .tools {
+        position: static;
+        top: auto;
+        right: auto;
+        left: auto;
+        height: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+      }
+
+      .chips {
+        height: auto;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .chip {
+        width: auto;
+        height: 30px;
+        padding: 0 10px;
+        font-size: 11px;
+      }
+
+      .chip span { transform: none; }
+
+      .right {
+        position: static;
+        inset: auto;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        pointer-events: auto;
+      }
+
+      .right > * { position: static; }
+
+      .model {
+        top: auto;
+        left: auto;
+        font-size: 12px;
+      }
+
+      .model svg { width: 6.8px; }
+
+      .attach {
+        top: auto;
+        left: auto;
+        margin-left: auto;
+      }
+
+      .attach svg { width: 18px; }
+
+      .send {
+        top: auto;
+        left: auto;
+        flex: none;
+        width: 40px;
+        height: 40px;
+        margin-left: 14px;
+      }
+
+      .send svg { width: 13px; }
+
+      .proof { gap: 16px; }
+      .proof-caption { font-size: 12px; }
+      .logos { gap: 22px; }
+      .logo { height: 16px; }
+      .logo-google { width: 78px; }
+      .logo-cisco { width: 54px; }
+      .logo-adobe { width: 72px; }
+
+      /* CSS-only mobile menu sheet. */
+      .sheet {
+        position: fixed;
+        top: calc(max(18px, env(safe-area-inset-top)) + 48px);
+        right: max(clamp(18px, 5.2vw, 40px), env(safe-area-inset-right));
+        left: max(clamp(18px, 5.2vw, 40px), env(safe-area-inset-left));
+        z-index: 2;
+        display: grid;
+        grid-template-rows: 0fr;
+        overflow: hidden;
+        visibility: hidden;
+        pointer-events: none;
+        transition: grid-template-rows .32s cubic-bezier(.4, 0, .2, 1), visibility 0s linear .32s;
+      }
+
+      .sheet-inner {
+        min-height: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 0 20px;
+        border: 1px solid transparent;
+        border-radius: 16px;
+        background: transparent;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        transition: padding .32s ease, background .01ms linear, border-color .01ms linear;
+      }
+
+      #menu:checked ~ .sheet {
+        grid-template-rows: 1fr;
+        visibility: visible;
+        pointer-events: auto;
+        transition-delay: 0s;
+      }
+      #menu:checked ~ .sheet .sheet-inner {
+        padding: 20px;
+        border-color: rgba(255, 255, 255, .09);
+        background: rgba(24, 24, 27, .86);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+      }
+      #menu:checked ~ .burger .burger-bar:nth-child(1) {
+        transform: translateY(5px) rotate(45deg);
+      }
+      #menu:checked ~ .burger .burger-bar:nth-child(2) {
+        transform: translateY(-5px) rotate(-45deg);
+      }
+
+      .sheet-link {
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, .06);
+        color: #fff;
+        font-size: 15px;
+        line-height: 1.3;
+      }
+
+      .sheet-cta {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 40px;
+        margin-top: 4px;
+        border: 1px solid rgba(255, 255, 255, .10);
+        border-radius: 11px;
+        color: #fff;
+        font-size: 15px;
+        font-weight: 520;
+        background: linear-gradient(180deg, #3d3d3f 0%, #1d1d20 100%);
+      }
+    }
+
+    @media (max-width: 1180px) and (max-height: 560px) {
+      .hero { gap: 16px; }
+      .h1 { font-size: clamp(24px, 5.4vh, 34px); }
+      .proof { gap: 10px; }
+      .frame { padding-top: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <video
+      class="stage-video"
+      autoplay
+      muted
+      loop
+      playsinline
+      src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260826_124724_bc041163-d651-425f-aea3-2acc1efc2c96.mp4"
+      aria-hidden="true"
+    ></video>
+
+    <div class="frame">
+      <header class="nav">
+        <a class="brand" href="#" aria-label="Fastshot home">
+          <svg class="brand-mark" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle cx="17" cy="17" r="17" fill="#9C86CE" />
+            <circle cx="17" cy="17" r="8.6" fill="#FFFFFF" />
+            <circle cx="17" cy="17" r="3.7" fill="#151519" />
+          </svg>
+          <span class="brand-name">Fastshot</span>
+        </a>
+
+        <nav class="nav-links" aria-label="Primary navigation">
+          <a class="nav-link" href="#">Features</a>
+          <a class="nav-link" href="#">Examples</a>
+          <a class="nav-link" href="#">Pricing</a>
+          <a class="nav-link" href="#">Docs</a>
+        </nav>
+
+        <a class="cta" href="#"><span>Get Started</span></a>
+
+        <input class="menu-toggle" id="menu" type="checkbox" aria-label="Toggle navigation menu">
+        <label class="burger" for="menu" tabindex="0" aria-label="Toggle navigation menu">
+          <span class="burger-icon" aria-hidden="true">
+            <span class="burger-bar"></span>
+            <span class="burger-bar"></span>
+          </span>
+        </label>
+
+        <div class="sheet" id="mobile-sheet">
+          <div class="sheet-inner">
+            <a class="sheet-link" href="#">Features</a>
+            <a class="sheet-link" href="#">Examples</a>
+            <a class="sheet-link" href="#">Pricing</a>
+            <a class="sheet-link" href="#">Docs</a>
+            <a class="sheet-cta" href="#">Get Started</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="hero">
+        <h1 class="h1">Describe an app. We'll build it.</h1>
+
+        <form class="card" onsubmit="return false">
+          <p class="ph">Build a fintech tracking app with bank level privacy and...</p>
+
+          <div class="tools">
+            <div class="chips">
+              <button class="chip" type="button" style="--cw:107;--pl:12;--ig:3.7" aria-label="Attach Screens">
+                <svg viewBox="0 0 16 12" style="width: calc(15.06 * var(--u));" aria-hidden="true">
+                  <path d="M1.9 0h12.2c.99 0 1.8.81 1.8 1.8v6.4c0 .99-.81 1.8-1.8 1.8H9.55v.8h1.7a.6.6 0 1 1 0 1.2h-6.5a.6.6 0 1 1 0-1.2h1.7V10H1.9C.91 10 .1 9.19.1 8.2V1.8C.1.81.91 0 1.9 0Zm.6 2v5.8h11V2h-11Z" />
+                </svg>
+                <span>Attach Screens</span>
+              </button>
+
+              <button class="chip" type="button" style="--cw:108;--pl:16;--ig:3.9" aria-label="Attach a Figma">
+                <svg viewBox="0 0 14 14" style="width: calc(11.8 * var(--u));" aria-hidden="true">
+                  <path d="M3.5 0h7a3.5 3.5 0 0 1 1.75 6.53A3.5 3.5 0 0 1 10.5 13H7a3.5 3.5 0 0 1-3.5-6.47A3.5 3.5 0 0 1 3.5 0Zm0 1.4a2.1 2.1 0 1 0 0 4.2H6V1.4H3.5Zm2.5 4.2V1.4h2.5a2.1 2.1 0 1 1 0 4.2H6Zm0 1.4H3.5a2.1 2.1 0 1 0 0 4.2H6V7Zm1.4 0v2.1a2.1 2.1 0 1 0 2.1-2.1H7.4Zm0-1.4h2.1a2.1 2.1 0 1 0 0-4.2H7.4v4.2Z" />
+                </svg>
+                <span>Attach a Figma</span>
+              </button>
+
+              <button class="chip" type="button" style="--cw:107;--pl:15.8;--ig:2.9" aria-label="Today's Theme">
+                <svg viewBox="0 0 14 14" style="width: calc(12.13 * var(--u));" aria-hidden="true">
+                  <path d="M7 0c.35 3.48 3.52 6.65 7 7-3.48.35-6.65 3.52-7 7-.35-3.48-3.52-6.65-7-7 3.48-.35 6.65-3.52 7-7Z" />
+                </svg>
+                <span>Today's Theme</span>
+              </button>
+            </div>
+
+            <div class="right">
+              <button class="model" type="button" aria-label="Select model">
+                <span>Sonnet 4.5</span>
+                <svg viewBox="0 0 7 5" aria-hidden="true">
+                  <path d="M.8.6a.6.6 0 0 0-.85.85l3.1 3.1a.6.6 0 0 0 .85 0L7 1.45A.6.6 0 0 0 6.15.6L3.5 3.25.8.6Z" />
+                </svg>
+              </button>
+
+              <button class="attach" type="button" aria-label="Attach a file">
+                <svg viewBox="0 0 20 20" aria-hidden="true">
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M14.828 4.172a4 4 0 0 0-5.656 0l-7.071 7.071a2.5 2.5 0 1 0 3.535 3.536L12 8.415a1 1 0 0 0-1.414-1.414l-6.364 6.364a.75.75 0 0 1-1.06-1.06l6.363-6.365a2.5 2.5 0 0 1 3.536 3.536L5.99 16.547a4 4 0 1 1-5.657-5.657l7.071-7.071a5.5 5.5 0 0 1 7.778 7.778l-6.364 6.364a.75.75 0 0 1-1.06-1.06l6.364-6.364a4 4 0 0 0 .706-6.365Z" />
+                </svg>
+              </button>
+
+              <button class="send" type="submit" aria-label="Build it">
+                <svg viewBox="0 0 12 14" aria-hidden="true">
+                  <path d="M5.25 13.25a.75.75 0 0 0 1.5 0V3.31l3.22 3.22a.75.75 0 1 0 1.06-1.06l-4.5-4.5a.75.75 0 0 0-1.06 0l-4.5 4.5a.75.75 0 1 0 1.06 1.06l3.22-3.22v9.94Z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </form>
+      </main>
+
+      <footer class="proof">
+        <p class="proof-caption">Built by engineers from</p>
+        <div class="logos">
+          <svg class="logo logo-google" viewBox="0 0 97 20" role="img" aria-label="Google" xmlns="http://www.w3.org/2000/svg">
+            <title>Google</title>
+            <text x="0" y="16" font-size="17" font-weight="500" letter-spacing="-0.55">Google</text>
+          </svg>
+          <svg class="logo logo-cisco" viewBox="0 0 68 20" role="img" aria-label="Cisco" xmlns="http://www.w3.org/2000/svg">
+            <title>Cisco</title>
+            <path d="M2 10.9h1.4V17H2v-6.1Zm3.1-3.1h1.4V17H5.1V7.8Zm3.1-3.1h1.4V17H8.2V4.7Zm3.1 3.1h1.4V17h-1.4V7.8Zm3.1-3.1h1.4V17h-1.4V4.7Zm3.1 3.1h1.4V17h-1.4V7.8Zm3.1-3.1H22V17h-1.4V4.7Z" />
+            <text x="27" y="16" font-size="14" font-weight="600" letter-spacing="-0.45">cisco</text>
+          </svg>
+          <svg class="logo logo-adobe" viewBox="0 0 89 20" role="img" aria-label="Adobe" xmlns="http://www.w3.org/2000/svg">
+            <title>Adobe</title>
+            <path d="M2 2h12.5v16H2V2Zm3 3v10h2.5V9.3L10.9 15h2.4L9.5 5H5Zm13.2-3h12.5v16H18.2V2Zm3.2 3.2-3 9.8h2.5l.7-2.2h3.6l.7 2.2h2.7L25.5 5.2h-4.1Zm1.9 2.1 1.2 3.5h-2.3l1.1-3.5Z" />
+            <text x="36" y="16" font-size="14" font-weight="600" letter-spacing="-0.45">Adobe</text>
+          </svg>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    const lastLogo = document.querySelector('.logo-adobe');
+    let cleaned = false;
+    const cleanupEntrance = () => {
+      if (cleaned) return;
+      cleaned = true;
+      document.documentElement.classList.remove('anim');
+    };
+    if (lastLogo) lastLogo.addEventListener('animationend', cleanupEntrance, { once: true });
+    window.setTimeout(cleanupEntrance, 2600);
+  </script>
+</body>
+</html>

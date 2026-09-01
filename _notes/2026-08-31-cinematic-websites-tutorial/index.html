@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>用 GPT-5.6 Sol 打造电影感网站 · Viktor Oddy 21 分钟教程笔记</title>
+<meta name="description" content="Viktor Oddy (@viktoroddy) 2026-07-10 发布的 21 分钟完整教程笔记:七段式工作流 + 12 个关键技能。" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;0,900;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Serif+SC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F6F1E5;
+    --bg-2: #EFE8D7;
+    --paper: #FFFCF5;
+    --ink: #161412;
+    --ink-2: #4A443C;
+    --ink-3: #7A7268;
+    --line: #DDD3BD;
+    --line-2: #E8DFC8;
+    --gold: #B07D2A;
+    --gold-2: #D8A647;
+    --terracotta: #B8482F;
+    --teal: #1F4546;
+    --moss: #4A5D3A;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'Inter','Noto Serif SC',-apple-system,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  body{background-image:radial-gradient(circle at 20% 0%, rgba(216,166,71,.08), transparent 40%), radial-gradient(circle at 80% 100%, rgba(31,69,70,.06), transparent 40%);min-height:100vh}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+
+  /* ---------- TOP META BAR ---------- */
+  .meta-bar{
+    border-bottom:1px solid var(--line);
+    background:var(--paper);
+    padding:14px 0;
+    font-family:'JetBrains Mono',ui-monospace,monospace;
+    font-size:12px;
+    letter-spacing:.04em;
+    color:var(--ink-2);
+  }
+  .meta-bar .wrap{display:flex;gap:32px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+  .meta-bar .left{display:flex;gap:24px;flex-wrap:wrap;align-items:center}
+  .meta-bar .dot{width:6px;height:6px;background:var(--gold);border-radius:50%;display:inline-block;margin-right:8px;vertical-align:middle}
+
+  /* ---------- HERO ---------- */
+  .hero{padding:88px 0 72px;position:relative;overflow:hidden}
+  .hero::before{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(900px 400px at 90% 10%, rgba(216,166,71,.18), transparent 60%);
+    pointer-events:none;
+  }
+  .hero-eyebrow{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--gold);
+    border:1px solid var(--gold);padding:6px 14px;border-radius:999px;
+    background:rgba(255,255,255,.6);
+  }
+  .hero-eyebrow .live{width:7px;height:7px;background:var(--terracotta);border-radius:50%;box-shadow:0 0 0 4px rgba(184,72,47,.18)}
+  .hero-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:64px;align-items:center;margin-top:28px}
+  @media (max-width:880px){.hero-grid{grid-template-columns:1fr;gap:32px}}
+  .hero h1{
+    font-family:'Playfair Display','Noto Serif SC',serif;
+    font-size:clamp(40px,5.6vw,68px);
+    line-height:1.04;letter-spacing:-.02em;font-weight:900;
+    color:var(--ink);margin:18px 0 0;
+  }
+  .hero h1 em{font-style:italic;color:var(--gold);font-weight:500}
+  .hero .lede{
+    font-size:18px;color:var(--ink-2);max-width:560px;margin:24px 0 0;
+    font-weight:400;
+  }
+  .hero .author{
+    display:flex;align-items:center;gap:14px;margin-top:32px;
+    padding:14px 18px;background:var(--paper);
+    border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 1px 0 rgba(0,0,0,.02);
+  }
+  .hero .author .avatar{
+    width:48px;height:48px;border-radius:50%;
+    background:linear-gradient(135deg,var(--gold-2),var(--terracotta));
+    display:grid;place-items:center;color:var(--paper);font-weight:700;font-family:'Playfair Display',serif;font-size:18px;
+  }
+  .hero .author .meta{font-size:14px;color:var(--ink-2)}
+  .hero .author .meta b{color:var(--ink);font-weight:600}
+  .hero .author .meta a{color:var(--teal);text-decoration:none;border-bottom:1px solid currentColor}
+  .hero-stats{
+    display:flex;gap:32px;margin-top:28px;flex-wrap:wrap;
+    border-top:1px solid var(--line);padding-top:24px;
+  }
+  .hero-stats .stat .n{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--ink);line-height:1}
+  .hero-stats .stat .l{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-top:6px}
+
+  .video-card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 30px 60px -30px rgba(20,15,8,.25), 0 8px 18px -10px rgba(20,15,8,.12);
+    transform:rotate(.4deg);
+  }
+  .video-card .thumb{aspect-ratio:1.54/1;position:relative;background:#0e0a06}
+  .video-card .thumb img{width:100%;height:100%;object-fit:cover;display:block;opacity:.95}
+  .video-card .thumb .play{
+    position:absolute;inset:0;display:grid;place-items:center;
+  }
+  .video-card .thumb .play .ring{
+    width:78px;height:78px;border-radius:50%;
+    background:rgba(255,255,255,.94);
+    display:grid;place-items:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.3);
+  }
+  .video-card .thumb .play svg{width:30px;height:30px;color:var(--ink);margin-left:4px}
+  .video-card .thumb .badge{
+    position:absolute;top:14px;left:14px;
+    background:rgba(0,0,0,.65);color:#fff;
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;
+    padding:6px 10px;border-radius:6px;
+    backdrop-filter:blur(6px);
+  }
+  .video-card .meta-line{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:14px 18px;border-top:1px solid var(--line);
+    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-2);
+  }
+  .video-card .meta-line a{color:var(--teal);text-decoration:none}
+
+  /* ---------- SECTION HEADERS ---------- */
+  section{padding:88px 0;position:relative}
+  .section-head{margin-bottom:48px}
+  .section-head .num{
+    font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;
+    color:var(--gold);text-transform:uppercase;
+  }
+  .section-head h2{
+    font-family:'Playfair Display','Noto Serif SC',serif;
+    font-size:clamp(30px,3.6vw,46px);
+    line-height:1.1;letter-spacing:-.01em;
+    font-weight:700;color:var(--ink);margin:8px 0 0;
+    max-width:780px;
+  }
+  .section-head p{font-size:17px;color:var(--ink-2);max-width:680px;margin:16px 0 0}
+  .rule{height:1px;background:var(--line);margin:24px 0 0}
+
+  /* ---------- THE BIG IDEA ---------- */
+  #big-idea{background:var(--bg-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  #big-idea .grid{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+  @media (max-width:880px){#big-idea .grid{grid-template-columns:1fr;gap:32px}}
+  .quote{
+    font-family:'Playfair Display','Noto Serif SC',serif;
+    font-style:italic;font-size:clamp(22px,2.4vw,30px);line-height:1.35;
+    color:var(--ink);position:relative;padding:0 0 0 24px;
+    border-left:3px solid var(--gold);
+  }
+  .quote::before{content:"\201C";position:absolute;left:-2px;top:-22px;font-size:60px;color:var(--gold);opacity:.5;font-style:normal}
+  .quote-source{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.1em;color:var(--ink-3);margin-top:16px;text-transform:uppercase}
+
+  .bullets{list-style:none;padding:0;margin:0;display:grid;gap:18px}
+  .bullets li{display:grid;grid-template-columns:32px 1fr;gap:14px;font-size:16px;color:var(--ink-2)}
+  .bullets li b{color:var(--ink);font-weight:600}
+  .bullets li .b{
+    width:32px;height:32px;border-radius:8px;
+    background:var(--paper);border:1px solid var(--line);
+    display:grid;place-items:center;
+    font-family:'Playfair Display',serif;font-weight:700;color:var(--gold);
+  }
+
+  /* ---------- WORKFLOW DIAGRAM ---------- */
+  .workflow{
+    display:grid;grid-template-columns:repeat(7,1fr);
+    gap:0;position:relative;
+  }
+  @media (max-width:1080px){.workflow{grid-template-columns:repeat(4,1fr)}}
+  @media (max-width:560px){.workflow{grid-template-columns:repeat(2,1fr)}}
+  .stage{
+    background:var(--paper);border:1px solid var(--line);
+    padding:24px 18px 22px;position:relative;
+    display:flex;flex-direction:column;min-height:230px;
+  }
+  .stage + .stage{border-left:0}
+  @media (max-width:1080px){.stage + .stage{border-left:1px solid var(--line);border-top:0}}
+  @media (max-width:560px){.stage + .stage{border-left:1px solid var(--line);border-top:0}}
+  .stage .num{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;
+    color:var(--gold-2);text-transform:uppercase;
+  }
+  .stage .icon{
+    width:38px;height:38px;border-radius:10px;
+    background:linear-gradient(135deg,var(--bg-2),var(--bg));
+    display:grid;place-items:center;margin:12px 0 16px;
+    border:1px solid var(--line-2);
+  }
+  .stage h3{
+    font-family:'Playfair Display','Noto Serif SC',serif;
+    font-size:19px;font-weight:700;line-height:1.2;margin:0 0 8px;color:var(--ink);
+  }
+  .stage p{font-size:13px;color:var(--ink-2);margin:0 0 14px;line-height:1.5}
+  .stage .tools{
+    margin-top:auto;
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.04em;
+    color:var(--teal);padding-top:14px;border-top:1px dashed var(--line-2);
+  }
+  .stage .tools span{
+    display:inline-block;background:var(--bg-2);color:var(--teal);
+    padding:3px 8px;border-radius:4px;margin:0 4px 4px 0;font-size:10.5px;
+    border:1px solid var(--line-2);
+  }
+  .workflow::after{
+    content:"→";position:absolute;right:-22px;top:50%;transform:translateY(-50%);
+    font-size:24px;color:var(--gold);font-weight:700;
+  }
+  @media (max-width:1080px){.workflow::after{display:none}}
+
+  /* ---------- TECHNIQUES GRID ---------- */
+  .tech-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:20px;
+  }
+  @media (max-width:980px){.tech-grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:580px){.tech-grid{grid-template-columns:1fr}}
+  .tech{
+    background:var(--paper);border:1px solid var(--line);
+    border-radius:14px;padding:24px 24px 22px;
+    position:relative;transition:transform .2s ease, box-shadow .2s ease;
+  }
+  .tech:hover{transform:translateY(-2px);box-shadow:0 16px 32px -16px rgba(20,15,8,.18)}
+  .tech .no{
+    position:absolute;top:-12px;left:20px;
+    font-family:'Playfair Display',serif;font-size:36px;font-weight:900;
+    color:var(--gold);line-height:1;
+    background:var(--paper);padding:0 8px;
+  }
+  .tech h4{
+    font-family:'Playfair Display','Noto Serif SC',serif;
+    font-size:18px;font-weight:700;line-height:1.3;color:var(--ink);
+    margin:18px 0 10px;
+  }
+  .tech p{font-size:14px;color:var(--ink-2);line-height:1.6;margin:0 0 12px}
+  .tech .tip{
+    font-size:13px;color:var(--moss);
+    background:rgba(74,93,58,.06);
+    border-left:2px solid var(--moss);
+    padding:10px 12px;border-radius:4px;margin-top:10px;
+  }
+  .tech .tip b{color:var(--moss);font-weight:600}
+
+  /* ---------- TOOL STACK ---------- */
+  #stack{background:var(--bg-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .stack-wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media (max-width:880px){.stack-wrap{grid-template-columns:repeat(2,1fr)}}
+  .tool{
+    background:var(--paper);border:1px solid var(--line);
+    border-radius:12px;padding:18px;
+    display:flex;flex-direction:column;gap:6px;
+    position:relative;overflow:hidden;
+  }
+  .tool::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+    background:var(--gold);
+  }
+  .tool.t2::before{background:var(--terracotta)}
+  .tool.t3::before{background:var(--teal)}
+  .tool.t4::before{background:var(--moss)}
+  .tool .role{
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-3);
+  }
+  .tool .name{
+    font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--ink);line-height:1.2;
+  }
+  .tool .desc{font-size:13px;color:var(--ink-2);line-height:1.5;margin-top:4px}
+
+  /* ---------- PRINCIPLES ---------- */
+  .principles{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
+  @media (max-width:880px){.principles{grid-template-columns:1fr}}
+  .principle{
+    background:var(--paper);border:1px solid var(--line);
+    border-radius:16px;padding:32px 28px;position:relative;
+  }
+  .principle .marker{
+    font-family:'Playfair Display',serif;font-style:italic;
+    font-size:80px;line-height:.7;color:var(--gold);opacity:.35;
+    position:absolute;top:14px;right:24px;
+  }
+  .principle h3{
+    font-family:'Playfair Display','Noto Serif SC',serif;
+    font-size:22px;font-weight:700;color:var(--ink);margin:0 0 12px;
+    max-width:80%;
+  }
+  .principle p{font-size:15px;color:var(--ink-2);line-height:1.65;margin:0;max-width:90%}
+
+  /* ---------- RESOURCES ---------- */
+  #resources{background:var(--ink);color:#F2EBDB;padding:80px 0;border-top:1px solid var(--ink);position:relative;overflow:hidden}
+  #resources::before{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(700px 300px at 80% 0%, rgba(216,166,71,.18), transparent 60%);
+    pointer-events:none;
+  }
+  #resources .section-head h2{color:#F2EBDB}
+  #resources .section-head p{color:#BFB6A4}
+  #resources .section-head .num{color:var(--gold-2)}
+  .res-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:32px}
+  @media (max-width:880px){.res-grid{grid-template-columns:1fr}}
+  .res{
+    background:rgba(255,252,245,.04);
+    border:1px solid rgba(255,252,245,.12);
+    border-radius:14px;padding:24px 22px;
+    transition:background .2s, border-color .2s;
+    text-decoration:none;color:inherit;display:block;
+  }
+  .res:hover{background:rgba(255,252,245,.07);border-color:rgba(216,166,71,.5)}
+  .res .label{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--gold-2);
+  }
+  .res .name{
+    font-family:'Playfair Display',serif;font-size:22px;font-weight:700;
+    color:#F2EBDB;margin:8px 0 8px;line-height:1.2;
+  }
+  .res .desc{font-size:14px;color:#BFB6A4;line-height:1.55;margin:0 0 14px}
+  .res .arrow{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold-2);letter-spacing:.06em}
+  .res .arrow::after{content:"→";transition:transform .2s}
+  .res:hover .arrow::after{transform:translateX(4px)}
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    border-top:1px solid var(--line);background:var(--paper);
+    padding:32px 0;color:var(--ink-3);
+    font-size:13px;
+  }
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px}
+  footer .mono{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.04em}
+
+  /* tag */
+  .tag{
+    display:inline-block;padding:3px 9px;border-radius:4px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;
+    background:var(--bg-2);color:var(--teal);border:1px solid var(--line-2);
+  }
+  .tag.gold{background:rgba(216,166,71,.12);color:var(--gold);border-color:rgba(216,166,71,.3)}
+  .tag.terra{background:rgba(184,72,47,.1);color:var(--terracotta);border-color:rgba(184,72,47,.3)}
+</style>
+</head>
+<body>
+
+<div class="meta-bar">
+  <div class="wrap">
+    <div class="left">
+      <span><span class="dot"></span>FRONTEND TUTORIAL NOTES · 2026-07-10</span>
+      <span>v.1 · 21 min cinematic-website tutorial</span>
+    </div>
+    <div>v  ·  <a href="https://x.com/viktoroddy/status/2075545587093807111" style="color:var(--ink-2);text-decoration:none;border-bottom:1px solid var(--line)">x.com/viktoroddy</a></div>
+  </div>
+</div>
+
+<!-- =================== HERO =================== -->
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-eyebrow">
+      <span class="live"></span>FRONTEND · 21 分钟完整教程 · 中文笔记
+    </div>
+
+    <div class="hero-grid">
+      <div>
+        <h1>用 <em>GPT-5.6 Sol</em><br/>打造电影感网站</h1>
+        <p class="lede">
+          Viktor Oddy 在 21 分钟里演示了一整套<strong>"七段式工作流"</strong>。
+          这不是"丢一张参考图给 AI,一键生成高端网站"的魔法,
+          而是一套把<strong>参考、图片、视频、前端、工程优化</strong>串成流水线的实操方法。
+        </p>
+
+        <div class="author">
+          <div class="avatar">V</div>
+          <div class="meta">
+            <b>Viktor Oddy</b> · <a href="https://x.com/viktoroddy">@viktoroddy</a><br/>
+            Posted 2026-07-10 · 1.1M Views · 571 Reposts · 7.6K Likes
+          </div>
+        </div>
+
+        <div class="hero-stats">
+          <div class="stat"><div class="n">21:22</div><div class="l">Video length</div></div>
+          <div class="stat"><div class="n">7</div><div class="l">Workflow stages</div></div>
+          <div class="stat"><div class="n">12</div><div class="l">Key techniques</div></div>
+          <div class="stat"><div class="n">7+</div><div class="l">Tools in stack</div></div>
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="thumb">
+          <span class="badge">▶ 21:22 · 4K</span>
+          <img src="https://pbs.twimg.com/amplify_video_thumb/2075543834596196352/img/SeipPZ7yqw5_w4CB.jpg" alt="Viktor Oddy 教程视频封面" />
+          <div class="play"><div class="ring"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 17.93V6.07C6 4.51 7.71 3.55 9.05 4.37L18.72 10.29C19.99 11.08 19.99 12.92 18.72 13.71L9.05 19.63C7.71 20.45 6 19.49 6 17.93Z"/></svg></div></div>
+        </div>
+        <div class="meta-line">
+          <span>原推文 / 视频</span>
+          <a href="https://x.com/viktoroddy/status/2075545587093807111" target="_blank" rel="noopener">打开 X →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- =================== BIG IDEA =================== -->
+<section id="big-idea">
+  <div class="wrap">
+    <div class="grid">
+      <div>
+        <div class="section-head">
+          <div class="num">01 · THE BIG IDEA</div>
+          <h2>如果只看成片,容易产生错觉</h2>
+          <p>把参考图丢给 GPT-5.6 Sol,Codex 就能一次生成电影感网站?——这只看到结果,没看到工序。</p>
+        </div>
+        <div class="quote">
+          模型能力决定上限;输入材料是否清晰、约束是否具体、验证是否及时,才决定成品会不会落入常见的"AI 模板感"。
+        </div>
+        <div class="quote-source">— 视频原话 / 中文整理</div>
+      </div>
+
+      <ul class="bullets">
+        <li><span class="b">1</span><span><b>"高级 / 电影感 / 未来感"</b> 没有参考时只是模糊形容词,不同模型会给出完全不同的解释</span></li>
+        <li><span class="b">2</span><span><b>版式比例、留白、形状、色彩</b> 要变成"可见、可检查的约束",而不是"感觉"</span></li>
+        <li><span class="b">3</span><span><b>每个工具只做自己最擅长的事</b>:图片模型做画面,视频模型做运动,Codex 做结构和工程</span></li>
+        <li><span class="b">4</span><span><b>人负责拆解目标、给出约束、验收结果</b>,AI 负责执行</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- =================== WORKFLOW =================== -->
+<section id="workflow">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="num">02 · SEVEN-STAGE WORKFLOW</div>
+      <h2>七段式工作流:从参考到上线</h2>
+      <p>视频把整个流程拆成七个明确阶段。每一段解决一个具体问题,使用明确工具;一段没做对,下一段基本救不回来。</p>
+      <div class="rule"></div>
+    </div>
+
+    <div class="workflow">
+      <div class="stage">
+        <div class="num">STAGE 01</div>
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+        </div>
+        <h3>寻找参考</h3>
+        <p>确定版式、视觉元素、配色方向。建立"审美坐标"。</p>
+        <div class="tools"><span>Pinterest</span><span>SeeSaw</span><span>Land-book</span></div>
+      </div>
+
+      <div class="stage">
+        <div class="num">STAGE 02</div>
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </div>
+        <h3>拆分参考</h3>
+        <p>避免照搬;不同参考分别用于布局、装饰、颜色。</p>
+        <div class="tools"><span>Pinterest</span><span>Figma</span></div>
+      </div>
+
+      <div class="stage">
+        <div class="num">STAGE 03</div>
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="m21 17-5-5L8 20"/></svg>
+        </div>
+        <h3>生成视觉</h3>
+        <p>得到适合网页首屏的定制背景图。控制构图与氛围。</p>
+        <div class="tools"><span>ChatGPT Images</span><span>Higgsfield</span></div>
+      </div>
+
+      <div class="stage">
+        <div class="num">STAGE 04</div>
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+        </div>
+        <h3>生成动效</h3>
+        <p>把静态视觉变成可循环播放的视频背景。</p>
+        <div class="tools"><span>Seedance 2.0</span><span>Kling AI</span></div>
+      </div>
+
+      <div class="stage">
+        <div class="num">STAGE 05</div>
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </div>
+        <h3>实现页面</h3>
+        <p>先完成 Hero,再逐步扩展整页。从一屏到全站。</p>
+        <div class="tools"><span>ChatGPT Codex</span><span>GPT-5.6 Sol</span></div>
+      </div>
+
+      <div class="stage">
+        <div class="num">STAGE 06</div>
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18M3 12h18"/></svg>
+        </div>
+        <h3>视觉融合</h3>
+        <p>处理视频尺寸、背景冲突、混合效果,让各层融合。</p>
+        <div class="tools"><span>CSS</span><span>Figma</span></div>
+      </div>
+
+      <div class="stage">
+        <div class="num">STAGE 07</div>
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="m20 4-7 7M4 20l7-7"/></svg>
+        </div>
+        <h3>工程优化</h3>
+        <p>解决倒放卡顿、响应式、移动端显示问题。</p>
+        <div class="tools"><span>Canvas</span><span>rVFC</span><span>Codex</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== 12 TECHNIQUES =================== -->
+<section id="techniques">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="num">03 · 12 KEY TECHNIQUES</div>
+      <h2>视频里讲到的 12 个关键技能</h2>
+      <p>把"七段式工作流"展开成具体可操作的 12 项。每一项都解决一个具体的"AI 模板感"问题。</p>
+      <div class="rule"></div>
+    </div>
+
+    <div class="tech-grid">
+      <div class="tech">
+        <div class="no">01</div>
+        <h4>先找参考,再让 AI 动手</h4>
+        <p>AI 仍然需要参考和指导。没有参考,"高级/电影感"只是模糊的形容词,不同模型会给出完全不同的解释。</p>
+        <div class="tip"><b>可复用方法:</b>每次至少准备 3 类参考——布局、装饰、配色。不要让一张图承担所有要求。</div>
+      </div>
+
+      <div class="tech">
+        <div class="no">02</div>
+        <h4>一张图不包打天下</h4>
+        <p>把不同参考拆开用。一张负责整体版式,一张负责动势/装饰,一张负责配色。比"找一张完美的参考"更可控。</p>
+        <div class="tip"><b>判断标准:</b>单张图无法同时回答"长什么样、动起来什么样、颜色怎么搭"三个问题。</div>
+      </div>
+
+      <div class="tech">
+        <div class="no">03</div>
+        <h4>用 ChatGPT Images 控画面</h4>
+        <p>为网页首屏定制背景图,而不是套用模板。给出明确的构图、光线、材质、视角描述,而不是"高端一点"。</p>
+        <div class="tip"><b>关键约束:</b>图片比例、主体留白、是否需要前景压暗空间,这些是首屏融合的硬要求。</div>
+      </div>
+
+      <div class="tech">
+        <div class="no">04</div>
+        <h4>用 Higgsfield 备选生图</h4>
+        <p>当 ChatGPT Images 给的方向不够丰富时,切到 Higgsfield 拿更多变体。保持图片生成阶段的"工具冗余"。</p>
+        <div class="tip"><b>技巧:</b>两个工具各跑 4 张再交叉挑选,比一个工具重试 8 次更快、更准。</div>
+      </div>
+
+      <div class="tech">
+        <div class="no">05</div>
+        <h4>Seedance 2.0 出视频背景</h4>
+        <p>把上一阶段挑中的静态图转成可循环播放的视频。Seedance 2.0 是首选,运动幅度刚好适合做背景。</p>
+        <div class="tip"><b>循环要求:</b>起止帧一致或能自然衔接,否则循环时会"跳",整个网站立刻显廉价。</div>
+      </div>
+
+      <div class="tech">
+        <div class="no">06</div>
+        <h4>Kling AI 作为视频备选</h4>
+        <p>Seedance 效果不理想时,切到 Kling AI 再试一次。两个视频模型在运动风格上差异很大,值得保留选择权。</p>
+        <div class="tip"><b>经验:</b>同一张参考图,Seedance 偏"摄影机感",Kling 偏"主体运动",要按需要的氛围选。</div>
+      </div>
+
+      <div class="tech">
+        <div class="no">07</div>
+        <h4>Codex + GPT-5.6 Sol 写页面</h4>
+        <p>实现阶段的核心组合。Codex 负责代码生成,GPT-5.6 Sol 负责理解视觉意图。先做 Hero,再扩到全站。</p>
+        <div class="tip"><b>节奏:</b>Hero 验收通过再往下做,不要一上来就请求"生成整页"。</div>
+      </div>
+
+      <div class="tech">
+        <div class="no">08</div>
+        <h4>CSS 解决视觉冲突</h4>
+        <p>视频背景和文字、按钮的对比度经常出问题。用 mix-blend-mode、渐变遮罩、文字描边来调和,而不是换视频。</p>
+        <div class="tip"><b>常用组合:</b>从下到上的黑色渐变 + 文字白色 + 关键按钮加细描边,几乎万能。</div>
+      </div>
+
+      <div class="tech">
+        <div class="no">09</div>
+        <h4>Figma 做视觉对齐</h4>
+        <p>在写代码前,把视频、配色、字号、留白比例先在 Figma 对齐,避免反复回退改代码。</p>
+        <div class="tip"><b>目的:</b>Figma 不是为了"画图",而是为了把"我以为的"变成"我量过的"。</div>
+      </div>
+
+      <div class="tech">
+        <div class="no">10</div>
+        <h4>Canvas 处理视频倒放卡顿</h4>
+        <p>循环视频在某些浏览器会卡顿或撕裂。把视频抽帧到 Canvas 重绘,可以稳定帧率。</p>
+        <div class="tip"><b>代价:</b>增加内存和 CPU 占用,所以只对 Hero/重点背景用,不要全站铺。</div>
+      </div>
+
+      <div class="tech">
+        <div class="no">11</div>
+        <h4>requestVideoFrameCallback 精准同步</h4>
+        <p>用 rVFC 让 CSS 动效/粒子和视频帧对齐,避免在低端设备上漂移。</p>
+        <div class="tip"><b>用途:</b>文字入场、鼠标响应、视差滚动,只要和视频帧严格同步,体验立刻提升一档。</div>
+      </div>
+
+      <div class="tech">
+        <div class="no">12</div>
+        <h4>移动端单独再过一遍</h4>
+        <p>桌面端做完后,移动端往往会暴露:视频过亮、按钮不可点、滚动卡顿。每个页面单独在手机真机验。</p>
+        <div class="tip"><b>常被忽略:</b>移动端视频默认不全屏、字体不缩放、视差过强,这三件事基本每次都会出现。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== TOOL STACK =================== -->
+<section id="stack">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="num">04 · TOOL STACK</div>
+      <h2>视频里实际用到的工具组合</h2>
+      <p>这套组合的核心不是"工具很多",而是<strong>每个工具只处理自己最擅长的一类问题</strong>。互相补位,不互相替代。</p>
+      <div class="rule"></div>
+    </div>
+
+    <div class="stack-wrap">
+      <div class="tool">
+        <div class="role">IMAGE GENERATION</div>
+        <div class="name">ChatGPT Images</div>
+        <div class="desc">生成首屏背景图的主力。控制构图、材质、氛围。</div>
+      </div>
+      <div class="tool t2">
+        <div class="role">IMAGE GENERATION · ALT</div>
+        <div class="name">Higgsfield</div>
+        <div class="desc">图片备选来源,提供不同风格的变体。</div>
+      </div>
+      <div class="tool t3">
+        <div class="role">VIDEO GENERATION</div>
+        <div class="name">Seedance 2.0</div>
+        <div class="desc">把静态图转成可循环视频背景。运动幅度适合做背景。</div>
+      </div>
+      <div class="tool t4">
+        <div class="role">VIDEO GENERATION · ALT</div>
+        <div class="name">Kling AI</div>
+        <div class="desc">视频备选,主体运动风格更强,与 Seedance 互补。</div>
+      </div>
+      <div class="tool t3">
+        <div class="role">FRONTEND CODE</div>
+        <div class="name">ChatGPT Codex</div>
+        <div class="desc">实际写代码的引擎。负责把视觉转成可运行的页面。</div>
+      </div>
+      <div class="tool">
+        <div class="role">MODEL BRAIN</div>
+        <div class="name">GPT-5.6 Sol</div>
+        <div class="desc">OpenAI 旗舰模型。负责理解视觉意图,驱动 Codex。</div>
+      </div>
+      <div class="tool t2">
+        <div class="role">LAYOUT</div>
+        <div class="name">Figma</div>
+        <div class="desc">视觉对齐工具。在写代码前把版式、留白、字号量清楚。</div>
+      </div>
+      <div class="tool t4">
+        <div class="role">DESIGN INSPIRATION</div>
+        <div class="name">Pinterest / SeeSaw / Land-book</div>
+        <div class="desc">寻找参考的起点。Pinterest 偏实验性,Land-book 偏成熟成品。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== PRINCIPLES =================== -->
+<section id="principles">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="num">05 · MENTAL MODEL</div>
+      <h2>视频没说但贯穿全程的几个原则</h2>
+      <p>技术是骨架,这些原则是让骨架不变成"AI 模板"的血肉。</p>
+      <div class="rule"></div>
+    </div>
+
+    <div class="principles">
+      <div class="principle">
+        <div class="marker">i</div>
+        <h3>约束具体到能检查</h3>
+        <p>"高端一点"不是约束,"画面下三分之一留出能放 2 行白色 24px 标题的空间,主体偏右,光线从左上 45° 进来"才是。每一条约束都该是可被肉眼验证的。</p>
+      </div>
+
+      <div class="principle">
+        <div class="marker">ii</div>
+        <h3>每阶段独立验收</h3>
+        <p>参考、视觉、动效、页面、融合,每一步都该有"过/不过"的判断标准。上一步没通过,不要急着进下一步,否则返工成本会指数级上升。</p>
+      </div>
+
+      <div class="principle">
+        <div class="marker">iii</div>
+        <h3>工具冗余,而不是工具堆叠</h3>
+        <p>同一种能力(图片、视频)保留两个选择,是为了在主选失败时有备选,不是为了"多 = 好"。同时跑两套的成本,通常远低于重做。</p>
+      </div>
+
+      <div class="principle">
+        <div class="marker">iv</div>
+        <h3>Hero 决定上限,Footer 决定底线</h3>
+        <p>用户最先看到 Hero,最后看到 Footer。Hero 花最大力气做差异化,Footer 至少要"不掉链子"。中间部分是节奏,可以复用模式。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== RESOURCES =================== -->
+<section id="resources">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="num">06 · RESOURCES</div>
+      <h2>一手资料与延伸阅读</h2>
+      <p>笔记里出现的提示词和工程细节,作者 Viktor Oddy 已经打包发布,这是最直接的来源。</p>
+      <div class="rule"></div>
+    </div>
+
+    <div class="res-grid">
+      <a class="res" href="https://motionsites.ai" target="_blank" rel="noopener">
+        <div class="label">OFFICIAL PROMPTS</div>
+        <div class="name">motionsites.ai</div>
+        <p class="desc">视频里所有 AI 网站的 prompt 模板集合,一键复制粘贴,适配 Lovable / Bolt / Cursor / Claude。</p>
+        <div class="arrow">ACCESS ALL PROMPTS</div>
+      </a>
+      <a class="res" href="https://x.com/viktoroddy/status/2075545587093807111" target="_blank" rel="noopener">
+        <div class="label">ORIGINAL TUTORIAL</div>
+        <div class="name">Viktor Oddy 推文 + 视频</div>
+        <p class="desc">21 分钟完整版教程原帖。1.1M 浏览,7.6K 点赞,2 条 thread 给出 11 秒预览与提示词链接。</p>
+        <div class="arrow">WATCH ON X</div>
+      </a>
+      <a class="res" href="https://www.youtube.com/@ViktorOddy" target="_blank" rel="noopener">
+        <div class="label">MORE FROM VIKTOR</div>
+        <div class="name">YouTube · @ViktorOddy</div>
+        <p class="desc">作者的 YouTube 频道,持续更新"用 AI 工具做高端视觉设计"系列。</p>
+        <div class="arrow">SUBSCRIBE</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="mono">NOTE · 2026-08-31 · 中文整理自 Viktor Oddy @viktoroddy 公开视频</div>
+    <div class="mono">仅供学习参考 · 内容版权归原作者所有</div>
+  </div>
+</footer>
+
+</body>
+</html>
