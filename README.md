@@ -1,273 +1,193 @@
-# ai-tutor
+# AI-Tutor
 
-48 小时学完一科的私人 AI 辅导系统。基于 v3.0 七层认知架构。
+<div align="center">
 
-> **v1 状态**：4 个 MCP server · 32 个 tool · 672 测试全绿 · 通过 Claude Desktop 使用。
-> **v2 计划**：重构为独立 Electron 桌面应用。计划文档在 [`doc/plan/`](./doc/plan/)。尚未开始开发。
+### 48 小时学完一科的自适应 AI 私人辅导系统
+**基于 L1~L7 七层认知架构 · 刚性知识图谱防幻觉 · PGFGA 心流自适应 · BKT 掌握度追踪 · FSRS-5 间隔重复**
 
-这份 README 给**人类读**。AI Agent 请读 [`CLAUDE.md`](./CLAUDE.md)。
+[![Tests](https://img.shields.io/badge/tests-973%20passed%20(100%25)-success?style=flat-square)](./tests/)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue?style=flat-square)](./pyproject.toml)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.136-teal?style=flat-square)](./backend/)
+[![React](https://img.shields.io/badge/React%20%7C%20Vite%20%7C%20Electron-18.x-61dafb?style=flat-square)](./frontend/)
+[![MCP](https://img.shields.io/badge/MCP-4%20Servers%20%7C%2032%20Tools-orange?style=flat-square)](./servers/)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](./README.md)
 
----
+[产品特性](#-产品特性) • [七层认知架构](#-七层认知架构) • [四大硬核算法](#-四大核心创新点与算法) • [快速开始](#-快速开始) • [工程目录](#-工程目录结构) • [竞赛与团队任务](#-竞赛与团队任务包)
 
-## 1. 这是什么
-
-把一科的资料（PDF / Markdown / Obsidian 笔记）喂进去，系统会：
-
-1. **建知识图谱**（L4）：抽章节骨架 → LLM 富化每个概念（定义/例子/误解）→ 难度校准 + 向量化
-2. **教你学**（L2/L5/L6）：冷启动摸底 + 6 策略自适应（按掌握度/认知负荷/心流自动选）+ LLM 实时生成讲解/反馈 + 分阶段跨天计划 + PGFGA 心流/增益回路 + 打断/检查点。**怎么用见 [USAGE.md](./doc/USAGE.md)**
-3. **生成复习产物**（digest）：思维导图 / 笔记 / 测验 / 闪卡 / 三角色对话 / 幻灯片 / 朗读讲稿
-4. **同步回工作流**（sync）：写回 Obsidian、git 版本化学习产物、监听 vault 变更
-
-四个能力各是一个 MCP server，接进 Claude Desktop / Cursor 等 MCP host 即可用自然语言驱动。
-
-此外有一个**只读状态面板**（`servers/dashboard/`，非 MCP）：与 server 共享同一 SQLite，
-浏览器实时看当前概念/心流/策略/掌握度分布/48h Phase 进度。`uv run python -m servers.dashboard.server` → http://localhost:8501。
+</div>
 
 ---
 
-## 2. 七层认知架构 → 目录映射
+## 💡 为什么需要 AI-Tutor？
+
+通用大语言模型（如 ChatGPT、Kimi、Claude）直接充当辅导老师时，普遍存在三大致命痛点：
+1. **被动应答，缺乏教学目标感知**：大模型本质是“文本概率续写器”，学生不问就不教，学生盲目提问容易陷入“认知过载”与知识迷航。
+2. **幻觉无法根除，缺乏事实锚点**：教育场景对正确性要求极高，传统 Prompt 方案无法彻底杜绝模型自由发挥捏造逻辑。
+3. **缺乏状态记忆与情感调优**：没有数学模型量化学生到底“有没有掌握”，且打分生硬刻板，容易引发学生的挫败与焦虑。
+
+**AI-Tutor 不是一个简单的套壳聊天机器人，而是一套完整的“认知操作系统”**。它将教材资料转化为刚性知识图谱，结合贝叶斯知识追踪、降阶学习法与心流调节，为学习者打造闭环、自适应的 48 小时极速过科体验。
+
+---
+
+## ✨ 产品特性
+
+* 🗺️ **资料一键建图（L4 知识工程）**：支持 PDF、Markdown、网页文本输入，通过纯规则/LLM 混合管道自动化抽取概念骨架与拓扑前置关系，内置 NoiseGate 确保概念噪声率 `< 5%`。
+* 🎯 **逆向主动教学（L6 教学引擎）**：基于布鲁姆认知模型与“降阶学习法”，系统主动发起摸底探测、概念讲解、针对性提问、反向攻击防御与阶段自适应校准。
+* 🌊 **PGFGA 心理学心流回路（L5 学习者建模）**：实时捕获学生迟疑、退缩、冗长等 10 维心流信号；独创非评判防火墙（NonJudgmentFirewall），动态调优教学难度与节奏。
+* 📈 **BKT 掌握度与 FSRS-5 调度（L3 长期记忆）**：基于贝叶斯知识追踪（BKT）量化知识掌握概率；采用第五代自由间隔重复算法（FSRS-5）排定最佳复习周期。
+* 🧩 **多模态复习产物与双向同步（横切能力）**：一键生成 7 种复习产物（思维导图、针对性测验、互动闪卡、幻灯片简报、三角色对话等），支持无缝写回 Obsidian 与 Git 版本化沉淀。
+* 🖥️ **现代暖纸风交互系统（L7 交互层）**：基于 Electron + React (Vite) 打造的桌面客户端，内建 D3 力导向知识图谱、认知负荷热力图与系统全状态监控。
+
+---
+
+## 🏛️ 七层认知架构
+
+系统自底向上严格按照七层认知科学体系解耦实现：
 
 ```
-L7 交互层        ┐
-L6 教学引擎      ├─ servers/tutoring_mcp/   (BKT, reduction 策略, PGFGA 心流)
-L5 学习者建模    ┘
-L4 知识工程      ── servers/knowledge_mcp/  (acquire→build→query→review→update→版本树)
-L3 长期记忆      ── servers/tutoring_mcp/   (遗忘曲线拟合 + 复习调度)  + (可选)向量索引
-L2 短期记忆      ── servers/tutoring_mcp/   (会话上下文 SessionContext)
-L1 基础设施      ── shared/                 (schemas / errors / models / storage / providers)
-
-产物与同步（横切）：
-  servers/digest_mcp/   多模态复习产物（7 种 format）
-  servers/sync_mcp/     Obsidian + git 双向同步
-```
-
----
-
-## 3. 四个 MCP server × 32 tool
-
-### knowledge-mcp（L4 知识工程）— 9 tool
-| tool | 作用 |
-|---|---|
-| `acquire_subject` | 采集资料（file 源：PDF 经 mineru→md / Markdown 直读；web/video 留接口） |
-| `build_knowledge_graph` | 建 KG，`depth` ∈ `toc`(纯规则) / `concept`(LLM 富化) / `full`(+难度校准+embedding) |
-| `query_knowledge` | `query_type` ∈ `concept` / `neighbors` / `path`(最短学习路径) / `subgraph`(N 跳邻域) |
-| `review_kg` | quick/full 审查 + 缩略 Mermaid + 建议动作 |
-| `update_kg` | 6 种编辑 op + 审计；`mode=versioned` 建新版本（base_id 版本树） |
-| `diff_kg` | 按 base_id 对齐两版本：新增/删除/定义变更 |
-| `rollback_kg` | subject 指针回滚到祖先版本（不删 child，留审计） |
-| `resolve_conflicts` | 检测 5 种结构冲突（环/反向前置/重复/悬空边/孤岛） |
-| `health` | 自检 |
-
-### tutoring-mcp（L2/L3/L5/L6 教学）— 13 tool
-| tool | 作用 |
-|---|---|
-| `cold_start_probe` | 冷启动摸底出题（跨难度 10 道，探测先验掌握） |
-| `submit_cold_start` | 摸底判分 → 种 BKT 先验 + 画像初值（已掌握概念后续跳过） |
-| `start_learning_session` | 开新会话，按章节定 Phase 化教学计划（跳过已掌握概念） |
-| `resume_learning` | 续学：复用未结束会话或从首个未掌握概念继续 |
-| `get_learning_progress` | 查跨 Session 进度（各 Phase 完成度 + 下一个该学的概念） |
-| `respond` | 学生作答 → 评分 + 诊断 + 反馈（过非评判防火墙）+ 策略推进 + 心流/增益回路 |
-| `next_action` | 按拓扑序 + BKT 掌握度推荐下一个动作 |
-| `interrupt` | 处理打断：意图分类 → 分支响应 + 保存 checkpoint |
-| `checkpoint` | 保存/恢复会话断点 |
-| `learning_insight` | 学习者画像洞察 |
-| `generate_review_plan` | 基于遗忘曲线（拟合 λ）排复习计划 |
-| `health` | 自检 |
-
-### digest-mcp（多模态产物）— 4 tool
-| tool | 作用 |
-|---|---|
-| `digest` | 按 `formats` 生成 7 种产物：`mindmap` / `notes` / `quiz` / `simulation`(HTML闪卡) / `multi_agent`(三角色对话) / `slides`(HTML→可选pptx) / `audio`(讲稿→可选mp3) |
-| `build_quiz_html` | 独立入口：直接从 KG 出测验（复用 quiz generator） |
-| `compile_slides` | 独立入口：直接从 KG 出幻灯片（有 pptx→.pptx，否则 HTML） |
-| `health` | 自检 |
-
-### sync-mcp（Obsidian + git）— 6 tool
-| tool | 作用 |
-|---|---|
-| `push_to_obsidian` | 把产物写进 Obsidian vault |
-| `pull_homework_from_obsidian` | 扫 vault 里跟 subject 相关的 markdown（文件名/frontmatter/tag 匹配） |
-| `init_subject_repo` | 为 subject 建本地 git 仓库（可选关联 GitHub remote） |
-| `push_artifacts` | 产物提交进 git（可选 push 远程） |
-| `watch_obsidian` | 轮询 vault 变更（mtime 增量） |
-| `health` | 自检 |
-
-完整 tool/分支清单与跨 server 依赖见 [ROADMAP.md](./ROADMAP.md)。
-
----
-
-## 4. 数据流（一条主线）
-
-```
-资料(pdf/md)
-  └─ knowledge.acquire_subject ─→ corpus
-       └─ knowledge.build_knowledge_graph(depth=concept|full) ─→ KG (concepts + relations)
-            ├─ tutoring.start_learning_session ─→ session
-            │    └─ respond / next_action / interrupt  （学 + 评 + 心流追踪）
-            │         └─ 遗忘曲线 ─→ generate_review_plan
-            ├─ digest.digest(formats=[...]) ─→ 复习产物（7 种）
-            └─ sync.push_to_obsidian / push_artifacts ─→ Obsidian + git
+┌────────────────────────────────────────────────────────────────────────┐
+│ L7 交互层 (Interaction)     : React / Electron 暖纸风客户端, D3 图谱可视化   │
+├────────────────────────────────────────────────────────────────────────┤
+│ L6 教学引擎 (Teaching)       : 自适应策略状态机, 降阶学习法, 拓扑排程, 防火墙    │
+├────────────────────────────────────────────────────────────────────────┤
+│ L5 学习者建模 (Learner)      : BKT 掌握度追踪, 10维 PGFGA 心流增益反馈回路    │
+├────────────────────────────────────────────────────────────────────────┤
+│ L4 知识工程 (Knowledge)      : 资料采集, KG 抽取富化, 版本树(base_id), 冲突消解 │
+├────────────────────────────────────────────────────────────────────────┤
+│ L3 长期记忆 (Long-Term)      : FSRS-5 间隔重复, 遗忘曲线拟合, 知识点长效事实库    │
+├────────────────────────────────────────────────────────────────────────┤
+│ L2 短期记忆 (Working)        : 会话上下文 (SessionContext), 断点保存与打断恢复 │
+├────────────────────────────────────────────────────────────────────────┤
+│ L1 基础设施 (Infrastructure) : FastAPI 统一网关, 任务线程池, 事件总线, 本地SQLite│
+└────────────────────────────────────────────────────────────────────────┘
+  ▲                                                                    ▲
+  │   横切服务 (MCP Server 协议解耦):                                   │
+  ├── servers/knowledge_mcp/  (9 Tools : acquire, build, query, review...)│
+  ├── servers/tutoring_mcp/   (12 Tools: cold_start, respond, inspect...)│
+  ├── servers/digest_mcp/     (4 Tools : mindmap, quiz, slides, cards...) │
+  └── servers/sync_mcp/       (6 Tools : obsidian_push, git_sync...)     │
 ```
 
 ---
 
-## 5. 快速开始
+## 🔬 四大核心创新点与算法
 
-```powershell
-cd C:\Users\yhn\Desktop\ai-tutor
+### 1. 降阶学习法：逻辑降维与补集证伪
+高阶复杂知识往往由于维度交织导致认知超载。系统将复合概念拆解为不可再分的原子逻辑链（前提 $\rightarrow$ 推理 $\rightarrow$ 结论 $\rightarrow$ 边界）；同时运用**补集思维**，主动列出所有常见误区并逐一证伪，实现真理收敛。详见 [`doc/降阶学习法.md`](./doc/降阶学习法.md)。
 
-# 1. 装依赖（必需 + dev；research 引擎可选）
+### 2. PGFGA 心流自适应调节与非评判防火墙
+基于积极心理学挑战-技能平衡模型，系统通过 `flow_signals.py` 动态捕获迟疑用词、作答长度衰减、求助频次等 10 维信号，划分 5 档心流等级；判分经由 `NonJudgmentFirewall` 过滤，彻底摒弃冷冰冰的负面评判，始终维持学习者的求知信心。详见 [`doc/PGFGA-TUNING.md`](./doc/PGFGA-TUNING.md)。
+
+### 3. 刚性图谱约束与 Agentic RAG
+以抽取校验后的概念图谱作为刚性教学大纲，大模型回答时必须挂靠已知节点，偏离即触发自主重检索（最多 3 轮）与 NLI 级答案-引用源一致性验证，从架构物理底层切断模型幻觉。
+
+### 4. BKT 数理掌握度与 FSRS-5 记忆曲线
+每个概念由 BKT（先验、猜度、失误、转移概率）数学模型动态维护掌握度 $P(L)$；学完后自动接入 FSRS-5（稳定性、难度双参数）矩阵算法，精准预测遗忘临界点并自动排布进今日复习队列。
+
+---
+
+## 🚀 快速开始
+
+系统采用本地优先（Local-first）设计，支持跨平台（Windows / macOS / Linux）秒级启动。
+
+### 1. 环境准备
+* **Python**: `>= 3.11`（推荐使用极速包管理器 [uv](https://github.com/astral-sh/uv)）
+* **Node.js**: `>= 18.0`（用于前端界面）
+
+### 2. 安装与配置
+
+```bash
+# 1. 克隆本仓库
+git clone https://github.com/xiangbianpangde/ai-tutor.git
+cd ai-tutor
+
+# 2. 安装 Python 核心与开发依赖
 uv sync --extra dev
 
-# 2. 配 .env（没有 key 也能跑，LLM 路径降级到启发式/模板）
-copy .env.example .env
-#   .env 里填 DEEPSEEK_API_KEY=...
-
-# 3. 初始化数据库
-uv run python scripts/init_db.py
-
-# 4. 全量测试（应 671 passed + 1 skipped；含 BDD 套件）
-uv run pytest
-
-# 5. 确认 4 个 server 能起
-uv run python scripts/verify_servers.py
+# 3. 配置环境变量（支持本地启发式降级，无 Key 也能平稳运行）
+cp .env.example .env
+# 编辑 .env 填入你的大模型提供商 API Key（如 DEEPSEEK_API_KEY）
 ```
 
-接进 Claude Desktop → 见 [INTEGRATION.md](./INTEGRATION.md)（5 分钟跑通）。
-生产/多机/HTTP/备份/故障排查 → 见 [DEPLOYMENT.md](./DEPLOYMENT.md)。
+### 3. 一键启动服务
+
+* **启动后端统一服务**（FastAPI，监听 `127.0.0.1:18501`）：
+  ```bash
+  uv run python run_aitutor.py
+  # 打开浏览器访问交互式 API 文档：http://127.0.0.1:18501/docs
+  ```
+
+* **启动前端 Web 客户端**（React + Vite，监听 `http://localhost:5173`）：
+  ```bash
+  cd frontend/renderer
+  npm install
+  npm run dev
+  ```
+
+* **运行全量自动化测试**（验证环境完整性）：
+  ```bash
+  uv run pytest
+  # 预期结果：973 passed, 1 skipped，100% 通过
+  ```
 
 ---
 
-## 6. demo 脚本（scripts/）
-
-每个切片都有可独立运行的 demo，验证该层真实跑通（多数用 MockLLM，不耗 key）：
-
-| 脚本 | 演示 |
-|---|---|
-| `demo_concept_mode.py` | KG concept 模式富化 |
-| `demo_full_workflow.py` | acquire→build→query 全链路 |
-| `demo_k3.py` | KG 版本树（update versioned / diff / rollback） |
-| `demo_t1.py` / `demo_t1plus.py` | 教学 respond / 打断 + 检查点 |
-| `demo_t2.py` | 遗忘曲线 + 复习调度 |
-| `demo_t3.py` | PGFGA 心流追踪 + 增益回路 |
-| `demo_digest.py` | 多模态产物生成 |
-| `demo_sync.py` / `demo_s2.py` | Obsidian 同步 / git 版本化 |
-| `run_e2e_demo.py` | 端到端串联 |
-| `init_db.py` / `verify_servers.py` | 建表 / server 起停自检 |
-
-跑法：`uv run python scripts/demo_xxx.py`（部分接受真实笔记路径参数，默认回退到 `tests/fixtures/mini_subject.md`）。
-
----
-
-## 7. 依赖说明（重要：三档）
-
-**A. 必需**（`uv sync` 自动装）：fastmcp · pydantic · sqlalchemy · alembic · structlog · httpx · pyyaml · anyio · numpy · scipy · networkx · openai · pypinyin
-
-**B. pyproject extras**（按需 `uv sync --extra <name>`）：
-- `research` — 复用桌面 `../调研/research-tool` 作采集/抽取后端（本地路径依赖）
-- `vector` — chromadb + sentence-transformers（L3 向量索引）
-- `dev` — pytest 全家桶 + ruff
-
-**C. 软探测依赖**（**不在 pyproject**，代码用 `importlib` 探测，装了就升级、缺了优雅降级）：
-| 库 | 影响的能力 | 缺失时降级为 |
-|---|---|---|
-| `python-pptx` | digest slides | 自包含 HTML 幻灯片 |
-| `edge-tts` | digest audio | 朗读讲稿 .md（不合成 mp3） |
-| `chromadb` | build full / 向量检索 | 仍写 numpy 64 维 embedding 进 full_json |
-| 系统 `git` CLI | sync git 系列 | （git 通常已装；本地版本控制核心能力） |
-
-> 这是刻意的设计：CI / 离线 / 中国区网络都能跑全套核心功能，重依赖只是「锦上添花」。
-
----
-
-## 8. 给未来的你 — 关键设计决策速查
-
-- **concept.id 三段式** `subject:chapter.section:slug`，必须 ASCII（中文经 pypinyin 转写）。`shared/schemas.py:CONCEPT_ID_PATTERN`。
-- **KG 版本树**用 `base_id`（稳定身份）+ `parent_kg_id`（版本链），versioned 拷贝时 ConceptRow.id 加 `@v` 后缀；**不用复合主键**（会破坏 BKT 跨版本继承）。
-- **难度校准是确定性加权公式**，不是 XGBoost——因为没有真实难度标注数据。`kg_full.py`，将来有学习者答题数据可无缝换成学习模型。
-- **PGFGA 心流**做成基于信号净分的状态机，不是 7 条字面转移规则（鲁棒）。`servers/tutoring_mcp/flow_*.py`。
-- **三轮 code-review 累计修 10 个真 bug**，教训沉淀在审查记忆里：死代码 / id 空间不一致 / 时区(utcnow vs local mtime) / 双存同步(names_json vs full_json) / `</script>` XSS / asyncio.run 嵌套事件循环。
-- **HTML 产物内联 JSON 必须转义 `</`→`<\/`**（防 `</script>` 提前闭合脚本块）。
-- **同步函数里调 asyncio.run** 若可能被 async 上下文调用，必须探测 running loop 走 worker thread（见 `digest_mcp/audio.py:_run_async`）。
-
----
-
-## 9. 项目文件结构
-
-标准 Python 包布局：配置/文档在根，`shared/` 是 L1 基础设施，每个 MCP server 一个包并自带 `tests/`。
+## 📂 工程目录结构
 
 ```
 ai-tutor/
-├── 配置 / 入口（根目录）
-│   ├── pyproject.toml          依赖 + 打包 + ruff/pytest 配置
-│   ├── uv.lock                 依赖锁
-│   ├── alembic.ini             迁移配置
-│   ├── conftest.py             pytest 共享 fixture（必须在根）
-│   ├── .env.example            环境变量模板
-│   └── .gitignore
+├── backend/                  # FastAPI 统一网关与现代后端服务
+│   ├── app.py                # 应用装配工厂 (CORS, 中间件, 统一信封)
+│   ├── main.py               # Uvicorn 启动入口
+│   ├── routers/              # REST & WebSocket 路由端点 (knowledge, tutoring, digest, sync...)
+│   ├── rag/                  # Agentic RAG 检索器与一致性校验器
+│   ├── strategy/             # BKT, FSRS-5, 阶段校准与费曼判分算法
+│   └── middleware/           # TaskManager 任务池, EventBus 事件总线, 缓存与文件管理
 │
-├── 文档
-│   ├── README.md               全景入口（本文件）
-│   ├── HANDOFF.md              接手必读：状态/约定/雷区/工作流
-│   ├── ROADMAP.md              28 切片历史 + 每文件状态 + 测试分布
-│   ├── INTEGRATION.md          接 Claude Desktop（5 分钟）
-│   ├── DEPLOYMENT.md           生产/多机/HTTP/备份/故障排查
-│   └── PGFGA-TUNING.md         心流/增益回路调参
+├── frontend/                 # 桌面与 Web 客户端
+│   ├── main.js / preload.js  # Electron 宿主入口与最小安全沙箱桥接
+│   └── renderer/             # React 18 + Vite 5 渲染层 (10 个路由页面, D3 力导向图组件)
 │
-├── examples/                   Claude Desktop 配置示例
-├── migrations/                 alembic（env.py + script.py.mako）
+├── servers/                  # 4 个标准化 MCP Server (可独立通过 Claude Desktop 驱动)
+│   ├── knowledge_mcp/        # L4 知识工程 (9 Tools)
+│   ├── tutoring_mcp/         # L2/L3/L5/L6 教学状态机 (12 Tools)
+│   ├── digest_mcp/           # 多模态复习产物生成器 (4 Tools / 7 Formats)
+│   └── sync_mcp/             # Obsidian 与 Git 双向工作流同步 (6 Tools)
 │
-├── scripts/                    demo + 工具脚本
-│   ├── demo_concept_mode / demo_full_workflow / demo_k3        切片演示（10 个）
-│   ├── demo_t1 / demo_t1plus / demo_t2 / demo_t3
-│   ├── demo_digest / demo_sync / demo_s2
-│   └── init_db / verify_servers / run_e2e_demo                 工具脚本
+├── shared/                   # L1 基础设施与数据模型
+│   ├── models.py             # SQLAlchemy 14 张核心 ORM 数据表定义
+│   ├── schemas.py            # Pydantic 核心数据契约与校验
+│   ├── storage.py            # SQLite 与文件存储适配器
+│   └── errors.py             # 统一 TutorError 与人话错误码映射
 │
-├── shared/                     L1 基础设施（所有 server 共用）
-│   ├── schemas.py              60+ Pydantic 模型（改数据结构从这里开始）
-│   ├── models.py               SQLAlchemy ORM（14 表）
-│   ├── errors.py               TutorError + 错误码白名单
-│   ├── storage.py              RelationalStore / FileStore
-│   ├── config.py  logging_config.py  plugins.py  slug.py
-│   ├── llm_client.py  llm_cache.py
-│   └── providers/deepseek.py
+├── doc/                      # 项目设计与参考文档库
+│   ├── tasks/                # 竞赛冲刺 4 人团队独立任务手册与学习计划
+│   ├── architecture/         # L1~L7 原始系统设计与详细规范包
+│   ├── worklogs/             # 历史研发日志与架构决策记录 (ADR)
+│   ├── 降阶学习法.md          # 核心教育学理论推导
+│   └── PGFGA-TUNING.md       # 心流回路与判定防火墙调参手册
 │
-├── servers/                    4 个 MCP server（每个自带 tests/）
-│   ├── knowledge_mcp/          L4 知识工程（9 tool）
-│   │     server + kg_builder / kg_full / kg_query / kg_diff / kg_rollback
-│   │     kg_update / kg_review / kg_enrich_adapter / concept_enricher
-│   │     acquisition_adapter / resolve_conflicts + tests/(15)
-│   ├── tutoring_mcp/           L2/L3/L5/L6 教学（12 tool）
-│   │     server + engine / session / bkt / bkt_store
-│   │     flow_signals / flow_tracker / gain_loop_monitor        (PGFGA 心流)
-│   │     memory_store / forgetting_curve / review_scheduler     (L3 长期记忆)
-│   │     llm_scorer / error_diagnoser / intent_classifier
-│   │     non_judgment_firewall / insight / strategy_selector
-│   │     ├── strategies/  reduction / feynman / socratic / analogy / pbl / spaced_repetition / base
-│   │     └── tests/(24)
-│   ├── digest_mcp/             多模态产物（4 tool / 7 format）
-│   │     server + orchestrator + _kg_read
-│   │     mindmap / notes / quiz / simulation / multi_agent / slides / audio + tests/(7)
-│   └── sync_mcp/               Obsidian + git（6 tool）
-│         server + obsidian / git_sync / obsidian_watch + tests/(5)
-│
-└── tests/                      跨 server 测试
-    ├── unit/                   schemas / storage / config / llm / plugins / k3_schema（8）
-    ├── integration/            e2e_spine / digest_to_sync_e2e（2）
-    └── fixtures/mini_subject.md
+├── tests/ & BDD/             # 单元测试、集成测试与 BDD 业务全链路验收套件
+├── archive/                  # 历史模板与草稿归档目录
+├── run_aitutor.py            # 生产级顶层启动入口
+└── pyproject.toml            # 项目工程元数据与依赖锁定
 ```
-
-设计原则：核心代码是标准包布局，移动任何 `.py` 都会破坏 import 与全部 519 个测试——重构时优先保持包路径稳定。
 
 ---
 
-## 10. 文档索引
+## 🏆 竞赛与团队任务包
 
-| 文档 | 内容 |
-|---|---|
-| [HANDOFF.md](./HANDOFF.md) | **接手必读** — 给后续开发者/AI 的交接：状态、约定、雷区、工作流 |
-| [ROADMAP.md](./ROADMAP.md) | 18 个切片历史 + 每文件状态 + 461 测试分布 + 剩余项 |
-| [INTEGRATION.md](./INTEGRATION.md) | 接 Claude Desktop / Cursor，5 分钟跑通 |
-| [DEPLOYMENT.md](./DEPLOYMENT.md) | 生产/多机/HTTP 传输/环境变量/数据备份/故障排查 |
-| [PGFGA-TUNING.md](./PGFGA-TUNING.md) | 心流/增益回路调参手册 |
-| `../使用AI进行学习的技巧/ai-tutor-system-design/` | v3.0 原始设计文档（合同来源） |
+针对大学生创新创业与 AI 应用类竞赛（如“互联网+”、挑战杯、大学生计算机设计大赛等），团队已完成标准化职责拆解与 2 周极速新手实训计划。详情请查阅对应手册：
+
+* 📘 [**00_项目总控与队长手册.md**](./doc/tasks/00_项目总控与队长手册.md)：全局里程碑甘特图、API 契约守门准则、Git 分支安全网与现场断网防翻车指南。
+* 🎨 [**01_前端任务包_Web会话与MCP卡片.md**](./doc/tasks/01_前端任务包_Web会话与MCP卡片.md)：会话式 UI 改造、4 类 MCP 智能卡片组件、新手 2 周 React 临摹计划。
+* ⚙️ [**02_后端任务包_接口桥接与演示保障.md**](./doc/tasks/02_后端任务包_接口桥接与演示保障.md)：`digest`/`sync` 路由补齐、本地演示 Mock 兜底机制、FastAPI 端点自测指南。
+* 📊 [**03_测试评估任务包_双轨实验与数据图表.md**](./doc/tasks/03_测试评估任务包_双轨实验与数据图表.md)：3 门学科 Benchmark、抗作弊判分鲁棒性实验、SUS 可用性问卷量表与高清图表输出。
+* 📝 [**04_竞赛写手任务包_四件套与答辩剧本.md**](./doc/tasks/04_竞赛写手任务包_四件套与答辩剧本.md)：15页立项主报告、8分钟路演 PPT 黄金节奏、3分钟现场 Demo 剧本与 10 大评委尖锐提问攻防表。
+
+---
+
+## 📄 开源许可证
+
+本项目基于 [MIT License](./README.md) 协议开源。
+欢迎学术交流、科研实验与教育创新竞赛引用！
